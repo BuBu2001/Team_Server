@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Анализ репозитория — Team Server{% endblock %}
+{% block content %}
+<div class="repo-header">
+  <h1>🌐 Анализ git-репозитория <span class="muted">(сайт gitingest)</span></h1>
+  <p class="muted">Страница работает через интегрированный сайт: <a href="/site/">/site/</a> (главная сайта), <a href="/site/docs">/site/docs</a> (API-доки).</p>
+</div>
+
+<form method="post" action="/analyze" class="upload-form">
+  <label>Ссылка на репозиторий
+    <input name="url" type="text" required placeholder="https://github.com/user/repo" value="{{ url or '' }}">
+  </label>
+  <label>Макс. размер файла (КБ)
+    <input name="max_size" type="number" min="1" max="500" value="100">
+  </label>
+  <label>Токен приватного репозитория (необязательно)
+    <input name="token" type="text" placeholder="ghp_...">
+  </label>
+  <button class="btn btn-primary" type="submit">🔍 Проанализировать</button>
+</form>
+
+{% if error %}
+<p class="summary" style="color:#e5484d;">{{ error }}</p>
+{% endif %}
+
+{% if result %}
+<pre class="summary">{{ result.summary }}</pre>
+<div class="actions">
+  {% if result.digest_url %}
+  <a class="btn btn-primary" href="/site{{ result.digest_url }}">💾 Скачать digest</a>
+  {% endif %}
+  <a class="btn" href="/site/">Открыть сайт gitingest</a>
+</div>
+<h3>Дерево проекта</h3>
+<pre class="tree">{{ result.tree }}</pre>
+{% endif %}
+{% endblock %}

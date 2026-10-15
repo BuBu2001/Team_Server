@@ -17,6 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from . import db
+from .diagram_gen import tree_to_mermaid
 from .image_gen import tree_to_image
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -242,6 +243,12 @@ def analyze_project(request: Request, project_id: int):
     digest = EXPORT_DIR / f"project_{project_id}_digest.txt"
     digest.write_text(content, encoding="utf-8")
 
+    # gitdiagram-стиль: mermaid-диаграмма по дереву проекта (рендер в браузере)
+    tree_body = "\n".join(
+        ln for ln in tree.splitlines() if ln.strip() and not ln.startswith("Directory structure")
+    )
+    diagram_code = tree_to_mermaid(tree_body or tree)
+
     return templates.TemplateResponse(
         request,
         "result.html",
@@ -250,6 +257,7 @@ def analyze_project(request: Request, project_id: int):
             "project": project,
             "summary": summary,
             "tree": tree,
+            "diagram_code": diagram_code,
             "png_name": export.name,
         },
     )

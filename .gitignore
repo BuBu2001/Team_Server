@@ -42,3 +42,7 @@ digest.txt
 
 # Environment variables
 .env
+data/
+server.log
+__pycache/
+*.pyc

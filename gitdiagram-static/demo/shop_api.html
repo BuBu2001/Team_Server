@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>shop — architecture map</title>
+<style>
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 32px 24px 64px; background: #f8fafc; color: #0f172a;
+       font: 15px/1.6 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; }
+main { max-width: 1180px; margin: 0 auto; }
+header h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -0.01em; }
+header .meta { color: #64748b; font-size: 13px; margin-bottom: 4px; }
+.badge { display: inline-block; background: #dcfce7; color: #14532d; border: 1px solid #86efac;
+         border-radius: 999px; padding: 2px 10px; font-size: 11.5px; font-weight: 700;
+         letter-spacing: 0.04em; text-transform: uppercase; }
+.card { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 20px 22px;
+        margin-top: 20px; box-shadow: 0 1px 2px rgba(15,23,42,.04); }
+.card h2 { margin: 0 0 12px; font-size: 16px; letter-spacing: .02em; text-transform: uppercase;
+           color: #475569; }
+.diagram { overflow: auto; background: #fff; }
+.diagram svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid #eef2f7; vertical-align: top; }
+th { color: #64748b; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+code { background: #f1f5f9; border-radius: 5px; padding: 1px 5px; font-size: 12.5px;
+       font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+a { color: #2563eb; text-decoration: none; }
+a:hover { text-decoration: underline; }
+details summary { cursor: pointer; color: #475569; font-size: 13px; margin-bottom: 8px; }
+pre { background: #0f172a; color: #e2e8f0; padding: 14px 16px; border-radius: 10px;
+      overflow: auto; font-size: 12.5px; line-height: 1.5; }
+ul { margin: 8px 0 0; padding-left: 20px; }
+li { margin: 3px 0; }
+.pill { display:inline-block; background:#eef2ff; color:#3730a3; border-radius:6px;
+        padding:1px 7px; font-size:11.5px; margin:0 4px 4px 0; }
+footer { margin-top: 26px; color: #94a3b8; font-size: 12px; text-align: center; }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>shop</h1>
+  <div class="meta">local:/tmp/arena/tenants/3340caa4-ffe6-422e-a77f-9c6765ee41b1/sessions/ffa3e9e8-4b47-4a14-9f1e-12ccc7908674/workspace/gitdiagram-static/tests/fixtures/shop_api · branch <code>main</code> · 15 nodes · 21 edges</div>
+  <div class="meta"><span class="badge">no AI</span> <span class="meta">static analysis of imports, entry points and infrastructure</span></div>
+</header>
+
+<div class="card">
+  <h2>Overview</h2>
+  <p>shop_api is a Python codebase of 19 parsed modules (306 lines) packaging as <code>shop</code>. Order and catalogue service for the sample storefront. It exposes a JSON API for browsing products and placing orders, keeps state in PostgreSQL, caches catalogue reads in Redis, and sends order confirmation mail…. Its 7 main components are DB, Domain, API, CLI, Application entry, Integrations. HTTP requests are handled in <code>src/shop/api</code> (5 route handlers). Execution starts at <code>src/shop/cli.py</code>, exposed as the <code>shopctl</code> command. The most depended-on module is <code>src/shop/db</code>, imported by 5 other components (10 import statements). Imports and infrastructure show external systems: Celery broker, External HTTP APIs, PostgreSQL, Redis. Built from 22 resolved internal imports; no model was called.</p>
+</div>
+
+<div class="card diagram">
+  <h2>Architecture map</h2>
+  <svg xmlns="http://www.w3.org/2000/svg" width="857" height="940" viewBox="0 0 857 940" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif">
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#64748b"/></marker>
+<marker id="arrowDash" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#94a3b8"/></marker>
+</defs>
+<rect width="857" height="940" fill="#ffffff"/>
+<text x="24" y="30" font-size="17" font-weight="700" fill="#0f172a">shop</text>
+<text x="24" y="50" font-size="11.5" fill="#64748b">shop_api · main · 15 components, 21 relations</text>
+<path d="M147.6 308.0 C147.6 481.7, 229.5 520.3, 229.5 694.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M349.6 308.0 C296.1 308.0, 269.4 398.0, 215.9 398.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M161.0 604.0 C161.0 644.5, 229.5 653.5, 229.5 694.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M215.9 456.0 C215.9 496.5, 161.0 505.5, 161.0 546.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M215.9 456.0 C354.1 456.0, 423.2 694.0, 561.5 694.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M215.9 456.0 C260.3 456.0, 282.6 546.0, 327.0 546.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M215.9 456.0 C215.9 563.1, 229.5 586.9, 229.5 694.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M147.6 308.0 C147.6 415.1, 161.0 438.9, 161.0 546.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M349.6 308.0 C349.6 481.7, 229.5 520.3, 229.5 694.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M349.6 308.0 C349.6 481.7, 561.5 520.3, 561.5 694.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M327.0 604.0 C288.0 604.0, 268.5 694.0, 229.5 694.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M327.0 604.0 C420.8 604.0, 467.7 694.0, 561.5 694.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M327.0 604.0 C327.0 644.5, 395.5 653.5, 395.5 694.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M561.5 752.0 C561.5 792.5, 573.5 801.5, 573.5 842.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M229.5 752.0 C229.5 792.5, 229.5 801.5, 229.5 842.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M229.5 752.0 C295.9 752.0, 329.1 842.0, 395.5 842.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M561.5 752.0 C637.5 752.0, 675.5 842.0, 751.5 842.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M106.0 160.0 C106.0 267.1, 215.9 290.9, 215.9 398.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M272.0 160.0 C222.2 160.0, 197.4 250.0, 147.6 250.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M272.0 160.0 C272.0 200.5, 349.6 209.5, 349.6 250.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M450.0 160.0 C450.0 333.7, 327.0 372.3, 327.0 546.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<g class="node"><ellipse cx="272.0" cy="131.0" rx="66.0" ry="29.0" fill="#dbeafe" stroke="#2563eb" stroke-width="1.6"/><text x="272.0" y="127.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#172554">Terminal user</text><text x="272.0" y="144.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#172554" opacity="0.78">actor</text></g>
+<g class="node"><ellipse cx="106.0" cy="131.0" rx="66.0" ry="29.0" fill="#dbeafe" stroke="#2563eb" stroke-width="1.6"/><text x="106.0" y="127.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#172554">FastAPI client</text><text x="106.0" y="144.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#172554" opacity="0.78">actor</text></g>
+<g class="node"><ellipse cx="450.0" cy="131.0" rx="78.0" ry="29.0" fill="#ffe4e6" stroke="#e11d48" stroke-width="1.6"/><text x="450.0" y="127.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#881337">Scheduler / broker</text><text x="450.0" y="144.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#881337" opacity="0.78">actor</text></g>
+<g class="node"><rect x="81.6" y="250.0" width="132.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="147.6" y="275.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">CLI</text><text x="147.6" y="292.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">3 CLI commands</text></g>
+<g class="node"><rect x="247.6" y="250.0" width="204.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="349.6" y="275.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">Application entry</text><text x="349.6" y="292.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">Application factory and HTTP…</text></g>
+<g class="node"><rect x="149.9" y="398.0" width="132.0" height="58.0" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="1.6"/><text x="215.9" y="423.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#14532d">API</text><text x="215.9" y="440.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#14532d" opacity="0.78">5 routes</text></g>
+<g class="node"><rect x="95.0" y="546.0" width="132.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="161.0" y="571.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">Domain</text><text x="161.0" y="588.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">4 modules</text></g>
+<g class="node"><rect x="261.0" y="546.0" width="132.0" height="58.0" rx="10" fill="#ffe4e6" stroke="#e11d48" stroke-width="1.6"/><text x="327.0" y="571.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#881337">Workers</text><text x="327.0" y="588.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#881337" opacity="0.78">1 task</text></g>
+<g class="node"><path d="M163.5 703.0 v40.0 a66.0 9.0 0 0 0 132.0 0 v-40.0" fill="#fef3c7" stroke="#d97706" stroke-width="1.6"/><ellipse cx="229.5" cy="703.0" rx="66.0" ry="9.0" fill="#fef3c7" stroke="#d97706" stroke-width="1.6"/><text x="229.5" y="719.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#78350f">DB</text><text x="229.5" y="736.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#78350f" opacity="0.78">data models</text></g>
+<g class="node"><rect x="329.5" y="694.0" width="132.0" height="58.0" rx="10" fill="#e0e7ff" stroke="#4f46e5" stroke-width="1.6"/><text x="395.5" y="719.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#312e81">Celery broker</text><text x="395.5" y="736.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#312e81" opacity="0.78">external system</text></g>
+<g class="node"><polygon points="511.3,694.0 611.6,694.0 627.5,723.0 611.6,752.0 511.3,752.0 495.5,723.0" fill="#e0e7ff" stroke="#4f46e5" stroke-width="1.6"/><text x="561.5" y="719.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#312e81">Integrations</text><text x="561.5" y="736.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#312e81" opacity="0.78">3 modules</text></g>
+<g class="node"><path d="M163.5 851.0 v40.0 a66.0 9.0 0 0 0 132.0 0 v-40.0" fill="#fef3c7" stroke="#d97706" stroke-width="1.6"/><ellipse cx="229.5" cy="851.0" rx="66.0" ry="9.0" fill="#fef3c7" stroke="#d97706" stroke-width="1.6"/><text x="229.5" y="867.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#78350f">PostgreSQL</text><text x="229.5" y="884.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#78350f" opacity="0.78">external system</text></g>
+<g class="node"><path d="M329.5 851.0 v40.0 a66.0 9.0 0 0 0 132.0 0 v-40.0" fill="#fef3c7" stroke="#d97706" stroke-width="1.6"/><ellipse cx="395.5" cy="851.0" rx="66.0" ry="9.0" fill="#fef3c7" stroke="#d97706" stroke-width="1.6"/><text x="395.5" y="867.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#78350f">Redis</text><text x="395.5" y="884.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#78350f" opacity="0.78">external system</text></g>
+<g class="node"><polygon points="513.5,842.0 633.5,842.0 651.5,871.0 633.5,900.0 513.5,900.0 495.5,871.0" fill="#dcfce7" stroke="#16a34a" stroke-width="1.6"/><text x="573.5" y="867.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#14532d">External HTTP APIs</text><text x="573.5" y="884.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#14532d" opacity="0.78">external system</text></g>
+<g class="node"><polygon points="701.3,842.0 801.6,842.0 817.5,871.0 801.6,900.0 701.3,900.0 685.5,871.0" fill="#e0e7ff" stroke="#4f46e5" stroke-width="1.6"/><text x="751.5" y="867.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#312e81">Stripe</text><text x="751.5" y="884.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#312e81" opacity="0.78">external system</text></g>
+<rect x="149.1" y="493.0" width="78.8" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="188.5" y="504.5" text-anchor="middle" font-size="10" fill="#475569">reads/writes</text>
+<rect x="261.0" y="345.0" width="43.4" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="282.7" y="356.5" text-anchor="middle" font-size="10" fill="#475569">serves</text>
+<rect x="147.0" y="641.0" width="96.5" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="195.2" y="652.5" text-anchor="middle" font-size="10" fill="#475569">reads/writes x4</text>
+<rect x="173.2" y="474.3" width="67.0" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="206.7" y="485.8" text-anchor="middle" font-size="10" fill="#475569">imports x4</text>
+<rect x="326.5" y="525.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="351.1" y="536.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="243.8" y="493.0" width="55.2" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="271.4" y="504.5" text-anchor="middle" font-size="10" fill="#475569">enqueues</text>
+<rect x="178.7" y="517.6" width="78.8" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="218.1" y="529.1" text-anchor="middle" font-size="10" fill="#475569">reads/writes</text>
+<rect x="125.2" y="369.6" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="149.8" y="381.1" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="260.9" y="473.8" width="78.8" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="300.3" y="485.3" text-anchor="middle" font-size="10" fill="#475569">reads/writes</text>
+<rect x="430.9" y="493.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="455.5" y="504.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="238.8" y="641.0" width="78.8" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="278.2" y="652.5" text-anchor="middle" font-size="10" fill="#475569">reads/writes</text>
+<rect x="425.5" y="641.0" width="37.5" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="444.2" y="652.5" text-anchor="middle" font-size="10" fill="#475569">calls</text>
+<rect x="333.6" y="641.0" width="55.2" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="361.2" y="652.5" text-anchor="middle" font-size="10" fill="#475569">enqueues</text>
+<rect x="548.7" y="789.0" width="37.5" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="567.5" y="800.5" text-anchor="middle" font-size="10" fill="#475569">calls</text>
+<rect x="204.8" y="789.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="229.5" y="800.5" text-anchor="middle" font-size="10" fill="#475569">queries</text>
+<rect x="281.9" y="789.0" width="61.1" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="312.5" y="800.5" text-anchor="middle" font-size="10" fill="#475569">caches in</text>
+<rect x="620.0" y="789.0" width="72.9" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="656.5" y="800.5" text-anchor="middle" font-size="10" fill="#475569">charges via</text>
+<rect x="96.8" y="221.6" width="55.2" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="124.4" y="233.1" text-anchor="middle" font-size="10" fill="#475569">requests</text>
+<rect x="185.1" y="197.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="209.8" y="208.5" text-anchor="middle" font-size="10" fill="#475569">invokes</text>
+<rect x="286.1" y="197.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="310.8" y="208.5" text-anchor="middle" font-size="10" fill="#475569">invokes</text>
+<rect x="360.9" y="345.0" width="55.2" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="388.5" y="356.5" text-anchor="middle" font-size="10" fill="#475569">triggers</text>
+<text x="39" y="930" text-anchor="end" font-size="10" fill="#94a3b8">generated by staticdiagram · no AI</text>
+</svg>
+  <details style="margin-top:14px">
+    <summary>Mermaid source</summary>
+    <pre>flowchart TD
+
+node_src_shop_cli_py[&quot;CLI&lt;br/&gt;[cli.py]&quot;]
+node_src_shop_main_py[&quot;Application entry&lt;br/&gt;Application factory and HTTP…&quot;]
+node_src_shop_db[(&quot;DB&lt;br/&gt;data models&quot;)]
+node_src_shop_domain[&quot;Domain&lt;br/&gt;4 modules&quot;]
+node_src_shop_api[&quot;API&lt;br/&gt;5 routes&quot;]
+node_src_shop_integrations{{&quot;Integrations&lt;br/&gt;3 modules&quot;}}
+node_src_shop_workers[&quot;Workers&lt;br/&gt;1 task&quot;]
+node_ext_celery[&quot;Celery broker&lt;br/&gt;external system&quot;]
+node_ext_http{{&quot;External HTTP APIs&lt;br/&gt;external system&quot;}}
+node_ext_postgres[(&quot;PostgreSQL&lt;br/&gt;external system&quot;)]
+node_ext_redis[(&quot;Redis&lt;br/&gt;external system&quot;)]
+node_ext_stripe{{&quot;Stripe&lt;br/&gt;external system&quot;}}
+node_actor_http_client((&quot;FastAPI client&lt;br/&gt;actor&quot;))
+node_actor_cli_user((&quot;Terminal user&lt;br/&gt;actor&quot;))
+node_actor_scheduler((&quot;Scheduler / broker&lt;br/&gt;actor&quot;))
+
+node_src_shop_cli_py --&gt;|&quot;reads/writes&quot;| node_src_shop_db
+node_src_shop_main_py --&gt;|&quot;serves&quot;| node_src_shop_api
+node_src_shop_domain --&gt;|&quot;reads/writes x4&quot;| node_src_shop_db
+node_src_shop_api --&gt;|&quot;imports x4&quot;| node_src_shop_domain
+node_src_shop_api --&gt;|&quot;imports&quot;| node_src_shop_integrations
+node_src_shop_api --&gt;|&quot;enqueues&quot;| node_src_shop_workers
+node_src_shop_api --&gt;|&quot;reads/writes&quot;| node_src_shop_db
+node_src_shop_cli_py --&gt;|&quot;imports&quot;| node_src_shop_domain
+node_src_shop_main_py --&gt;|&quot;reads/writes&quot;| node_src_shop_db
+node_src_shop_main_py --&gt;|&quot;imports&quot;| node_src_shop_integrations
+node_src_shop_workers --&gt;|&quot;reads/writes&quot;| node_src_shop_db
+node_src_shop_workers --&gt;|&quot;calls&quot;| node_src_shop_integrations
+node_src_shop_workers --&gt;|&quot;enqueues&quot;| node_ext_celery
+node_src_shop_integrations --&gt;|&quot;calls&quot;| node_ext_http
+node_src_shop_db --&gt;|&quot;queries&quot;| node_ext_postgres
+node_src_shop_db --&gt;|&quot;caches in&quot;| node_ext_redis
+node_src_shop_integrations --&gt;|&quot;charges via&quot;| node_ext_stripe
+node_actor_http_client --&gt;|&quot;requests&quot;| node_src_shop_api
+node_actor_cli_user --&gt;|&quot;invokes&quot;| node_src_shop_cli_py
+node_actor_cli_user --&gt;|&quot;invokes&quot;| node_src_shop_main_py
+node_actor_scheduler --&gt;|&quot;triggers&quot;| node_src_shop_workers
+
+classDef toneNeutral fill:#f8fafc,stroke:#334155,stroke-width:1.5px,color:#0f172a
+classDef toneBlue fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px,color:#172554
+classDef toneAmber fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,color:#78350f
+classDef toneMint fill:#dcfce7,stroke:#16a34a,stroke-width:1.5px,color:#14532d
+classDef toneRose fill:#ffe4e6,stroke:#e11d48,stroke-width:1.5px,color:#881337
+classDef toneIndigo fill:#e0e7ff,stroke:#4f46e5,stroke-width:1.5px,color:#312e81
+classDef toneTeal fill:#ccfbf1,stroke:#0f766e,stroke-width:1.5px,color:#134e4a
+class node_src_shop_cli_py,node_src_shop_main_py,node_src_shop_domain toneTeal
+class node_src_shop_db,node_ext_postgres,node_ext_redis toneAmber
+class node_src_shop_api,node_ext_http toneMint
+class node_src_shop_integrations,node_ext_celery,node_ext_stripe toneIndigo
+class node_src_shop_workers,node_actor_scheduler toneRose
+class node_actor_http_client,node_actor_cli_user toneBlue</pre>
+  </details>
+</div>
+
+<div class="card">
+  <h2>Components</h2>
+  <table><thead><tr><th>Component</th><th>Path</th><th class="num">Files</th><th class="num">Lines</th><th class="num">Imported by</th><th class="num">Depends on</th><th>Signals</th></tr></thead><tbody><tr><td>DB</td><td>`src/shop/db`</td><td class="num">4</td><td class="num">83</td><td class="num">10</td><td class="num">0</td><td><span class="pill">driver:redis</span><span class="pill">orm:model</span><span class="pill">orm:sqlalchemy</span><span class="pill">state:cache</span></td></tr><tr><td>Domain</td><td>`src/shop/domain`</td><td class="num">4</td><td class="num">53</td><td class="num">5</td><td class="num">4</td><td></td></tr><tr><td>API</td><td>`src/shop/api`</td><td class="num">3</td><td class="num">64</td><td class="num">2</td><td class="num">9</td><td><span class="pill">http_server</span><span class="pill">web:fastapi</span></td></tr><tr><td>CLI</td><td>`src/shop/cli.py`</td><td class="num">1</td><td class="num">29</td><td class="num">0</td><td class="num">2</td><td><span class="pill">cli</span><span class="pill">cli:click</span><span class="pill">entrypoint:script</span></td></tr><tr><td>Application entry</td><td>`src/shop/main.py`</td><td class="num">1</td><td class="num">27</td><td class="num">0</td><td class="num">4</td><td><span class="pill">entrypoint:script</span><span class="pill">http_server</span><span class="pill">web:fastapi</span></td></tr><tr><td>Integrations</td><td>`src/shop/integrations`</td><td class="num">3</td><td class="num">27</td><td class="num">3</td><td class="num">0</td><td><span class="pill">external:payments</span><span class="pill">http_client</span></td></tr><tr><td>Workers</td><td>`src/shop/workers`</td><td class="num">2</td><td class="num">19</td><td class="num">1</td><td class="num">2</td><td><span class="pill">background</span><span class="pill">queue:celery</span></td></tr></tbody></table>
+</div>
+
+<div class="card">
+  <h2>Connections</h2>
+  <table><thead><tr><th>From</th><th>Relation</th><th>To</th><th>Evidence</th></tr></thead><tbody><tr><td>CLI</td><td>reads/writes</td><td>DB <span style='color:#94a3b8'>src/shop/db</span></td><td>`src/shop/cli.py`</td></tr><tr><td>Application entry</td><td>serves</td><td>API <span style='color:#94a3b8'>src/shop/api</span></td><td>`src/shop/main.py`</td></tr><tr><td>Domain</td><td>reads/writes x4</td><td>DB <span style='color:#94a3b8'>src/shop/db</span></td><td>`src/shop/domain/inventory.py`</td></tr><tr><td>API</td><td>imports x4</td><td>Domain <span style='color:#94a3b8'>src/shop/domain</span></td><td>`src/shop/api/routes_orders.py`</td></tr><tr><td>API</td><td>imports</td><td>Integrations <span style='color:#94a3b8'>src/shop/integrations</span></td><td>`src/shop/api/routes_orders.py`</td></tr><tr><td>API</td><td>enqueues</td><td>Workers <span style='color:#94a3b8'>src/shop/workers</span></td><td>`src/shop/api/routes_orders.py`</td></tr><tr><td>API</td><td>reads/writes</td><td>DB <span style='color:#94a3b8'>src/shop/db</span></td><td>`src/shop/api/routes_orders.py`</td></tr><tr><td>CLI</td><td>imports</td><td>Domain <span style='color:#94a3b8'>src/shop/domain</span></td><td>`src/shop/cli.py`</td></tr><tr><td>Application entry</td><td>reads/writes</td><td>DB <span style='color:#94a3b8'>src/shop/db</span></td><td>`src/shop/main.py`</td></tr><tr><td>Application entry</td><td>imports</td><td>Integrations <span style='color:#94a3b8'>src/shop/integrations</span></td><td>`src/shop/main.py`</td></tr><tr><td>Workers</td><td>reads/writes</td><td>DB <span style='color:#94a3b8'>src/shop/db</span></td><td>`src/shop/workers/emailer.py`</td></tr><tr><td>Workers</td><td>calls</td><td>Integrations <span style='color:#94a3b8'>src/shop/integrations</span></td><td>`src/shop/workers/emailer.py`</td></tr><tr><td>Workers</td><td>enqueues</td><td>Celery broker</td><td>`src/shop/workers/emailer.py`</td></tr><tr><td>Integrations</td><td>calls</td><td>External HTTP APIs</td><td>`src/shop/integrations/mailer.py`</td></tr><tr><td>DB</td><td>queries</td><td>PostgreSQL</td><td>`docker-compose.yml`</td></tr><tr><td>DB</td><td>caches in</td><td>Redis</td><td>`src/shop/db/cache.py`</td></tr><tr><td>Integrations</td><td>charges via</td><td>Stripe</td><td>`src/shop/integrations/payments.py`</td></tr><tr><td>FastAPI client</td><td>requests</td><td>API <span style='color:#94a3b8'>src/shop/api</span></td><td>`src/shop/api/routes_orders.py`</td></tr><tr><td>Terminal user</td><td>invokes</td><td>CLI <span style='color:#94a3b8'>src/shop/cli.py</span></td><td>`src/shop/cli.py`</td></tr><tr><td>Terminal user</td><td>invokes</td><td>Application entry <span style='color:#94a3b8'>src/shop/main.py</span></td><td>`src/shop/main.py`</td></tr><tr><td>Scheduler / broker</td><td>triggers</td><td>Workers <span style='color:#94a3b8'>src/shop/workers</span></td><td>`src/shop/workers/emailer.py`</td></tr></tbody></table>
+</div>
+
+<div class="card"><h2>Entry points</h2><ul><li><code>src/shop/cli.py</code> — part of **CLI** (<code>src/shop/cli.py</code>)</li>
+<li><code>src/shop/main.py</code> — part of **Application entry** (<code>src/shop/main.py</code>)</li>
+<li>CLI commands in <code>src/shop/cli.py</code> — 3 commands</li>
+<li>console script <code>shopctl</code> → <code>shop.cli:main</code></li>
+<li>HTTP routes in <code>src/shop/api</code> — 5 handlers</li>
+<li>background tasks in <code>src/shop/workers</code> — 1 task</li></ul></div><div class="card"><h2>State and external systems</h2><ul><li>**Celery broker** — used by <code>src/shop/workers</code> (seen in <code>src/shop/workers/emailer.py</code>)</li>
+<li>**External HTTP APIs** — used by <code>src/shop/integrations</code> (seen in <code>src/shop/integrations/mailer.py</code>)</li>
+<li>**PostgreSQL** — used by <code>src/shop/db</code> (seen in <code>docker-compose.yml</code>)</li>
+<li>**Redis** — used by <code>src/shop/db</code> (seen in <code>src/shop/db/cache.py</code>)</li>
+<li>**Stripe** — used by <code>src/shop/integrations</code> (seen in <code>src/shop/integrations/payments.py</code>)</li>
+<li>**PostgreSQL** — service <code>db</code> in <code>docker-compose.yml</code></li>
+<li>**Redis** — service <code>cache</code> in <code>docker-compose.yml</code></li></ul></div><div class="card"><h2>Runtime dependencies</h2><p><code>celery</code>, <code>click</code>, <code>fastapi</code>, <code>httpx</code>, <code>psycopg</code>, <code>pydantic</code>, <code>redis</code>, <code>sqlalchemy</code>, <code>stripe</code>, <code>uvicorn</code></p></div><div class="card"><h2>Deployment and operations</h2><ul><li><code>Dockerfile</code> — python:3.12-slim, runs [&quot;uvicorn&quot;, &quot;shop.main:app&quot;, &quot;--host&quot;, &quot;0.0.0.0&quot;, &quot;--port&quot;, &quot;8000&quot;]</li>
+<li>compose service <code>api</code> (docker-compose.yml)</li>
+<li>compose service <code>db</code> = <code>postgres:16-alpine</code> (docker-compose.yml)</li>
+<li>compose service <code>cache</code> = <code>redis:7-alpine</code> (docker-compose.yml)</li>
+<li>compose service <code>worker</code> (docker-compose.yml)</li>
+<li><code>Makefile</code> targets: .PHONY, install, lint, run, test</li>
+<li><code>.env.example</code> declares 5 settings: <code>DATABASE_URL</code>, <code>REDIS_URL</code>, <code>STRIPE_SECRET_KEY</code>, <code>CELERY_BROKER_URL</code>, <code>LOG_LEVEL</code></li></ul></div><div class="card"><h2>Coverage and limits</h2><ul><li>Parsed 19 of 26 repository files; 1 skipped as tests/examples/docs, 0 skipped as vendored, sensitive or oversized.</li>
+<li>22 imports resolved to repository paths, 13 point outside the repository (stdlib or third-party), 7 were stdlib.</li>
+<li>8 components detected at directory depth 2; 7 shown on the diagram.</li>
+<li>Top unresolved import roots (treated as external): <code>sqlalchemy</code>, <code>fastapi</code>, <code>click</code>, <code>uvicorn</code>, <code>redis</code>, <code>httpx</code>, <code>stripe</code>, <code>celery</code>.</li>
+<li>Only static imports are traced. Wiring through configuration, HTTP calls, message brokers, plugin registries or <code>globals()</code>-style dynamic imports is not detected, and neither is runtime behaviour.</li></ul></div>
+
+<div class="card">
+  <h2>Coverage</h2>
+  <ul><li>Repository files: <strong>26</strong></li><li>Python modules parsed: <strong>19</strong></li><li>Skipped (tests/examples/docs): <strong>1</strong></li><li>Skipped (vendored/oversized/sensitive): <strong>0</strong></li><li>Internal imports resolved: <strong>22</strong></li><li>Imports to stdlib: <strong>7</strong></li><li>Imports outside the repository: <strong>13</strong></li><li>Components detected: <strong>8</strong> (depth 2, 7 on the diagram)</li><li>Unparsable files: <strong>0</strong></li></ul>
+</div>
+
+
+
+<footer>Generated by staticdiagram — deterministic static analysis, zero model calls.</footer>
+</main>
+</body>
+</html>

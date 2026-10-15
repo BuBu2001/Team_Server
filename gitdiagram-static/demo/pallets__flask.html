@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flask — architecture map</title>
+<style>
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 32px 24px 64px; background: #f8fafc; color: #0f172a;
+       font: 15px/1.6 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; }
+main { max-width: 1180px; margin: 0 auto; }
+header h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -0.01em; }
+header .meta { color: #64748b; font-size: 13px; margin-bottom: 4px; }
+.badge { display: inline-block; background: #dcfce7; color: #14532d; border: 1px solid #86efac;
+         border-radius: 999px; padding: 2px 10px; font-size: 11.5px; font-weight: 700;
+         letter-spacing: 0.04em; text-transform: uppercase; }
+.card { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 20px 22px;
+        margin-top: 20px; box-shadow: 0 1px 2px rgba(15,23,42,.04); }
+.card h2 { margin: 0 0 12px; font-size: 16px; letter-spacing: .02em; text-transform: uppercase;
+           color: #475569; }
+.diagram { overflow: auto; background: #fff; }
+.diagram svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid #eef2f7; vertical-align: top; }
+th { color: #64748b; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+code { background: #f1f5f9; border-radius: 5px; padding: 1px 5px; font-size: 12.5px;
+       font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+a { color: #2563eb; text-decoration: none; }
+a:hover { text-decoration: underline; }
+details summary { cursor: pointer; color: #475569; font-size: 13px; margin-bottom: 8px; }
+pre { background: #0f172a; color: #e2e8f0; padding: 14px 16px; border-radius: 10px;
+      overflow: auto; font-size: 12.5px; line-height: 1.5; }
+ul { margin: 8px 0 0; padding-left: 20px; }
+li { margin: 3px 0; }
+.pill { display:inline-block; background:#eef2ff; color:#3730a3; border-radius:6px;
+        padding:1px 7px; font-size:11.5px; margin:0 4px 4px 0; }
+footer { margin-top: 26px; color: #94a3b8; font-size: 12px; text-align: center; }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>Flask</h1>
+  <div class="meta"><a href="https://github.com/pallets/flask">pallets/flask</a> · branch <code>main</code> · commit <code>d086db856b</code> · 25 nodes · 42 edges</div>
+  <div class="meta"><span class="badge">no AI</span> <span class="meta">static analysis of imports, entry points and infrastructure</span></div>
+</header>
+
+<div class="card">
+  <h2>Overview</h2>
+  <p>flask is a Python codebase of 24 parsed modules (9,531 lines) packaging as <code>Flask</code>. Flask is a lightweight [WSGI] web application framework. It is designed to make getting started quick and easy, with the ability to scale up to complex applications. It began as a simple wrapper around [Werkzeug] and…. Its 24 main components are Globals, Helpers, CLI, Application, Wrappers, Application (Sansio). Execution starts at <code>src/flask/cli.py</code>, exposed as the <code>flask</code> command. The most depended-on module is <code>src/flask/globals.py</code>, imported by 12 other components (24 import statements). Built from 167 resolved internal imports; no model was called.</p>
+</div>
+
+<div class="card diagram">
+  <h2>Architecture map</h2>
+  <svg xmlns="http://www.w3.org/2000/svg" width="1625" height="1384" viewBox="0 0 1625 1384" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif">
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#64748b"/></marker>
+<marker id="arrowDash" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#94a3b8"/></marker>
+</defs>
+<rect width="1625" height="1384" fill="#ffffff"/>
+<text x="24" y="30" font-size="17" font-weight="700" fill="#0f172a">Flask</text>
+<text x="24" y="50" font-size="11.5" fill="#64748b">pallets/flask · main · d086db85 · 25 components, 42 relations</text>
+<path d="M266.5 308.0 C354.4 308.0, 398.4 398.0, 486.3 398.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M513.0 604.0 C513.0 777.7, 479.8 816.3, 479.8 990.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M486.3 456.0 C486.3 629.7, 523.0 668.3, 523.0 842.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M486.3 456.0 C486.3 629.7, 689.0 668.3, 689.0 842.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M1030.0 752.0 C1225.6 752.0, 1323.4 842.0, 1519.0 842.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M486.3 456.0 C486.3 762.9, 475.2 831.1, 475.2 1138.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M486.3 456.0 C486.3 829.5, 582.4 912.5, 582.4 1286.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M513.0 604.0 C645.8 604.0, 712.2 694.0, 845.0 694.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M486.3 456.0 C566.8 456.0, 607.0 546.0, 687.5 546.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M486.3 456.0 C486.3 629.7, 855.0 668.3, 855.0 842.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M513.0 604.0 C579.4 604.0, 612.6 694.0, 679.0 694.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M513.0 604.0 C782.6 604.0, 917.4 842.0, 1187.0 842.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M513.0 604.0 C513.0 644.5, 513.0 653.5, 513.0 694.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M1230.5 752.0 C1345.9 752.0, 1403.6 842.0, 1519.0 842.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M1030.0 752.0 C1030.0 792.5, 1021.0 801.5, 1021.0 842.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M1030.0 752.0 C1159.2 752.0, 1223.8 842.0, 1353.0 842.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M862.0 604.0 C1009.4 604.0, 1083.1 694.0, 1230.5 694.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M770.0 160.0 C770.0 333.7, 687.5 372.3, 687.5 546.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M604.0 160.0 C604.0 533.5, 479.8 616.5, 479.8 990.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M438.0 160.0 C438.0 533.5, 479.8 616.5, 479.8 990.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M106.0 160.0 C170.2 160.0, 202.3 250.0, 266.5 250.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M513.0 604.0 C513.0 711.1, 523.0 734.9, 523.0 842.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M513.0 604.0 C513.0 910.9, 582.4 979.1, 582.4 1286.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M523.0 900.0 C523.0 940.5, 479.8 949.5, 479.8 990.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M486.3 456.0 C486.3 696.3, 479.8 749.7, 479.8 990.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M513.0 604.0 C513.0 711.1, 689.0 734.9, 689.0 842.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M266.5 308.0 C266.5 548.3, 523.0 601.7, 523.0 842.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M475.2 1196.0 C518.1 1196.0, 539.5 1286.0, 582.4 1286.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M479.8 1048.0 C479.8 1088.5, 475.2 1097.5, 475.2 1138.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M1030.0 752.0 C827.2 752.0, 725.8 842.0, 523.0 842.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M1030.0 752.0 C960.0 752.0, 925.0 842.0, 855.0 842.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M1030.0 752.0 C1092.8 752.0, 1124.2 842.0, 1187.0 842.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M845.0 752.0 C782.6 752.0, 751.4 842.0, 689.0 842.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M855.0 900.0 C855.0 1073.7, 582.4 1112.3, 582.4 1286.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M486.3 456.0 C486.3 496.5, 513.0 505.5, 513.0 546.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M486.3 456.0 C636.6 456.0, 711.7 546.0, 862.0 546.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M486.3 456.0 C700.2 456.0, 807.1 842.0, 1021.0 842.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M513.0 546.0 C414.4 546.0, 365.1 308.0, 266.5 308.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M513.0 604.0 C513.0 844.3, 475.2 897.7, 475.2 1138.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M513.0 604.0 C719.8 604.0, 823.2 694.0, 1030.0 694.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M272.0 160.0 C272.0 200.5, 266.5 209.5, 266.5 250.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M272.0 160.0 C272.0 333.7, 513.0 372.3, 513.0 546.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<g class="node"><ellipse cx="272.0" cy="131.0" rx="66.0" ry="29.0" fill="#dbeafe" stroke="#2563eb" stroke-width="1.6"/><text x="272.0" y="127.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#172554">Terminal user</text><text x="272.0" y="144.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#172554" opacity="0.78">actor</text></g>
+<a href="https://github.com/pallets/flask/blob/main/src/flask/__main__.py" target="_blank" rel="noopener"><g class="node"><rect x="40.0" y="102.0" width="132.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="106.0" y="127.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">CLI entry</text><text x="106.0" y="144.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">module</text></g></a>
+<a href="https://github.com/pallets/flask/blob/main/src/flask/json/tag.py" target="_blank" rel="noopener"><g class="node"><rect x="704.0" y="102.0" width="132.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="770.0" y="127.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">Tag</text><text x="770.0" y="144.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">module</text></g></a>
+<a href="https://github.com/pallets/flask/blob/main/src/flask/logging.py" target="_blank" rel="noopener"><g class="node"><rect x="372.0" y="102.0" width="132.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="438.0" y="127.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">Logging</text><text x="438.0" y="144.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">module</text></g></a>
+<a href="https://github.com/pallets/flask/blob/main/src/flask/views.py" target="_blank" rel="noopener"><g class="node"><rect x="538.0" y="102.0" width="132.0" height="58.0" rx="8" fill="#dbeafe" stroke="#2563eb" stroke-width="1.6"/><text x="604.0" y="127.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#172554">Views</text><text x="604.0" y="144.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#172554" opacity="0.78">module</text></g></a>
+<a href="https://github.com/pallets/flask/blob/main/src/flask/cli.py" target="_blank" rel="noopener"><g class="node"><rect x="200.5" y="250.0" width="132.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="266.5" y="275.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">CLI</text><text x="266.5" y="292.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">3 CLI commands</text></g></a>
+<a href="https://github.com/pallets/flask/tree/main/src/flask" target="_blank" rel="noopener"><g class="node"><rect x="408.3" y="398.0" width="156.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="486.3" y="423.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">Flask package root</text><text x="486.3" y="440.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">module</text></g></a>
+<a href="https://github.com/pallets/flask/blob/main/src/flask/app.py" target="_blank" rel="noopener"><g class="node"><rect x="447.0" y="546.0" width="132.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="513.0" y="571.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">Application</text><text x="513.0" y="588.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">module</text></g></a>
+<a href="https://github.com/pallets/flask/tree/main/src/flask/json" target="_blank" rel="noopener"><g class="node"><rect x="613.0" y="546.0" width="149.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="687.5" y="571.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">JSON package root</text><text x="687.5" y="588.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">module</text></g></a>
+<a href="https://github.com/pallets/flask/blob/main/src/flask/blueprints.py" target="_blank" rel="noopener"><g class="node"><rect x="796.0" y="546.0" width="132.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="862.0" y="571.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">Blueprints</text><text x="862.0" y="588.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">module</text></g></a>
+<a href="https://github.com/pallets/flask/blob/main/src/flask/debughelpers.py" target="_blank" rel="noopener"><g class="node"><rect x="447.0" y="694.0" width="132.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="513.0" y="719.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">Debughelpers</text><text x="513.0" y="736.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">module</text></g></a>
+<a href="https://github.com/pallets/flask/blob/main/src/flask/sansio/app.py" target="_blank" rel="noopener"><g class="node"><rect x="945.0" y="694.0" width="170.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="1030.0" y="719.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">Application (Sansio)</text><text x="1030.0" y="736.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">module</text></g></a>
+<a href="https://github.com/pallets/flask/blob/main/src/flask/typing.py" target="_blank" rel="noopener"><g class="node"><rect x="613.0" y="694.0" width="132.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="679.0" y="719.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">Typing</text><text x="679.0" y="736.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">module</text></g></a>
+<a href="https://github.com/pallets/flask/blob/main/src/flask/sessions.py" target="_blank" rel="noopener"><g class="node"><rect x="779.0" y="694.0" width="132.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="845.0" y="719.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">Sessions</text><text x="845.0" y="736.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">module</text></g></a>
+<a href="https://github.com/pallets/flask/blob/main/src/flask/sansio/blueprints.py" target="_blank" rel="noopener"><g class="node"><rect x="1149.0" y="694.0" width="163.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="1230.5" y="719.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">Blueprints (Sansio)</text><text x="1230.5" y="736.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">module</text></g></a>
+<a href="https://github.com/pallets/flask/blob/main/src/flask/config.py" target="_blank" rel="noopener"><g class="node"><rect x="955.0" y="842.0" width="132.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="1021.0" y="867.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">Configuration</text><text x="1021.0" y="884.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">module</text></g></a>
+<a href="https://github.com/pallets/flask/blob/main/src/flask/helpers.py" target="_blank" rel="noopener"><g class="node"><rect x="457.0" y="842.0" width="132.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="523.0" y="867.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">Helpers</text><text x="523.0" y="884.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">module</text></g></a>
+<a href="https://github.com/pallets/flask/blob/main/src/flask/json/provider.py" target="_blank" rel="noopener"><g class="node"><rect x="1287.0" y="842.0" width="132.0" height="58.0" rx="8" fill="#e0e7ff" stroke="#4f46e5" stroke-width="1.6"/><text x="1353.0" y="867.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#312e81">Provider</text><text x="1353.0" y="884.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#312e81" opacity="0.78">module</text></g></a>
+<a href="https://github.com/pallets/flask/blob/main/src/flask/templating.py" target="_blank" rel="noopener"><g class="node"><rect x="789.0" y="842.0" width="132.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="855.0" y="867.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">Templating</text><text x="855.0" y="884.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">module</text></g></a>
+<a href="https://github.com/pallets/flask/blob/main/src/flask/testing.py" target="_blank" rel="noopener"><g class="node"><rect x="1121.0" y="842.0" width="132.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="1187.0" y="867.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">Testing</text><text x="1187.0" y="884.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">module</text></g></a>
+<a href="https://github.com/pallets/flask/blob/main/src/flask/wrappers.py" target="_blank" rel="noopener"><g class="node"><rect x="623.0" y="842.0" width="132.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="689.0" y="867.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">Wrappers</text><text x="689.0" y="884.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">module</text></g></a>
+<a href="https://github.com/pallets/flask/blob/main/src/flask/sansio/scaffold.py" target="_blank" rel="noopener"><g class="node"><rect x="1453.0" y="842.0" width="132.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="1519.0" y="867.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">Scaffold</text><text x="1519.0" y="884.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">module</text></g></a>
+<a href="https://github.com/pallets/flask/blob/main/src/flask/globals.py" target="_blank" rel="noopener"><g class="node"><rect x="413.8" y="990.0" width="132.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="479.8" y="1015.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">Globals</text><text x="479.8" y="1032.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">module</text></g></a>
+<a href="https://github.com/pallets/flask/blob/main/src/flask/ctx.py" target="_blank" rel="noopener"><g class="node"><rect x="409.2" y="1138.0" width="132.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="475.2" y="1163.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">Ctx</text><text x="475.2" y="1180.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">module</text></g></a>
+<a href="https://github.com/pallets/flask/blob/main/src/flask/signals.py" target="_blank" rel="noopener"><g class="node"><rect x="516.4" y="1286.0" width="132.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="582.4" y="1311.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">Signals</text><text x="582.4" y="1328.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">module</text></g></a>
+<rect x="351.8" y="345.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="376.4" y="356.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="462.9" y="789.0" width="67.0" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="496.4" y="800.5" text-anchor="middle" font-size="10" fill="#475569">imports x5</text>
+<rect x="468.2" y="641.0" width="72.9" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="504.6" y="652.5" text-anchor="middle" font-size="10" fill="#475569">imports x10</text>
+<rect x="563.0" y="641.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="587.6" y="652.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="1241.0" y="789.0" width="67.0" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="1274.5" y="800.5" text-anchor="middle" font-size="10" fill="#475569">imports x4</text>
+<rect x="448.2" y="755.1" width="67.0" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="481.7" y="766.6" text-anchor="middle" font-size="10" fill="#475569">imports x4</text>
+<rect x="489.3" y="821.8" width="72.9" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="525.7" y="833.3" text-anchor="middle" font-size="10" fill="#475569">imports x10</text>
+<rect x="654.4" y="641.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="679.0" y="652.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="562.2" y="493.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="586.9" y="504.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="604.1" y="621.8" width="67.0" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="637.6" y="633.3" text-anchor="middle" font-size="10" fill="#475569">imports x4</text>
+<rect x="553.3" y="625.1" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="578.0" y="636.6" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="743.3" y="673.0" width="67.0" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="776.8" y="684.5" text-anchor="middle" font-size="10" fill="#475569">imports x5</text>
+<rect x="488.4" y="622.3" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="513.0" y="633.8" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="1341.3" y="789.0" width="67.0" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="1374.8" y="800.5" text-anchor="middle" font-size="10" fill="#475569">imports x4</text>
+<rect x="1000.9" y="789.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="1025.5" y="800.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="1166.9" y="789.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="1191.5" y="800.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="1021.6" y="641.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="1046.3" y="652.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="704.1" y="345.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="728.8" y="356.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="528.4" y="525.8" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="553.0" y="537.3" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="430.5" y="525.8" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="455.2" y="537.3" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="161.6" y="197.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="186.3" y="208.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="481.2" y="665.6" width="67.0" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="514.7" y="677.1" text-anchor="middle" font-size="10" fill="#475569">imports x5</text>
+<rect x="514.2" y="937.0" width="67.0" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="547.7" y="948.5" text-anchor="middle" font-size="10" fill="#475569">imports x5</text>
+<rect x="482.3" y="918.3" width="67.0" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="515.8" y="929.8" text-anchor="middle" font-size="10" fill="#475569">imports x5</text>
+<rect x="634.9" y="764.4" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="659.5" y="775.9" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="370.1" y="567.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="394.8" y="578.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="504.2" y="1233.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="528.8" y="1244.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="452.9" y="1085.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="477.5" y="1096.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="751.9" y="789.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="776.5" y="800.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="917.9" y="789.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="942.5" y="800.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="1083.9" y="789.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="1108.5" y="800.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="759.3" y="773.1" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="784.0" y="784.6" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="694.1" y="1085.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="718.7" y="1096.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="475.0" y="493.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="499.6" y="504.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="649.5" y="493.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="674.1" y="504.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="729.0" y="641.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="753.6" y="652.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="351.8" y="397.7" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="376.4" y="409.2" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="459.7" y="944.5" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="484.4" y="956.0" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="690.7" y="625.1" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="715.3" y="636.6" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="244.6" y="197.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="269.3" y="208.5" text-anchor="middle" font-size="10" fill="#475569">invokes</text>
+<rect x="346.3" y="325.8" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="370.9" y="337.3" text-anchor="middle" font-size="10" fill="#475569">invokes</text>
+<text x="33" y="1374" text-anchor="end" font-size="10" fill="#94a3b8">generated by staticdiagram · no AI</text>
+</svg>
+  <details style="margin-top:14px">
+    <summary>Mermaid source</summary>
+    <pre>flowchart TD
+
+node_src_flask_cli_py[&quot;CLI&lt;br/&gt;[cli.py]&quot;]
+node_src_flask_globals_py[&quot;Globals&lt;br/&gt;[globals.py]&quot;]
+node_src_flask_helpers_py[&quot;Helpers&lt;br/&gt;[helpers.py]&quot;]
+node_src_flask_app_py[&quot;Application&lt;br/&gt;[app.py]&quot;]
+node_src_flask_wrappers_py[&quot;Wrappers&lt;br/&gt;[wrappers.py]&quot;]
+node_src_flask_sansio_app_py[&quot;Application &amp;#40;Sansio&amp;#41;&lt;br/&gt;[app.py]&quot;]
+node_src_flask_ctx_py[&quot;Ctx&lt;br/&gt;[ctx.py]&quot;]
+node_src_flask_signals_py[&quot;Signals&lt;br/&gt;[signals.py]&quot;]
+node_src_flask_sansio_scaffold_py[&quot;Scaffold&lt;br/&gt;[scaffold.py]&quot;]
+node_src_flask_sessions_py[&quot;Sessions&lt;br/&gt;[sessions.py]&quot;]
+node_src_flask_json[&quot;JSON package root&quot;]
+node_src_flask_templating_py[&quot;Templating&lt;br/&gt;[templating.py]&quot;]
+node_src_flask_typing_py[&quot;Typing&lt;br/&gt;[typing.py]&quot;]
+node_src_flask_testing_py[&quot;Testing&lt;br/&gt;[testing.py]&quot;]
+node_src_flask_debughelpers_py[&quot;Debughelpers&lt;br/&gt;[debughelpers.py]&quot;]
+node_src_flask_sansio_blueprints_py[&quot;Blueprints &amp;#40;Sansio&amp;#41;&lt;br/&gt;[blueprints.py]&quot;]
+node_src_flask_config_py[&quot;Configuration&lt;br/&gt;[config.py]&quot;]
+node_src_flask[&quot;Flask package root&quot;]
+node_src_flask_json_provider_py[&quot;Provider&lt;br/&gt;[provider.py]&quot;]
+node_src_flask_blueprints_py[&quot;Blueprints&lt;br/&gt;[blueprints.py]&quot;]
+node_src_flask_json_tag_py[&quot;Tag&lt;br/&gt;[tag.py]&quot;]
+node_src_flask_views_py[&quot;Views&lt;br/&gt;[views.py]&quot;]
+node_src_flask_logging_py[&quot;Logging&lt;br/&gt;[logging.py]&quot;]
+node_src_flask_main_py[&quot;CLI entry&lt;br/&gt;[__main__.py]&quot;]
+node_actor_cli_user((&quot;Terminal user&lt;br/&gt;actor&quot;))
+
+node_src_flask_cli_py --&gt;|&quot;imports&quot;| node_src_flask
+node_src_flask_app_py --&gt;|&quot;imports x5&quot;| node_src_flask_globals_py
+node_src_flask --&gt;|&quot;imports x10&quot;| node_src_flask_helpers_py
+node_src_flask --&gt;|&quot;imports&quot;| node_src_flask_wrappers_py
+node_src_flask_sansio_app_py --&gt;|&quot;imports x4&quot;| node_src_flask_sansio_scaffold_py
+node_src_flask --&gt;|&quot;imports x4&quot;| node_src_flask_ctx_py
+node_src_flask --&gt;|&quot;imports x10&quot;| node_src_flask_signals_py
+node_src_flask_app_py --&gt;|&quot;imports&quot;| node_src_flask_sessions_py
+node_src_flask --&gt;|&quot;imports&quot;| node_src_flask_json
+node_src_flask --&gt;|&quot;imports x4&quot;| node_src_flask_templating_py
+node_src_flask_app_py --&gt;|&quot;imports&quot;| node_src_flask_typing_py
+node_src_flask_app_py --&gt;|&quot;imports x5&quot;| node_src_flask_testing_py
+node_src_flask_app_py --&gt;|&quot;imports&quot;| node_src_flask_debughelpers_py
+node_src_flask_sansio_blueprints_py --&gt;|&quot;imports x4&quot;| node_src_flask_sansio_scaffold_py
+node_src_flask_sansio_app_py --&gt;|&quot;imports&quot;| node_src_flask_config_py
+node_src_flask_sansio_app_py --&gt;|&quot;imports&quot;| node_src_flask_json_provider_py
+node_src_flask_blueprints_py --&gt;|&quot;imports&quot;| node_src_flask_sansio_blueprints_py
+node_src_flask_json_tag_py --&gt;|&quot;imports&quot;| node_src_flask_json
+node_src_flask_views_py --&gt;|&quot;imports&quot;| node_src_flask_globals_py
+node_src_flask_logging_py --&gt;|&quot;imports&quot;| node_src_flask_globals_py
+node_src_flask_main_py --&gt;|&quot;imports&quot;| node_src_flask_cli_py
+node_src_flask_app_py --&gt;|&quot;imports x5&quot;| node_src_flask_helpers_py
+node_src_flask_app_py --&gt;|&quot;imports x5&quot;| node_src_flask_signals_py
+node_src_flask_helpers_py --&gt;|&quot;imports x5&quot;| node_src_flask_globals_py
+node_src_flask --&gt;|&quot;imports x4&quot;| node_src_flask_globals_py
+node_src_flask_app_py --&gt;|&quot;imports&quot;| node_src_flask_wrappers_py
+node_src_flask_cli_py --&gt;|&quot;imports&quot;| node_src_flask_helpers_py
+node_src_flask_ctx_py --&gt;|&quot;imports&quot;| node_src_flask_signals_py
+node_src_flask_globals_py --&gt;|&quot;imports&quot;| node_src_flask_ctx_py
+node_src_flask_sansio_app_py --&gt;|&quot;imports&quot;| node_src_flask_helpers_py
+node_src_flask_sansio_app_py --&gt;|&quot;imports&quot;| node_src_flask_templating_py
+node_src_flask_sansio_app_py --&gt;|&quot;imports&quot;| node_src_flask_testing_py
+node_src_flask_sessions_py --&gt;|&quot;imports&quot;| node_src_flask_wrappers_py
+node_src_flask_templating_py --&gt;|&quot;imports&quot;| node_src_flask_signals_py
+node_src_flask --&gt;|&quot;imports&quot;| node_src_flask_app_py
+node_src_flask --&gt;|&quot;imports&quot;| node_src_flask_blueprints_py
+node_src_flask --&gt;|&quot;imports&quot;| node_src_flask_config_py
+node_src_flask_app_py --&gt;|&quot;imports&quot;| node_src_flask_cli_py
+node_src_flask_app_py --&gt;|&quot;imports&quot;| node_src_flask_ctx_py
+node_src_flask_app_py --&gt;|&quot;imports&quot;| node_src_flask_sansio_app_py
+node_actor_cli_user --&gt;|&quot;invokes&quot;| node_src_flask_cli_py
+node_actor_cli_user --&gt;|&quot;invokes&quot;| node_src_flask_app_py
+
+click node_src_flask_cli_py &quot;https://github.com/pallets/flask/blob/main/src/flask/cli.py&quot;
+click node_src_flask_globals_py &quot;https://github.com/pallets/flask/blob/main/src/flask/globals.py&quot;
+click node_src_flask_helpers_py &quot;https://github.com/pallets/flask/blob/main/src/flask/helpers.py&quot;
+click node_src_flask_app_py &quot;https://github.com/pallets/flask/blob/main/src/flask/app.py&quot;
+click node_src_flask_wrappers_py &quot;https://github.com/pallets/flask/blob/main/src/flask/wrappers.py&quot;
+click node_src_flask_sansio_app_py &quot;https://github.com/pallets/flask/blob/main/src/flask/sansio/app.py&quot;
+click node_src_flask_ctx_py &quot;https://github.com/pallets/flask/blob/main/src/flask/ctx.py&quot;
+click node_src_flask_signals_py &quot;https://github.com/pallets/flask/blob/main/src/flask/signals.py&quot;
+click node_src_flask_sansio_scaffold_py &quot;https://github.com/pallets/flask/blob/main/src/flask/sansio/scaffold.py&quot;
+click node_src_flask_sessions_py &quot;https://github.com/pallets/flask/blob/main/src/flask/sessions.py&quot;
+click node_src_flask_json &quot;https://github.com/pallets/flask/tree/main/src/flask/json&quot;
+click node_src_flask_templating_py &quot;https://github.com/pallets/flask/blob/main/src/flask/templating.py&quot;
+click node_src_flask_typing_py &quot;https://github.com/pallets/flask/blob/main/src/flask/typing.py&quot;
+click node_src_flask_testing_py &quot;https://github.com/pallets/flask/blob/main/src/flask/testing.py&quot;
+click node_src_flask_debughelpers_py &quot;https://github.com/pallets/flask/blob/main/src/flask/debughelpers.py&quot;
+click node_src_flask_sansio_blueprints_py &quot;https://github.com/pallets/flask/blob/main/src/flask/sansio/blueprints.py&quot;
+click node_src_flask_config_py &quot;https://github.com/pallets/flask/blob/main/src/flask/config.py&quot;
+click node_src_flask &quot;https://github.com/pallets/flask/tree/main/src/flask&quot;
+click node_src_flask_json_provider_py &quot;https://github.com/pallets/flask/blob/main/src/flask/json/provider.py&quot;
+click node_src_flask_blueprints_py &quot;https://github.com/pallets/flask/blob/main/src/flask/blueprints.py&quot;
+click node_src_flask_json_tag_py &quot;https://github.com/pallets/flask/blob/main/src/flask/json/tag.py&quot;
+click node_src_flask_views_py &quot;https://github.com/pallets/flask/blob/main/src/flask/views.py&quot;
+click node_src_flask_logging_py &quot;https://github.com/pallets/flask/blob/main/src/flask/logging.py&quot;
+click node_src_flask_main_py &quot;https://github.com/pallets/flask/blob/main/src/flask/__main__.py&quot;
+
+classDef toneNeutral fill:#f8fafc,stroke:#334155,stroke-width:1.5px,color:#0f172a
+classDef toneBlue fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px,color:#172554
+classDef toneAmber fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,color:#78350f
+classDef toneMint fill:#dcfce7,stroke:#16a34a,stroke-width:1.5px,color:#14532d
+classDef toneRose fill:#ffe4e6,stroke:#e11d48,stroke-width:1.5px,color:#881337
+classDef toneIndigo fill:#e0e7ff,stroke:#4f46e5,stroke-width:1.5px,color:#312e81
+classDef toneTeal fill:#ccfbf1,stroke:#0f766e,stroke-width:1.5px,color:#134e4a
+class node_src_flask_cli_py,node_src_flask_globals_py,node_src_flask_helpers_py,node_src_flask_app_py,node_src_flask_wrappers_py,node_src_flask_sansio_app_py,node_src_flask_ctx_py,node_src_flask_signals_py,node_src_flask_sansio_scaffold_py,node_src_flask_sessions_py,node_src_flask_json,node_src_flask_templating_py,node_src_flask_typing_py,node_src_flask_testing_py,node_src_flask_debughelpers_py,node_src_flask_sansio_blueprints_py,node_src_flask_config_py,node_src_flask,node_src_flask_blueprints_py,node_src_flask_json_tag_py,node_src_flask_logging_py,node_src_flask_main_py toneTeal
+class node_src_flask_json_provider_py toneIndigo
+class node_src_flask_views_py,node_actor_cli_user toneBlue</pre>
+  </details>
+</div>
+
+<div class="card">
+  <h2>Components</h2>
+  <table><thead><tr><th>Component</th><th>Path</th><th class="num">Files</th><th class="num">Lines</th><th class="num">Imported by</th><th class="num">Depends on</th><th>Signals</th></tr></thead><tbody><tr><td>Globals</td><td>[`src/flask/globals.py`](https://github.com/pallets/flask/blob/main/src/flask/globals.py)</td><td class="num">1</td><td class="num">78</td><td class="num">24</td><td class="num">5</td><td></td></tr><tr><td>Helpers</td><td>[`src/flask/helpers.py`](https://github.com/pallets/flask/blob/main/src/flask/helpers.py)</td><td class="num">1</td><td class="num">680</td><td class="num">24</td><td class="num">7</td><td></td></tr><tr><td>CLI</td><td>[`src/flask/cli.py`](https://github.com/pallets/flask/blob/main/src/flask/cli.py)</td><td class="num">1</td><td class="num">1,127</td><td class="num">4</td><td class="num">6</td><td><span class="pill">cli</span><span class="pill">cli:click</span><span class="pill">entrypoint:script</span></td></tr><tr><td>Application</td><td>[`src/flask/app.py`](https://github.com/pallets/flask/blob/main/src/flask/app.py)</td><td class="num">1</td><td class="num">1,626</td><td class="num">6</td><td class="num">31</td><td><span class="pill">cli:click</span></td></tr><tr><td>Wrappers</td><td>[`src/flask/wrappers.py`](https://github.com/pallets/flask/blob/main/src/flask/wrappers.py)</td><td class="num">1</td><td class="num">258</td><td class="num">12</td><td class="num">4</td><td></td></tr><tr><td>Application (Sansio)</td><td>[`src/flask/sansio/app.py`](https://github.com/pallets/flask/blob/main/src/flask/sansio/app.py)</td><td class="num">1</td><td class="num">1,015</td><td class="num">7</td><td class="num">18</td><td></td></tr><tr><td>Ctx</td><td>[`src/flask/ctx.py`](https://github.com/pallets/flask/blob/main/src/flask/ctx.py)</td><td class="num">1</td><td class="num">541</td><td class="num">9</td><td class="num">8</td><td></td></tr><tr><td>Signals</td><td>[`src/flask/signals.py`](https://github.com/pallets/flask/blob/main/src/flask/signals.py)</td><td class="num">1</td><td class="num">18</td><td class="num">20</td><td class="num">0</td><td></td></tr><tr><td>Scaffold</td><td>[`src/flask/sansio/scaffold.py`](https://github.com/pallets/flask/blob/main/src/flask/sansio/scaffold.py)</td><td class="num">1</td><td class="num">801</td><td class="num">11</td><td class="num">3</td><td><span class="pill">cli:click</span><span class="pill">templates</span></td></tr><tr><td>Sessions</td><td>[`src/flask/sessions.py`](https://github.com/pallets/flask/blob/main/src/flask/sessions.py)</td><td class="num">1</td><td class="num">386</td><td class="num">5</td><td class="num">4</td><td></td></tr><tr><td>JSON package root</td><td>[`src/flask/json`](https://github.com/pallets/flask/tree/main/src/flask/json)</td><td class="num">1</td><td class="num">171</td><td class="num">5</td><td class="num">3</td><td></td></tr><tr><td>Templating</td><td>[`src/flask/templating.py`](https://github.com/pallets/flask/blob/main/src/flask/templating.py)</td><td class="num">1</td><td class="num">213</td><td class="num">8</td><td class="num">8</td><td><span class="pill">templates</span></td></tr><tr><td>Typing</td><td>[`src/flask/typing.py`](https://github.com/pallets/flask/blob/main/src/flask/typing.py)</td><td class="num">1</td><td class="num">88</td><td class="num">7</td><td class="num">0</td><td></td></tr><tr><td>Testing</td><td>[`src/flask/testing.py`](https://github.com/pallets/flask/blob/main/src/flask/testing.py)</td><td class="num">1</td><td class="num">299</td><td class="num">7</td><td class="num">3</td><td><span class="pill">cli:click</span></td></tr><tr><td>Debughelpers</td><td>[`src/flask/debughelpers.py`](https://github.com/pallets/flask/blob/main/src/flask/debughelpers.py)</td><td class="num">1</td><td class="num">180</td><td class="num">3</td><td class="num">5</td><td><span class="pill">templates</span></td></tr><tr><td>Blueprints (Sansio)</td><td>[`src/flask/sansio/blueprints.py`](https://github.com/pallets/flask/blob/main/src/flask/sansio/blueprints.py)</td><td class="num">1</td><td class="num">693</td><td class="num">3</td><td class="num">6</td><td></td></tr><tr><td>Configuration</td><td>[`src/flask/config.py`](https://github.com/pallets/flask/blob/main/src/flask/config.py)</td><td class="num">1</td><td class="num">368</td><td class="num">3</td><td class="num">1</td><td></td></tr><tr><td>Flask package root</td><td>[`src/flask`](https://github.com/pallets/flask/tree/main/src/flask)</td><td class="num">1</td><td class="num">40</td><td class="num">2</td><td class="num">39</td><td></td></tr><tr><td>Provider</td><td>[`src/flask/json/provider.py`](https://github.com/pallets/flask/blob/main/src/flask/json/provider.py)</td><td class="num">1</td><td class="num">216</td><td class="num">3</td><td class="num">1</td><td></td></tr><tr><td>Blueprints</td><td>[`src/flask/blueprints.py`](https://github.com/pallets/flask/blob/main/src/flask/blueprints.py)</td><td class="num">1</td><td class="num">129</td><td class="num">2</td><td class="num">7</td><td></td></tr><tr><td>Tag</td><td>[`src/flask/json/tag.py`](https://github.com/pallets/flask/blob/main/src/flask/json/tag.py)</td><td class="num">1</td><td class="num">328</td><td class="num">1</td><td class="num">2</td><td></td></tr><tr><td>Views</td><td>[`src/flask/views.py`](https://github.com/pallets/flask/blob/main/src/flask/views.py)</td><td class="num">1</td><td class="num">192</td><td class="num">0</td><td class="num">3</td><td></td></tr><tr><td>Logging</td><td>[`src/flask/logging.py`](https://github.com/pallets/flask/blob/main/src/flask/logging.py)</td><td class="num">1</td><td class="num">80</td><td class="num">1</td><td class="num">2</td><td></td></tr><tr><td>CLI entry</td><td>[`src/flask/__main__.py`](https://github.com/pallets/flask/blob/main/src/flask/__main__.py)</td><td class="num">1</td><td class="num">4</td><td class="num">0</td><td class="num">1</td><td></td></tr></tbody></table>
+</div>
+
+<div class="card">
+  <h2>Connections</h2>
+  <table><thead><tr><th>From</th><th>Relation</th><th>To</th><th>Evidence</th></tr></thead><tbody><tr><td>CLI</td><td>imports</td><td>Flask package root <span style='color:#94a3b8'>src/flask</span></td><td>[`src/flask/cli.py`](https://github.com/pallets/flask/blob/main/src/flask/cli.py)</td></tr><tr><td>Application</td><td>imports x5</td><td>Globals <span style='color:#94a3b8'>src/flask/globals.py</span></td><td>[`src/flask/app.py`](https://github.com/pallets/flask/blob/main/src/flask/app.py)</td></tr><tr><td>Flask package root</td><td>imports x10</td><td>Helpers <span style='color:#94a3b8'>src/flask/helpers.py</span></td><td>[`src/flask/__init__.py`](https://github.com/pallets/flask/blob/main/src/flask/__init__.py)</td></tr><tr><td>Flask package root</td><td>imports</td><td>Wrappers <span style='color:#94a3b8'>src/flask/wrappers.py</span></td><td>[`src/flask/__init__.py`](https://github.com/pallets/flask/blob/main/src/flask/__init__.py)</td></tr><tr><td>Application (Sansio)</td><td>imports x4</td><td>Scaffold <span style='color:#94a3b8'>src/flask/sansio/scaffold.py</span></td><td>[`src/flask/sansio/app.py`](https://github.com/pallets/flask/blob/main/src/flask/sansio/app.py)</td></tr><tr><td>Flask package root</td><td>imports x4</td><td>Ctx <span style='color:#94a3b8'>src/flask/ctx.py</span></td><td>[`src/flask/__init__.py`](https://github.com/pallets/flask/blob/main/src/flask/__init__.py)</td></tr><tr><td>Flask package root</td><td>imports x10</td><td>Signals <span style='color:#94a3b8'>src/flask/signals.py</span></td><td>[`src/flask/__init__.py`](https://github.com/pallets/flask/blob/main/src/flask/__init__.py)</td></tr><tr><td>Application</td><td>imports</td><td>Sessions <span style='color:#94a3b8'>src/flask/sessions.py</span></td><td>[`src/flask/app.py`](https://github.com/pallets/flask/blob/main/src/flask/app.py)</td></tr><tr><td>Flask package root</td><td>imports</td><td>JSON package root <span style='color:#94a3b8'>src/flask/json</span></td><td>[`src/flask/__init__.py`](https://github.com/pallets/flask/blob/main/src/flask/__init__.py)</td></tr><tr><td>Flask package root</td><td>imports x4</td><td>Templating <span style='color:#94a3b8'>src/flask/templating.py</span></td><td>[`src/flask/__init__.py`](https://github.com/pallets/flask/blob/main/src/flask/__init__.py)</td></tr><tr><td>Application</td><td>imports</td><td>Typing <span style='color:#94a3b8'>src/flask/typing.py</span></td><td>[`src/flask/app.py`](https://github.com/pallets/flask/blob/main/src/flask/app.py)</td></tr><tr><td>Application</td><td>imports x5</td><td>Testing <span style='color:#94a3b8'>src/flask/testing.py</span></td><td>[`src/flask/app.py`](https://github.com/pallets/flask/blob/main/src/flask/app.py)</td></tr><tr><td>Application</td><td>imports</td><td>Debughelpers <span style='color:#94a3b8'>src/flask/debughelpers.py</span></td><td>[`src/flask/app.py`](https://github.com/pallets/flask/blob/main/src/flask/app.py)</td></tr><tr><td>Blueprints (Sansio)</td><td>imports x4</td><td>Scaffold <span style='color:#94a3b8'>src/flask/sansio/scaffold.py</span></td><td>[`src/flask/sansio/blueprints.py`](https://github.com/pallets/flask/blob/main/src/flask/sansio/blueprints.py)</td></tr><tr><td>Application (Sansio)</td><td>imports</td><td>Configuration <span style='color:#94a3b8'>src/flask/config.py</span></td><td>[`src/flask/sansio/app.py`](https://github.com/pallets/flask/blob/main/src/flask/sansio/app.py)</td></tr><tr><td>Application (Sansio)</td><td>imports</td><td>Provider <span style='color:#94a3b8'>src/flask/json/provider.py</span></td><td>[`src/flask/sansio/app.py`](https://github.com/pallets/flask/blob/main/src/flask/sansio/app.py)</td></tr><tr><td>Blueprints</td><td>imports</td><td>Blueprints (Sansio) <span style='color:#94a3b8'>src/flask/sansio/blueprints.py</span></td><td>[`src/flask/blueprints.py`](https://github.com/pallets/flask/blob/main/src/flask/blueprints.py)</td></tr><tr><td>Tag</td><td>imports</td><td>JSON package root <span style='color:#94a3b8'>src/flask/json</span></td><td>[`src/flask/json/tag.py`](https://github.com/pallets/flask/blob/main/src/flask/json/tag.py)</td></tr><tr><td>Views</td><td>imports</td><td>Globals <span style='color:#94a3b8'>src/flask/globals.py</span></td><td>[`src/flask/views.py`](https://github.com/pallets/flask/blob/main/src/flask/views.py)</td></tr><tr><td>Logging</td><td>imports</td><td>Globals <span style='color:#94a3b8'>src/flask/globals.py</span></td><td>[`src/flask/logging.py`](https://github.com/pallets/flask/blob/main/src/flask/logging.py)</td></tr><tr><td>CLI entry</td><td>imports</td><td>CLI <span style='color:#94a3b8'>src/flask/cli.py</span></td><td>[`src/flask/__main__.py`](https://github.com/pallets/flask/blob/main/src/flask/__main__.py)</td></tr><tr><td>Application</td><td>imports x5</td><td>Helpers <span style='color:#94a3b8'>src/flask/helpers.py</span></td><td>[`src/flask/app.py`](https://github.com/pallets/flask/blob/main/src/flask/app.py)</td></tr><tr><td>Application</td><td>imports x5</td><td>Signals <span style='color:#94a3b8'>src/flask/signals.py</span></td><td>[`src/flask/app.py`](https://github.com/pallets/flask/blob/main/src/flask/app.py)</td></tr><tr><td>Helpers</td><td>imports x5</td><td>Globals <span style='color:#94a3b8'>src/flask/globals.py</span></td><td>[`src/flask/helpers.py`](https://github.com/pallets/flask/blob/main/src/flask/helpers.py)</td></tr><tr><td>Flask package root</td><td>imports x4</td><td>Globals <span style='color:#94a3b8'>src/flask/globals.py</span></td><td>[`src/flask/__init__.py`](https://github.com/pallets/flask/blob/main/src/flask/__init__.py)</td></tr><tr><td>Application</td><td>imports</td><td>Wrappers <span style='color:#94a3b8'>src/flask/wrappers.py</span></td><td>[`src/flask/app.py`](https://github.com/pallets/flask/blob/main/src/flask/app.py)</td></tr><tr><td>CLI</td><td>imports</td><td>Helpers <span style='color:#94a3b8'>src/flask/helpers.py</span></td><td>[`src/flask/cli.py`](https://github.com/pallets/flask/blob/main/src/flask/cli.py)</td></tr><tr><td>Ctx</td><td>imports</td><td>Signals <span style='color:#94a3b8'>src/flask/signals.py</span></td><td>[`src/flask/ctx.py`](https://github.com/pallets/flask/blob/main/src/flask/ctx.py)</td></tr><tr><td>Globals</td><td>imports</td><td>Ctx <span style='color:#94a3b8'>src/flask/ctx.py</span></td><td>[`src/flask/globals.py`](https://github.com/pallets/flask/blob/main/src/flask/globals.py)</td></tr><tr><td>Application (Sansio)</td><td>imports</td><td>Helpers <span style='color:#94a3b8'>src/flask/helpers.py</span></td><td>[`src/flask/sansio/app.py`](https://github.com/pallets/flask/blob/main/src/flask/sansio/app.py)</td></tr><tr><td>Application (Sansio)</td><td>imports</td><td>Templating <span style='color:#94a3b8'>src/flask/templating.py</span></td><td>[`src/flask/sansio/app.py`](https://github.com/pallets/flask/blob/main/src/flask/sansio/app.py)</td></tr><tr><td>Application (Sansio)</td><td>imports</td><td>Testing <span style='color:#94a3b8'>src/flask/testing.py</span></td><td>[`src/flask/sansio/app.py`](https://github.com/pallets/flask/blob/main/src/flask/sansio/app.py)</td></tr><tr><td>Sessions</td><td>imports</td><td>Wrappers <span style='color:#94a3b8'>src/flask/wrappers.py</span></td><td>[`src/flask/sessions.py`](https://github.com/pallets/flask/blob/main/src/flask/sessions.py)</td></tr><tr><td>Templating</td><td>imports</td><td>Signals <span style='color:#94a3b8'>src/flask/signals.py</span></td><td>[`src/flask/templating.py`](https://github.com/pallets/flask/blob/main/src/flask/templating.py)</td></tr><tr><td>Flask package root</td><td>imports</td><td>Application <span style='color:#94a3b8'>src/flask/app.py</span></td><td>[`src/flask/__init__.py`](https://github.com/pallets/flask/blob/main/src/flask/__init__.py)</td></tr><tr><td>Flask package root</td><td>imports</td><td>Blueprints <span style='color:#94a3b8'>src/flask/blueprints.py</span></td><td>[`src/flask/__init__.py`](https://github.com/pallets/flask/blob/main/src/flask/__init__.py)</td></tr><tr><td>Flask package root</td><td>imports</td><td>Configuration <span style='color:#94a3b8'>src/flask/config.py</span></td><td>[`src/flask/__init__.py`](https://github.com/pallets/flask/blob/main/src/flask/__init__.py)</td></tr><tr><td>Application</td><td>imports</td><td>CLI <span style='color:#94a3b8'>src/flask/cli.py</span></td><td>[`src/flask/app.py`](https://github.com/pallets/flask/blob/main/src/flask/app.py)</td></tr><tr><td>Application</td><td>imports</td><td>Ctx <span style='color:#94a3b8'>src/flask/ctx.py</span></td><td>[`src/flask/app.py`](https://github.com/pallets/flask/blob/main/src/flask/app.py)</td></tr><tr><td>Application</td><td>imports</td><td>Application (Sansio) <span style='color:#94a3b8'>src/flask/sansio/app.py</span></td><td>[`src/flask/app.py`](https://github.com/pallets/flask/blob/main/src/flask/app.py)</td></tr><tr><td>Terminal user</td><td>invokes</td><td>CLI <span style='color:#94a3b8'>src/flask/cli.py</span></td><td>[`src/flask/cli.py`](https://github.com/pallets/flask/blob/main/src/flask/cli.py)</td></tr><tr><td>Terminal user</td><td>invokes</td><td>Application <span style='color:#94a3b8'>src/flask/app.py</span></td><td>[`src/flask/app.py`](https://github.com/pallets/flask/blob/main/src/flask/app.py)</td></tr></tbody></table>
+</div>
+
+<div class="card"><h2>Entry points</h2><ul><li><code>src/flask/cli.py</code> — part of **CLI** (<code>src/flask/cli.py</code>)</li>
+<li>CLI commands in <code>src/flask/cli.py</code> — 3 commands</li>
+<li>console script <code>flask</code> → <code>flask.cli:main</code></li></ul></div><div class="card"><h2>Runtime dependencies</h2><p><code>blinker</code>, <code>click</code>, <code>itsdangerous</code>, <code>jinja2</code>, <code>markupsafe</code>, <code>werkzeug</code></p></div><div class="card"><h2>Deployment and operations</h2><ul><li>CI <code>.github/workflows/lock.yaml</code> — jobs: lock</li>
+<li>CI <code>.github/workflows/pre-commit.yaml</code> — jobs: main</li>
+<li>CI <code>.github/workflows/publish.yaml</code> — jobs: build, create-release, publish-pypi</li>
+<li>CI <code>.github/workflows/tests.yaml</code> — jobs: tests, typing</li>
+<li>CI <code>.github/workflows/zizmor.yaml</code> — jobs: zizmor</li></ul></div><div class="card"><h2>Coverage and limits</h2><ul><li>Parsed 24 of 236 repository files; 59 skipped as tests/examples/docs, 0 skipped as vendored, sensitive or oversized.</li>
+<li>167 imports resolved to repository paths, 87 point outside the repository (stdlib or third-party), 134 were stdlib.</li>
+<li>24 components detected at directory depth 0; 24 shown on the diagram.</li>
+<li>Top unresolved import roots (treated as external): <code>werkzeug</code>, <code>_typeshed</code>, <code>jinja2</code>, <code>click</code>, <code>typing_extensions</code>, <code>dotenv</code>, <code>itsdangerous</code>, <code>asgiref</code>.</li>
+<li>Only static imports are traced. Wiring through configuration, HTTP calls, message brokers, plugin registries or <code>globals()</code>-style dynamic imports is not detected, and neither is runtime behaviour.</li></ul></div>
+
+<div class="card">
+  <h2>Coverage</h2>
+  <ul><li>Repository files: <strong>236</strong></li><li>Python modules parsed: <strong>24</strong></li><li>Skipped (tests/examples/docs): <strong>59</strong></li><li>Skipped (vendored/oversized/sensitive): <strong>0</strong></li><li>Internal imports resolved: <strong>167</strong></li><li>Imports to stdlib: <strong>134</strong></li><li>Imports outside the repository: <strong>87</strong></li><li>Components detected: <strong>24</strong> (depth 0, 24 on the diagram)</li><li>Unparsable files: <strong>0</strong></li></ul>
+</div>
+
+
+
+<footer>Generated by staticdiagram — deterministic static analysis, zero model calls.</footer>
+</main>
+</body>
+</html>

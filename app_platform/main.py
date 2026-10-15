@@ -29,6 +29,15 @@ app = FastAPI(title="Team Server", docs_url=None, redoc_url=None)
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
+# Интегрированный сайт gitingest: /site/* + страница /analyze (импорт в конце,
+# чтобы избежать циклического импорта — site_router использует current_user).
+from .site_router import mount_site  # noqa: E402
+from .site_router import router as site_router  # noqa: E402
+
+app.include_router(site_router)
+# Mount не копируется через include_router — монтируем сайт напрямую в app.
+mount_site(app)
+
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_.-]{2,32}$")
 
 
@@ -36,6 +45,13 @@ def _bootstrap() -> None:
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     EXPORT_DIR.mkdir(parents=True, exist_ok=True)
     db.init_db()
+    # Team Server доступен по IP в локальной сети — расширяем allowed hosts
+    # для интегрированного сайта ( middleware читает env при импорте).
+    import os
+
+    hosts = {h.strip() for h in os.environ.get("ALLOWED_HOSTS", "").split(",") if h.strip()}
+    hosts |= {"localhost", "127.0.0.1", "*"}
+    os.environ["ALLOWED_HOSTS"] = ",".join(sorted(hosts))
 
 
 @app.on_event("startup")

@@ -1,0 +1,27 @@
+nohup: ignoring input
+INFO:     Started server process [1532]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+Team Server запущен: http://localhost:8000  (доступ по IP в локальной сети)
+INFO:     127.0.0.1:58888 - "POST /register HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:58890 - "POST /choose-role HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:58892 - "POST /upload HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:58894 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58896 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58898 - "GET /project/1 HTTP/1.1" 200 OK
+2026-10-15 16:36:03.036 | INFO     | gitingest.entrypoint:ingest_async:89 | Starting ingestion process | {"source":"/workspace/data/projects/vanya_pi__myapp"}
+2026-10-15 16:36:03.037 | INFO     | gitingest.entrypoint:ingest_async:105 | Processing local directory | {"source":"/workspace/data/projects/vanya_pi__myapp"}
+2026-10-15 16:36:03.037 | INFO     | gitingest.entrypoint:ingest_async:134 | Starting local directory processing
+2026-10-15 16:36:03.038 | INFO     | gitingest.entrypoint:ingest_async:140 | Processing files and generating output
+2026-10-15 16:36:03.038 | INFO     | gitingest.ingestion:ingest_query:44 | Starting file ingestion | {"slug":"workspace/data/projects/vanya_pi__myapp","subpath":"/","local_path":"/workspace/data/projects/vanya_pi__myapp","max_file_size":10485760}
+2026-10-15 16:36:03.039 | INFO     | gitingest.ingestion:ingest_query:96 | Processing directory | {"directory_path":"/workspace/data/projects/vanya_pi__myapp"}
+2026-10-15 16:36:03.057 | INFO     | gitingest.ingestion:ingest_query:109 | Directory processing completed | {"total_files":3,"total_directories":1,"total_size_bytes":24,"stats_total_files":3,"stats_total_size":24}
+2026-10-15 16:36:03.545 | INFO     | gitingest.entrypoint:ingest_async:147 | Ingestion completed successfully
+2026-10-15 16:36:03.579 | INFO     | logging:callHandlers:1762 | 127.0.0.1:58900 - "POST /project/1/analyze HTTP/1.1" 200
+2026-10-15 16:36:03.592 | INFO     | logging:callHandlers:1762 | 127.0.0.1:58902 - "GET /download/tree/1 HTTP/1.1" 200
+2026-10-15 16:36:08.083 | INFO     | logging:callHandlers:1762 | 127.0.0.1:58904 - "GET /download/digest/1 HTTP/1.1" 200
+2026-10-15 16:36:08.094 | INFO     | logging:callHandlers:1762 | 127.0.0.1:58906 - "GET /api/export/1 HTTP/1.1" 200
+2026-10-15 16:36:14.511 | INFO     | logging:callHandlers:1762 | 127.0.0.1:58908 - "POST /register HTTP/1.1" 303
+2026-10-15 16:36:14.521 | INFO     | logging:callHandlers:1762 | 127.0.0.1:58910 - "POST /choose-role HTTP/1.1" 303
+2026-10-15 16:36:14.534 | INFO     | logging:callHandlers:1762 | 127.0.0.1:58912 - "GET /dashboard HTTP/1.1" 200

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}{{ project.name }} — Team Server{% endblock %}
+{% block content %}
+<div class="repo-header">
+  <h1>{{ project.owner }} / <b>{{ project.name }}</b></h1>
+  <span class="muted">сохранён на платформе {{ project.added_at }}</span>
+</div>
+
+<form method="post" action="/project/{{ project.id }}/analyze">
+  <button class="btn btn-primary btn-lg" type="submit">🔍 Проанализировать через gitingest</button>
+</form>
+
+<p class="muted">Анализ строит дерево каталогов и сводку проекта; результат можно сохранить как картинку PNG на свой ПК.</p>
+{% endblock %}

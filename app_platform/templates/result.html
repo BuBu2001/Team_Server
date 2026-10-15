@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Результат: {{ project.name }} — Team Server{% endblock %}
+{% block content %}
+<div class="repo-header">
+  <h1>{{ project.owner }} / <b>{{ project.name }}</b> — структура</h1>
+</div>
+
+<pre class="summary">{{ summary }}</pre>
+
+<div class="actions">
+  <a class="btn btn-primary" href="/download/tree/{{ project.id }}">💾 Скачать PNG структуры</a>
+  <a class="btn" href="/download/digest/{{ project.id }}">Скачать digest (.txt)</a>
+  <a class="btn" href="/project/{{ project.id }}">← Назад</a>
+</div>
+
+<h3>Дерево проекта</h3>
+<pre class="tree">{{ tree }}</pre>
+{% endblock %}

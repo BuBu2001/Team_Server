@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Выбор режима — Team Server{% endblock %}
+{% block content %}
+<div class="auth-card wide">
+  <h1>Привет, @{{ user.username }}!</h1>
+  <p class="muted">Выберите режим работы платформы:</p>
+  <div class="roles">
+    <form method="post" action="/choose-role">
+      <input type="hidden" name="role" value="host">
+      <button class="role-card host">
+        <span class="role-icon">🖧</span>
+        <b>Host</b>
+        <small>Ваш компьютер — хост для всех. Выполняет серверную работу: хранит проекты Pi, отдаёт данные и результаты анализа по запросу.</small>
+      </button>
+    </form>
+    <form method="post" action="/choose-role">
+      <input type="hidden" name="role" value="pi">
+      <button class="role-card pi">
+        <span class="role-icon">🍓</span>
+        <b>Pi</b>
+        <small>Обычный пользователь: отправляете свой проект на платформу, получаете структуру (PNG) и можете скачивать данные с Host.</small>
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

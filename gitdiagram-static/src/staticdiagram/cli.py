@@ -62,11 +62,30 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--keep-cache", action="store_true", help="keep the cloned repository on disk")
     parser.add_argument("--quiet", action="store_true", help="only report errors")
     parser.add_argument("--version", action="version", version=f"staticdiagram {__version__}")
+    # GettingStarted (Host/Pi): подключение пользователя к хосту.
+    from . import gettingstarted
+
+    if gettingstarted.is_available():
+        sub = parser.add_subparsers(dest="command")
+        gettingstarted.add_connect_subcommand(sub)
     return parser
 
 
 def main(argv: Optional[list[str]] = None) -> int:
-    args = build_parser().parse_args(argv)
+    parser = build_parser()
+    args = parser.parse_args(argv)
+
+    if getattr(args, "command", None) == "connect":
+        from . import gettingstarted
+
+        return gettingstarted.run_connect(
+            role=args.role, port=args.port, timeout=args.timeout, host_ip=args.host_ip
+        )
+
+    if getattr(args, "command", None) is not None:
+        parser.print_help()
+        return 2
+
     options = AnalyzeOptions(
         max_nodes=args.max_nodes,
         max_edges=args.max_edges,

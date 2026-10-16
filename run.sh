@@ -9,6 +9,8 @@
 #                                 (Pi: ./run.sh console --host <IP-хоста>)
 #   ./run.sh cryless [args...]    библиотека команд cryless
 #                                 (create repository / load data / connection check)
+#   ./run.sh demo [args...]       тестовый режим: Host + Pi на одной машине
+#                                 (--with-web — ещё и проверить веб-панель)
 #   ./run.sh test                 e2e + веб-тесты + тесты cryless
 #   ./setup.sh --dev              установка с инструментами тестов
 set -euo pipefail
@@ -35,6 +37,11 @@ case "${1:-server}" in
     shift
     exec "$PY" -m cryless "$@"
     ;;
+  demo|test-mode|testmode)
+    [ -x "$PY" ] || exec ./setup.sh
+    shift
+    exec "$PY" getting_started/gettingstarted_linux.py --mode test "$@"
+    ;;
   test|tests)
     [ -x "$PY" ] || exec ./setup.sh --dev
     if ! "$PY" -m pytest --version >/dev/null 2>&1; then
@@ -45,7 +52,7 @@ case "${1:-server}" in
     exec "$PY" -m pytest tests/cryless tests/app_platform -q -p no:cacheprovider
     ;;
   --help|-h|help)
-    sed -n '3,13p' "$0"
+    sed -n '3,15p' "$0"
     ;;
   *)
     echo "Неизвестная команда: $1 (см. ./run.sh --help)" >&2

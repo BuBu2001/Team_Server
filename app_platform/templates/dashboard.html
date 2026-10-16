@@ -68,6 +68,19 @@
       </li>
       {% endfor %}
     </ul>
+
+    <h3>Журнал работы <a class="btn btn-sm" href="/journal">весь →</a></h3>
+    <ul class="action-list">
+      {% for a in actions %}
+      <li>
+        <span class="muted">{{ a.ts }}</span>
+        <b>@{{ a.user }}</b> {{ a.action }}
+        {% if a.details %}<span class="muted">{{ a.details }}</span>{% endif %}
+      </li>
+      {% else %}
+      <li class="muted">Пока пусто. Действия появятся здесь после загрузки/анализа.</li>
+      {% endfor %}
+    </ul>
   </aside>
 </div>
 {% endblock %}

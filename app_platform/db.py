@@ -1,8 +1,20 @@
-"""База данных платформы (SQLite): пользователи и проекты."""
+"""База данных платформы (SQLite): пользователи, проекты и журнал работы.
+
+Это ЕДИНАЯ БД всей системы: её пишет и веб-панель (app_platform), и консоль
+Host ⇄ Pi (getting_started/core.py через ``log_action``), поэтому журнал
+работы и проекты видны в обоих интерфейсах.
+
+Путь можно переопределить переменной окружения ``TEAM_SERVER_DB`` — это нужно
+тестам (и e2e-сценарию), чтобы не писать в рабочую базу data/team_server.db.
+"""
+import os
 import sqlite3
 from pathlib import Path
 
-DB_PATH = Path(__file__).resolve().parent.parent / "data" / "team_server.db"
+DB_PATH = Path(
+    os.environ.get("TEAM_SERVER_DB")
+    or Path(__file__).resolve().parent.parent / "data" / "team_server.db"
+)
 
 
 def get_conn() -> sqlite3.Connection:

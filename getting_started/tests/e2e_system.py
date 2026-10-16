@@ -118,6 +118,18 @@ def main() -> int:
     print(host_out)
     print(pi_out)
 
+    # Единая БД системы: проект, присланный из консоли, должен попасть в журнал
+    # и быть виден веб-панели. Читаем именно изолированную БД теста
+    # (TEAM_SERVER_DB), чтобы проверка не зависела от рабочей data/team_server.db.
+    db_names: list[str] | None = None
+    db_file = Path(env["TEAM_SERVER_DB"])
+    if db_file.is_file():
+        import sqlite3
+
+        with sqlite3.connect(db_file) as conn:
+            db_names = [r[0] for r in
+                        conn.execute("SELECT name FROM projects").fetchall()]
+
     checks = [
         ("Приветствие/режимы (host)", "Режим выбран автоматически: Host" in host_out or
                                       "Вы выбрали режим Host" in host_out),
@@ -129,9 +141,13 @@ def main() -> int:
         ("Upload файла на Host",      "Pi прислал файл 'note.txt'" in host_out and
                                       "Отправлено на хост" in pi_out),
         ("Upload проекта на Host",    "Pi прислал проект 'src'" in host_out),
-        ("Хранилище хоста",           (Path(env["GETTINGSTARTED_STORAGE"]) /
-                                       "pi_uploads" / f"port_{PORT}" /
-                                       "projects" / "src").is_dir()),
+        ("Хранилище хоста (общее с веб-панелью)",
+                                      (Path(env["GETTINGSTARTED_STORAGE"]) /
+                                       "projects" / "src").is_dir() and
+                                      (Path(env["GETTINGSTARTED_STORAGE"]) /
+                                       "files" / "note.txt").is_file()),
+        ("Проект виден веб-панели (единая БД)",
+                                      db_names is not None and "src" in db_names),
         ("Диаграмма кода (gitdiagram-static или fallback-tree)",
                                       "--- Диаграмма" in pi_out and
                                       "конец диаграммы" in pi_out and

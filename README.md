@@ -19,22 +19,28 @@ data/                  # общее хранилище (files, projects, exports
 run_server.py          # точка входа веб-сервера
 ```
 
-## Установка (обе машины)
+## Установка (любой Linux-дистрибутив, обе машины)
 
-Требуется Python 3.11+. В систему ничего не ставится — только виртуальное окружение:
+Одна команда — дальше скрипт всё сделает сам:
 
 ```bash
 cd Team_Server-main
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt -r requirements-dev.txt
+./setup.sh          # рабочие зависимости
+./setup.sh --dev    # + pytest и инструменты тестов (нужно один раз для ./run.sh test)
 ```
+
+`setup.sh` сам определяет дистрибутив и пакетный менеджер (apt, dnf, yum,
+pacman, zypper, apk, xbps, emerge, eopkg, Termux pkg) и, если чего-то не
+хватает (python3 ≥ 3.10, python3-venv/pip, git), предлагает установить
+недостающие пакеты — с вашего подтверждения. В систему ничего не ставится
+без спроса; Python-зависимости идут только в виртуальное окружение `.venv`.
 
 ## Запуск
 
 ### Host — сервер (веб-панель + хост консоли)
 
 ```bash
-.venv/bin/python run_server.py
+./run.sh            # = ./run.sh server
 ```
 
 Сервер слушает `0.0.0.0:8000`. Откройте `http://<IP-хоста>:8000` в браузере —
@@ -46,13 +52,8 @@ python3 -m venv .venv
 ### Pi (и Host) — консоль обмена файлами
 
 ```bash
-.venv/bin/python getting_started/gettingstarted_linux.py
-```
-
-или через CLI пакета:
-
-```bash
-.venv/bin/gitdiagram-static connect
+./run.sh console --host <IP-хоста>    # на Pi
+./run.sh console                      # на Host (режим выберет в меню)
 ```
 
 Консоль спросит режим (`host`/`pi`) и адрес хоста (по умолчанию порт `47823`;
@@ -70,10 +71,13 @@ python3 -m venv .venv
 ## Тесты
 
 ```bash
-# сквозной e2e: связность всех модулей (15 проверок)
-.venv/bin/python getting_started/tests/e2e_system.py
+./run.sh test    # e2e связности модулей (15 проверок) + веб-панель (6 проверок)
+```
 
-# веб-панель (6 проверок)
+Эквиваленты без скриптов:
+
+```bash
+.venv/bin/python getting_started/tests/e2e_system.py
 .venv/bin/python -m pytest tests/app_platform -q
 ```
 

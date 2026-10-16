@@ -8,7 +8,8 @@
      (tree) + app_platform.image_gen (png);
   4. скачивание обратно: Host -> Pi (download);
   5. журнал работы: app_platform.db (log_action / history);
-  6. интеграция через CLI gitdiagram-static (`connect`).
+  6. интеграция через CLI gitdiagram-static (`connect`);
+  7. тестовый режим (`--mode test`): Host + Pi в одном процессе на одной машине.
 
 Запуск:  python3 getting_started/tests/e2e_system.py
 """
@@ -118,6 +119,20 @@ def main() -> int:
     print(host_out)
     print(pi_out)
 
+    # ---- Тестовый режим: Host + Pi в одном процессе (одна машина) ----------
+    # Тот самый режим, который запускает ./run.sh demo. Изолирован, поэтому
+    # рабочие data/ и data/team_server.db не трогает.
+    tm_env = {k: v for k, v in os.environ.items()
+              if k not in ("GETTINGSTARTED_STORAGE", "TEAM_SERVER_DB",
+                           "TEAM_SERVER_DATA")}
+    tm = subprocess.run(
+        [sys.executable, str(GS_DIR / "gettingstarted_linux.py"),
+         "--mode", "test", "--test-isolated", "--port", str(PORT + 1)],
+        stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT, env=tm_env, text=True, timeout=240)
+    tm_out = tm.stdout or ""
+    print(tm_out)
+
     # Единая БД системы: проект, присланный из консоли, должен попасть в журнал
     # и быть виден веб-панели. Читаем именно изолированную БД теста
     # (TEAM_SERVER_DB), чтобы проверка не зависела от рабочей data/team_server.db.
@@ -164,6 +179,9 @@ def main() -> int:
                                       "Моя история:" in pi_out),
         ("Корректное завершение",     pi_rc == 0 and
                                       "Сессия завершена" in host_out),
+        ("Тестовый режим Host+Pi (./run.sh demo)",
+                                      tm.returncode == 0 and
+                                      "TEST MODE PASS" in tm_out),
     ]
     failed = [name for name, ok in checks if not ok]
     for name, ok in checks:

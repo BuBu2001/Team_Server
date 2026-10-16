@@ -44,8 +44,9 @@ def main(argv: list[str] | None = None) -> int:
                         help="секунды ожидания пары (0 — ждать всегда)")
     # Необязательные флаги для неинтерактивного запуска/тестов:
     # пропускают интерактивное меню и ввод IP хоста.
-    parser.add_argument("--mode", choices=["host", "pi"], default=None,
-                        help="режим без интерактивного меню (для скриптов/тестов)")
+    parser.add_argument("--mode", choices=["host", "pi", "test"], default=None,
+                        help="режим без интерактивного меню: host, pi или test "
+                             "(test = Host + Pi в одном процессе, для проверки)")
     parser.add_argument("--host", default=None,
                         help="IP хоста для режима Pi без интерактивного ввода")
     # Флаги автоматизации (для e2e-тестов и скриптов):
@@ -55,6 +56,15 @@ def main(argv: list[str] | None = None) -> int:
                         help="Pi: сразу выполнить полный демо-цикл и выйти")
     parser.add_argument("--demo-dir", default=None,
                         help="папка проекта для демо-цикла")
+    # Флаги тестового режима (--mode test):
+    parser.add_argument("--test-storage", default=None,
+                        help="тестовый режим: своё хранилище (по умолчанию общее data/)")
+    parser.add_argument("--test-isolated", action="store_true",
+                        help="тестовый режим: временные хранилище и БД, рабочие данные не трогаются")
+    parser.add_argument("--with-web", action="store_true",
+                        help="тестовый режим: дополнительно проверить веб-панель")
+    parser.add_argument("--web-port", type=int, default=8000,
+                        help="тестовый режим: порт веб-панели для --with-web")
     args = parser.parse_args(argv)
 
     osinfo = get_os_specific()
@@ -74,6 +84,24 @@ def main(argv: list[str] | None = None) -> int:
 
     port = args.port or DEFAULT_HOST_PORT
     notify = print
+
+    if args.mode == "test":
+        # Тестовый режим: Host и Pi совмещены в одном процессе.
+        print_banner()
+        print("Приветствуем! Тестовый режим: Host и Pi работают вместе "
+              "на одной машине.")
+        import test_mode  # файл рядом с этим скриптом (см. sys.path[0])
+
+        return test_mode.run_test_mode(
+            port=port,
+            timeout=args.timeout or 60.0,
+            notify=notify,
+            demo_dir=args.demo_dir,
+            storage_dir=args.test_storage,
+            isolated=args.test_isolated,
+            with_web=args.with_web,
+            web_port=args.web_port,
+        )
 
     if args.mode:
         mode = args.mode

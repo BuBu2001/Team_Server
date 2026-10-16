@@ -12,6 +12,9 @@
   {% if user %}
   <nav class="topnav">
     <a href="/dashboard">Панель</a>
+    <a href="/journal">Журнал</a>
+    <a href="/analyze">Анализ репозитория</a>
+    <a href="/site/">Сайт gitingest</a>
     <span class="badge {{ user.role }}">{{ user.role|upper }}</span>
     <span class="nick">@{{ user.username }}</span>
     <form method="post" action="/logout" class="inline"><button class="btn btn-sm">Выйти</button></form>

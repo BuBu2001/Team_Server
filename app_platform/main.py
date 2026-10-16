@@ -17,13 +17,18 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from . import db
-from .diagram_gen import tree_to_mermaid
+from .code_diagram import code_mermaid
+from .diagram_gen import mermaid_has_nodes, tree_to_mermaid
 from .image_gen import tree_to_image
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR.parent / "data"
 UPLOAD_DIR = DATA_DIR / "projects"
 EXPORT_DIR = DATA_DIR / "exports"
+# Общее хранилище с консолью Host ⇄ Pi (getting_started/protocol.py):
+# файлы Pi и проекты хост складывает сюда же, поэтому веб и консоль видят
+# одни и те же данные, а не две отдельные папки.
+PI_FILES_DIR = DATA_DIR / "files"
 
 app = FastAPI(title="Team Server", docs_url=None, redoc_url=None)
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
@@ -44,6 +49,7 @@ USERNAME_RE = re.compile(r"^[A-Za-z0-9_.-]{2,32}$")
 def _bootstrap() -> None:
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     EXPORT_DIR.mkdir(parents=True, exist_ok=True)
+    PI_FILES_DIR.mkdir(parents=True, exist_ok=True)
     db.init_db()
     # Team Server доступен по IP в локальной сети — расширяем allowed hosts
     # для интегрированного сайта ( middleware читает env при импорте).
@@ -75,6 +81,15 @@ def require_user(request: Request):
     return user
 
 
+def can_access_project(user: dict, project: dict) -> bool:
+    """Доступ к материалам проекта: владелец или хост.
+
+    Pi работает только со своими проектами и с общей витриной, а скачивать
+    чужие данные (digest/PNG/API) может только Host — он сервер этой сети.
+    """
+    return user["role"] == "host" or project["owner_id"] == user["id"]
+
+
 # ---------- регистрация / вход ----------
 
 @app.get("/", response_class=HTMLResponse)
@@ -100,10 +115,12 @@ def register(request: Request, nick: str = Form(...)):
         # регистрация без паролей: если ник занят — просто вход
         resp = RedirectResponse("/dashboard", status_code=303)
         resp.set_cookie("nick", nick, httponly=True)
+        db.log_action(nick, "login", "вход в веб-панель", "")
         return resp
     db.create_user(nick, role="pi")
     resp = RedirectResponse("/choose-role", status_code=303)
     resp.set_cookie("nick", nick, httponly=True)
+    db.log_action(nick, "register", "регистрация в веб-панели", "")
     return resp
 
 
@@ -123,11 +140,15 @@ def choose_role(request: Request, role: str = Form(...)):
     if role not in ("host", "pi"):
         return JSONResponse({"detail": "bad role"}, status_code=422)
     db.set_role(user["id"], role)
+    db.log_action(user["username"], "role", f"выбран режим {role}", "")
     return RedirectResponse("/dashboard", status_code=303)
 
 
 @app.post("/logout")
-def logout():
+def logout(request: Request):
+    user = current_user(request)
+    if user:
+        db.log_action(user["username"], "logout", "выход из веб-панели", "")
     resp = RedirectResponse("/", status_code=303)
     resp.delete_cookie("nick")
     return resp
@@ -143,6 +164,9 @@ def dashboard(request: Request):
     my_projects = db.list_projects(owner_id=user["id"])
     all_projects = db.list_projects()
     users = db.list_users()
+    actions = db.list_actions(
+        user=None if user["role"] == "host" else user["username"], limit=10
+    )
     return templates.TemplateResponse(
         request,
         "dashboard.html",
@@ -151,6 +175,7 @@ def dashboard(request: Request):
             "my_projects": my_projects,
             "all_projects": all_projects,
             "users": users,
+            "actions": actions,
         },
     )
 
@@ -206,6 +231,7 @@ async def upload_project(
         )
 
     db.add_project(user["id"], name, str(dest))
+    db.log_action(user["username"], "upload", f"проект «{name}»", name)
     return RedirectResponse("/dashboard", status_code=303)
 
 
@@ -215,6 +241,34 @@ def _run_gitingest(path_or_url: str) -> tuple[str, str, str]:
     from gitingest import ingest
 
     return ingest(path_or_url)
+
+
+def _resolve_project_target(project: dict) -> Path:
+    """Приводит источник проекта к каталогу, пригодному для анализа.
+
+    Проекты попадают в систему двумя путями:
+      * веб-панель — распакованная папка (data/projects/<user>__<slug>);
+      * консоль Host ⇄ Pi — папка ``data/projects/<name>`` либо ``<name>.zip``
+        (консоль распаковывает архив рядом, см. getting_started/core.py).
+
+    Если источнику соответствует архив, распаковываем его в соседнюю папку.
+    Для одиночного файла анализ невозможен — поднимаем ValueError.
+    """
+    src = Path(project["source"])
+    if src.is_dir():
+        return src
+    if src.is_file() and src.suffix.lower() == ".zip":
+        unpacked = src.with_suffix("")
+        if not unpacked.is_dir():
+            with zipfile.ZipFile(src) as zf:
+                _safe_extract_zip(src.read_bytes(), unpacked)
+        return unpacked
+    if src.is_file():
+        raise ValueError(
+            "Проект сохранён как одиночный файл — анализ возможен только для "
+            "папки или zip-архива проекта"
+        )
+    raise ValueError(f"Источник проекта не найден на сервере: {project['source']}")
 
 
 @app.get("/project/{project_id}", response_class=HTMLResponse)
@@ -232,7 +286,12 @@ def project_page(request: Request, project_id: int):
 
 @app.post("/project/{project_id}/analyze")
 def analyze_project(request: Request, project_id: int):
-    """gitingest анализирует сохранённый проект и возвращает структуру + PNG."""
+    """gitingest анализирует сохранённый проект и возвращает структуру + PNG.
+
+    Дополнительно строится диаграмма кода через gitdiagram-static (тот же
+    модуль, что использует консоль Host ⇄ Pi); если код не поддаётся анализу
+    или диаграмма пуста — показывается диаграмма по дереву файлов.
+    """
     user = require_user(request)
     if not user:
         return RedirectResponse("/")
@@ -241,12 +300,20 @@ def analyze_project(request: Request, project_id: int):
         return JSONResponse({"detail": "Проект не найден"}, status_code=404)
 
     src_path = Path(project["source"])
-    target = str(src_path)
     url_file = src_path / ".source_url"
-    if src_path.exists() and any(p for p in src_path.iterdir() if p.name != ".source_url"):
-        target = str(src_path)
-    elif url_file.exists():
-        target = url_file.read_text(encoding="utf-8").strip()
+    has_files = src_path.is_dir() and any(
+        p for p in src_path.iterdir() if p.name != ".source_url"
+    )
+    try:
+        if not has_files and url_file.exists():
+            # проект добавлен ссылкой на репозиторий — клонируем при анализе
+            target: str | Path = url_file.read_text(encoding="utf-8").strip()
+        else:
+            target = _resolve_project_target(project)
+        if isinstance(target, Path):
+            target = str(target)
+    except (OSError, ValueError, zipfile.BadZipFile, NotADirectoryError) as e:
+        return JSONResponse({"detail": str(e)}, status_code=422)
 
     try:
         summary, tree, content = _run_gitingest(target)
@@ -259,12 +326,28 @@ def analyze_project(request: Request, project_id: int):
     digest = EXPORT_DIR / f"project_{project_id}_digest.txt"
     digest.write_text(content, encoding="utf-8")
 
-    # gitdiagram-стиль: mermaid-диаграмма по дереву проекта (рендер в браузере)
+    # gitdiagram-стиль: диаграмма по дереву проекта (рендер в браузере)
     tree_body = "\n".join(
         ln for ln in tree.splitlines() if ln.strip() and not ln.startswith("Directory structure")
     )
-    diagram_code = tree_to_mermaid(tree_body or tree)
+    tree_diagram = tree_to_mermaid(tree_body or tree)
 
+    # Диаграмма кода (gitdiagram-static). Если анализ не дал узлов — fallback
+    # на диаграмму по дереву, чтобы Pi всегда видел содержательную картинку.
+    code_diagram, code_error = (None, "")
+    if isinstance(target, str) and Path(target).is_dir():
+        code_diagram, code_error = code_mermaid(target)
+    if code_diagram and not mermaid_has_nodes(code_diagram):
+        code_error = code_error or "статический анализ не нашёл связей между модулями"
+        code_diagram = None
+    diagram_code = code_diagram or tree_diagram
+    (EXPORT_DIR / f"project_{project_id}_diagram.mmd").write_text(
+        diagram_code, encoding="utf-8"
+    )
+
+    db.log_action(
+        user["username"], "analyze", f"проект «{project['name']}»", project["name"]
+    )
     return templates.TemplateResponse(
         request,
         "result.html",
@@ -274,6 +357,8 @@ def analyze_project(request: Request, project_id: int):
             "summary": summary,
             "tree": tree,
             "diagram_code": diagram_code,
+            "diagram_kind": "code" if code_diagram else "tree",
+            "diagram_note": code_error if code_diagram is None and code_error else "",
             "png_name": export.name,
         },
     )
@@ -288,9 +373,12 @@ def download_tree(request: Request, project_id: int):
     project = db.get_project(project_id)
     if not project:
         return JSONResponse({"detail": "Проект не найден"}, status_code=404)
+    if not can_access_project(user, project):
+        return JSONResponse({"detail": "Недостаточно прав (нужен режим Host)"}, status_code=403)
     export = EXPORT_DIR / f"project_{project_id}_tree.png"
     if not export.exists():
         return JSONResponse({"detail": "Сначала проанализируйте проект"}, status_code=409)
+    db.log_action(user["username"], "download", "PNG структуры", project["name"])
     return Response(
         content=export.read_bytes(),
         media_type="image/png",
@@ -307,13 +395,63 @@ def download_digest(request: Request, project_id: int):
     project = db.get_project(project_id)
     if not project:
         return JSONResponse({"detail": "Проект не найден"}, status_code=404)
+    if not can_access_project(user, project):
+        return JSONResponse({"detail": "Недостаточно прав (нужен режим Host)"}, status_code=403)
     digest = EXPORT_DIR / f"project_{project_id}_digest.txt"
     if not digest.exists():
         return JSONResponse({"detail": "Сначала проанализируйте проект"}, status_code=409)
+    db.log_action(user["username"], "download", "digest", project["name"])
     return Response(
         content=digest.read_bytes(),
         media_type="text/plain; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{project["name"]}_digest.txt"'},
+    )
+
+
+@app.get("/project/{project_id}/diagram", response_class=HTMLResponse)
+def project_diagram(request: Request, project_id: int):
+    """Отдельная страница с mermaid-диаграммой проекта (код или структура).
+
+    Диаграмма сохраняется при анализе (EXPORT_DIR/project_<id>_diagram.mmd),
+    поэтому страница отдаёт её без повторного тяжёлого статического анализа.
+    """
+    user = require_user(request)
+    if not user:
+        return RedirectResponse("/")
+    project = db.get_project(project_id)
+    if not project:
+        return JSONResponse({"detail": "Проект не найден"}, status_code=404)
+    diagram_file = EXPORT_DIR / f"project_{project_id}_diagram.mmd"
+    if not diagram_file.exists():
+        return RedirectResponse(f"/project/{project_id}")
+    db.log_action(user["username"], "diagram", "просмотр диаграммы", project["name"])
+    return templates.TemplateResponse(
+        request,
+        "diagram_page.html",
+        {
+            "title": f"{project['owner']}/{project['name']}",
+            "code": diagram_file.read_text(encoding="utf-8"),
+        },
+    )
+
+
+@app.get("/journal", response_class=HTMLResponse)
+def journal_page(request: Request):
+    """Журнал работы: кто, что и когда делал — общий для веба и консоли.
+
+    Host видит весь журнал команды, Pi — только свои действия.
+    """
+    user = require_user(request)
+    if not user:
+        return RedirectResponse("/")
+    if user["role"] == "host":
+        rows = db.list_actions(limit=200)
+    else:
+        rows = db.list_actions(user=user["username"], limit=200)
+    return templates.TemplateResponse(
+        request,
+        "journal.html",
+        {"user": user, "rows": rows, "scope": "всей команды" if user["role"] == "host" else "ваших действий"},
     )
 
 
@@ -326,8 +464,11 @@ def api_export(request: Request, project_id: int):
     project = db.get_project(project_id)
     if not project:
         return JSONResponse({"detail": "Проект не найден"}, status_code=404)
+    if not can_access_project(user, project):
+        return JSONResponse({"detail": "Недостаточно прав (нужен режим Host)"}, status_code=403)
     digest = EXPORT_DIR / f"project_{project_id}_digest.txt"
     content = digest.read_text(encoding="utf-8") if digest.exists() else None
+    db.log_action(user["username"], "api_export", "выгрузка JSON", project["name"])
     return {
         "id": project["id"],
         "name": project["name"],

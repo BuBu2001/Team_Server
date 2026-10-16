@@ -94,7 +94,14 @@ def local_ip() -> str:
 # ----------------------------------------------------------- рабочие модули системы
 
 def load_modules(notify: Callable[[str], None]) -> dict[str, Any]:
-    """Загружает все модули системы; отсутствующие — деградируют мягко."""
+    """Загружает все модули системы; отсутствующие — деградируют мягко.
+
+    Перед загрузкой обязательно расширяем sys.path (корень репозитория +
+    gitdiagram-static/src) — иначе при обычном запуске скрипта из любой папки
+    ``app_platform`` не находится, и консоль молча работает без журнала и
+    древовидных диаграмм, хотя модули проекта на месте.
+    """
+    proto.add_project_src_to_path()
     mods: dict[str, Any] = {"staticdiagram": None, "diagram_gen": None,
                             "image_gen": None, "db": None}
     try:
@@ -256,16 +263,20 @@ def host_handle_request(conn: socket.socket, req: dict, ws: HostWorkspace,
                 ok({"stored_as": str(dest.relative_to(ws.root)),
                     "files": count, "bytes": size})
                 notify(f"Pi прислал проект '{dest.stem}' ({count} файлов, {size} байт)")
+                # В журнал/веб-панель попадает именно распакованная папка проекта:
+                # так веб-анализ (gitingest/gitdiagram) работает без ошибок,
+                # а не спотыкается о путь к .zip-файлу.
+                if db is not None:
+                    try:
+                        db.register_project(user, dest.stem, str(target_dir))
+                    except Exception:
+                        pass
+                journal(mods, user, "upload", f"{kind}: {name}", dest.stem)
             else:
                 size = proto.recv_file(conn, dest)
                 ok({"stored_as": str(dest.relative_to(ws.root)), "bytes": size})
                 notify(f"Pi прислал файл '{name}' ({size} байт)")
-            if db is not None:
-                try:
-                    db.register_project(user, dest.stem, str(dest))
-                except Exception:
-                    pass
-            journal(mods, user, "upload", f"{kind}: {name}", name)
+                journal(mods, user, "upload", f"{kind}: {name}", name)
             return True
 
         # ---------------- download: Host -> Pi ---------------------------------
@@ -325,14 +336,21 @@ def host_handle_request(conn: socket.socket, req: dict, ws: HostWorkspace,
                         res = code
                     except Exception as exc:  # noqa: BLE001
                         err_msg = str(exc).splitlines()[0] if str(exc) else repr(exc)
-                    if res is not None and getattr(res, "mermaid", "") and \
-                            str(res.mermaid).strip():
-                        text = str(res.mermaid)
+                    candidate = str(getattr(res, "mermaid", "") or "")
+                    has_nodes = (
+                        mods["diagram_gen"] is not None
+                        and mods["diagram_gen"].mermaid_has_nodes(candidate)
+                    )
+                    if candidate.strip() and has_nodes:
+                        text = candidate
                     else:
                         if err_msg:
                             notify(f"gitdiagram-static: {err_msg} — fallback на дерево")
-                        elif res is None:
+                        elif not candidate.strip():
                             notify("gitdiagram-static не вернул диаграмму — fallback на дерево")
+                        else:
+                            notify("gitdiagram-static не нашёл связей в коде — "
+                                   "fallback на диаграмму по дереву")
                         if req.get("fallback") != "off" and mods["diagram_gen"]:
                             fmt = "mermaid-tree"
                             tree = build_tree(proj_dir)
@@ -444,6 +462,8 @@ def make_host_handler(mods: dict, notify: Callable[[str], None],
                     notify("Пользователь Pi отключился. Сессия завершена.")
                     return
                 if not host_handle_request(conn, req, ws, mods, peer, notify):
+                    # Pi корректно завершил сессию командой quit
+                    notify("Пользователь Pi отключился. Сессия завершена.")
                     return
 
     return handle

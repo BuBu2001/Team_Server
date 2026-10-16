@@ -71,5 +71,19 @@ label { display: block; color: var(--muted); font-size: 14px; margin-top: 10px; 
 
 pre.summary, pre.tree { background: var(--card); border: 1px solid var(--border);
   border-radius: 8px; padding: 14px; overflow: auto; font-size: 14px; line-height: 1.5; }
-.actions { display: flex; gap: 10px; margin: 16px 0; }
+.actions { display: flex; gap: 10px; margin: 16px 0; flex-wrap: wrap; }
 .repo-header h1 b { color: var(--blue); }
+
+.diagram-box { background: var(--card); border: 1px solid var(--border);
+  border-radius: 8px; padding: 14px; overflow: auto; margin: 12px 0 20px; }
+.diagram-box .mermaid { margin: 0; }
+.diagram-box svg { max-width: none; }
+
+.action-list { list-style: none; padding: 0; font-size: 13px; }
+.action-list li { padding: 4px 0; border-bottom: 1px solid var(--border); }
+
+table.journal { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.journal th, table.journal td { text-align: left; padding: 8px 10px;
+  border-bottom: 1px solid var(--border); }
+table.journal th { color: var(--muted, #6e7681); font-weight: 600; }
+table.journal tr:hover td { background: #161b22; }

@@ -1,9 +1,12 @@
 boto3>=1.28.0  # AWS SDK for S3 support
 click>=8.0.0
+GitPython>=3.1.0  # клонирование репозиториев в src/gitingest/clone.py
 fastapi[standard]>=0.109.1  # Vulnerable to https://osv.dev/vulnerability/PYSEC-2024-38
 httpx
 loguru>=0.7.0
 pathspec>=0.12.1
+Pillow>=10.0.0  # PNG-диаграммы структуры проекта (app_platform/image_gen.py)
+-e ./gitdiagram-static  # CLI gitdiagram-static (connect) + статический анализ кода
 prometheus-client
 pydantic
 python-dotenv

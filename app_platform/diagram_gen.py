@@ -13,6 +13,30 @@ gitdiagram строит визуальные архитектуры репози
 """
 from __future__ import annotations
 
+import re
+
+# Признак «настоящей» mermaid-диаграммы: наличие узлов/связей (a --> b).
+# staticdiagram для пустого проекта отдаёт лишь заголовок и classDef без узлов —
+# такой результат бесполезен, и его нужно заменять на дерево файлов.
+_EDGE_RE = re.compile(r"-->|---|==>", re.MULTILINE)
+
+
+def mermaid_has_nodes(code: str) -> bool:
+    """True, если в mermaid-коде есть хотя бы одна связь/узел (а не только стили).
+
+    Используется как общий критерий для fallback'а на дерево и в консоли
+    (getting_started/core.py), и в веб-панели (app_platform/main.py).
+    """
+    if not code or not code.strip():
+        return False
+    for line in code.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith(("classDef", "class ", "%%", "%%{")):
+            continue
+        if _EDGE_RE.search(stripped):
+            return True
+    return False
+
 
 # Символы tree-вывода gitingest (├── └── │ и др.)
 

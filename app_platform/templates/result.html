@@ -8,11 +8,36 @@
 <pre class="summary">{{ summary }}</pre>
 
 <div class="actions">
+  <a class="btn btn-primary" href="/project/{{ project.id }}/diagram" target="_blank">🖼 Диаграмма (код/структура)</a>
   <a class="btn btn-primary" href="/download/tree/{{ project.id }}">💾 Скачать PNG структуры</a>
   <a class="btn" href="/download/digest/{{ project.id }}">Скачать digest (.txt)</a>
   <a class="btn" href="/project/{{ project.id }}">← Назад</a>
 </div>
 
+<h3>
+  Диаграмма
+  {% if diagram_kind == 'code' %}архитектуры кода (gitdiagram-static)
+  {% else %}структуры проекта{% endif %}
+</h3>
+{% if diagram_note %}
+<p class="muted">Диаграмма кода недоступна: {{ diagram_note }}. Показана структура проекта.</p>
+{% endif %}
+<div class="diagram-box">
+  <pre class="mermaid">{{ diagram_code }}</pre>
+</div>
+
 <h3>Дерево проекта</h3>
 <pre class="tree">{{ tree }}</pre>
+
+<script src="/static/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'loose' });
+  const el = document.querySelector('.mermaid');
+  const src = el.textContent;
+  mermaid.render('diagram-svg', src).then(({ svg }) => {
+    el.innerHTML = svg;
+  }).catch(e => {
+    el.textContent = 'Не удалось отрисовать диаграмму: ' + e.message + '\n\n' + src;
+  });
+</script>
 {% endblock %}

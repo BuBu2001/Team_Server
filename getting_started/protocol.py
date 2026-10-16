@@ -160,9 +160,17 @@ def add_project_src_to_path() -> None:
 
 
 def host_storage_dir(port: int) -> Path:
-    """Папка хоста для файлов Pi (по умолчанию <репозиторий>/data/pi_uploads)."""
+    """Папка хоста для файлов Pi — ОБЩАЯ с веб-панелью (data/).
+
+    Хост складывает файлы Pi в ``<repo>/data/files``, а проекты в
+    ``<repo>/data/projects`` — те же каталоги, что использует веб-панель
+    (app_platform.main.UPLOAD_DIR/PI_FILES_DIR). Благодаря этому веб и консоль
+    работают с одними данными: проект, отправленный Pi из консоли, сразу виден
+    и анализируется на веб-панели, и наоборот.
+
+    ``GETTINGSTARTED_STORAGE`` переопределяет базу (используется тестами).
+    """
     base = Path(os.environ.get("GETTINGSTARTED_STORAGE",
                                str(Path(__file__).resolve().parent.parent / "data")))
-    d = base / "pi_uploads" / f"port_{port}"
-    d.mkdir(parents=True, exist_ok=True)
-    return d
+    base.mkdir(parents=True, exist_ok=True)
+    return base

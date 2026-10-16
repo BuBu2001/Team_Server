@@ -7,7 +7,9 @@
 #   ./run.sh server               то же самое
 #   ./run.sh console [args...]    консоль обмена Host ⇄ Pi
 #                                 (Pi: ./run.sh console --host <IP-хоста>)
-#   ./run.sh test                 e2e + веб-тесты
+#   ./run.sh cryless [args...]    библиотека команд cryless
+#                                 (create repository / load data / connection check)
+#   ./run.sh test                 e2e + веб-тесты + тесты cryless
 #   ./setup.sh --dev              установка с инструментами тестов
 set -euo pipefail
 cd "$(dirname "$(readlink -f "$0")")"
@@ -28,6 +30,11 @@ case "${1:-server}" in
     shift
     exec "$PY" getting_started/gettingstarted_linux.py "$@"
     ;;
+  cryless)
+    [ -x "$PY" ] || exec ./setup.sh
+    shift
+    exec "$PY" -m cryless "$@"
+    ;;
   test|tests)
     [ -x "$PY" ] || exec ./setup.sh --dev
     if ! "$PY" -m pytest --version >/dev/null 2>&1; then
@@ -35,7 +42,7 @@ case "${1:-server}" in
       exit 1
     fi
     "$PY" getting_started/tests/e2e_system.py
-    exec "$PY" -m pytest tests/app_platform -q -p no:cacheprovider
+    exec "$PY" -m pytest tests/cryless tests/app_platform -q -p no:cacheprovider
     ;;
   --help|-h|help)
     sed -n '3,13p' "$0"

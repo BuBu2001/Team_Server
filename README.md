@@ -13,8 +13,10 @@
 
 ```
 app_platform/          # веб-панель (FastAPI): загрузка, анализ, диаграммы, журнал, роли
+                       #   + HTTP-API для CLI cryless (cryless_api.py)
 getting_started/       # консоль Host ⇄ Pi: TCP-протокол, обмен файлами, диаграммы
 gitdiagram-static/     # статический анализ кода → mermaid-диаграмма
+cryless/               # библиотека команд cryless (работает как git)
 data/                  # общее хранилище (files, projects, exports) + team_server.db
 run_server.py          # точка входа веб-сервера
 ```
@@ -61,24 +63,63 @@ pacman, zypper, apk, xbps, emerge, eopkg, Termux pkg) и, если чего-то
 `download`, `tree`, `analyze`, `journal`, `quit`. Загруженные проекты и файлы
 появляются на веб-панели Host без дополнительных действий.
 
+### Pi — библиотека команд `cryless` (как git)
+
+Второй, «гитовый» способ отправки проекта: команды запускаются прямо в корне
+проекта и работают через тот же сервер Host.
+
+```bash
+cd ~/my_project
+
+cryless create repository my_project   # создать репозиторий (и .cryless/ в проекте)
+cryless load data my_project           # загрузить файлы проекта на сервер
+cryless connection check               # проверить, есть ли соединение с сервером
+cryless help                           # справка по командам
+```
+
+Через обёртку `run.sh` то же самое: `./run.sh cryless help`,
+`./run.sh cryless connection check` и т. д. При первом запуске не забудьте
+указать сервер и ник:
+
+```bash
+cryless create repository my_project --server http://<IP-хоста>:8000 --user vanya_pi
+```
+
+Условия (проверяются самой библиотекой):
+
+* команду запускают **в корне проекта** — там, где лежат его файлы;
+* в имени проекта нет **пробелов** и нет **кириллицы** — только латиница,
+  цифры, точка, дефис, подчёркивание (`my_project`, `api-v2`, `site.ru`).
+
+После `create repository` в проекте появляются `.cryless/` (настройки и токен
+доступа, только для владельца) и `.crylessignore` — что не отправлять на сервер
+(синтаксис `.gitignore`; по умолчанию исключены `.venv/`, `__pycache__/`,
+`*.log`, `.env` и т. п.). `load data` заменяет содержимое репозитория целиком
+(как `git push`) и сразу запускает анализ: на сервере появляются PNG-структура,
+digest и mermaid-диаграмма, а действие попадает в общий журнал.
+
 ### Переменные окружения (необязательно)
 
 | Переменная | Назначение |
 |---|---|
 | `TEAM_SERVER_DB` | путь к БД (по умолчанию `data/team_server.db`) |
-| `GETTINGSTARTED_STORAGE` | базовый каталог хранения (по умолчанию `data/`) |
+| `TEAM_SERVER_DATA` | каталог данных сервера (по умолчанию `data/`) |
+| `GETTINGSTARTED_STORAGE` | базовый каталог хранения консоли (по умолчанию `data/`) |
+| `CRYLESS_SERVER` | адрес сервера для cryless (по умолчанию `http://localhost:8000`) |
+| `CRYLESS_USER` | ник пользователя для cryless |
+| `CRYLESS_HOME` | каталог настроек cryless (по умолчанию `~/.config/cryless`) |
 
 ## Тесты
 
 ```bash
-./run.sh test    # e2e связности модулей (15 проверок) + веб-панель (6 проверок)
+./run.sh test    # e2e связности (15) + веб-панель (6) + cryless (16)
 ```
 
 Эквиваленты без скриптов:
 
 ```bash
 .venv/bin/python getting_started/tests/e2e_system.py
-.venv/bin/python -m pytest tests/app_platform -q
+.venv/bin/python -m pytest tests/app_platform tests/cryless -q
 ```
 
 ## Роли

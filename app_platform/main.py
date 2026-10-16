@@ -7,6 +7,7 @@
             получает структуру проекта (PNG), может скачивать данные с Host.
 """
 import io
+import os
 import re
 import zipfile
 from pathlib import Path
@@ -22,7 +23,9 @@ from .diagram_gen import mermaid_has_nodes, tree_to_mermaid
 from .image_gen import tree_to_image
 
 BASE_DIR = Path(__file__).resolve().parent
-DATA_DIR = BASE_DIR.parent / "data"
+# Общий каталог данных (проекты, файлы, экспорты). Переопределяется переменной
+# TEAM_SERVER_DATA — удобно для развёртывания и для тестов в изоляции.
+DATA_DIR = Path(os.environ.get("TEAM_SERVER_DATA") or BASE_DIR.parent / "data")
 UPLOAD_DIR = DATA_DIR / "projects"
 EXPORT_DIR = DATA_DIR / "exports"
 # Общее хранилище с консолью Host ⇄ Pi (getting_started/protocol.py):
@@ -43,6 +46,11 @@ app.include_router(site_router)
 # Mount не копируется через include_router — монтируем сайт напрямую в app.
 mount_site(app)
 
+# HTTP-API библиотеки команд cryless (CLI на машине Pi: create/load/connection).
+from .cryless_api import router as cryless_router  # noqa: E402
+
+app.include_router(cryless_router)
+
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_.-]{2,32}$")
 
 
@@ -53,8 +61,6 @@ def _bootstrap() -> None:
     db.init_db()
     # Team Server доступен по IP в локальной сети — расширяем allowed hosts
     # для интегрированного сайта ( middleware читает env при импорте).
-    import os
-
     hosts = {h.strip() for h in os.environ.get("ALLOWED_HOSTS", "").split(",") if h.strip()}
     hosts |= {"localhost", "127.0.0.1", "*"}
     os.environ["ALLOWED_HOSTS"] = ",".join(sorted(hosts))
@@ -271,6 +277,87 @@ def _resolve_project_target(project: dict) -> Path:
     raise ValueError(f"Источник проекта не найден на сервере: {project['source']}")
 
 
+class SourceError(Exception):
+    """Источник проекта не пригоден для анализа (клиентская ошибка, HTTP 422)."""
+
+
+class AnalysisError(Exception):
+    """Анализ не удался по вине сервера (HTTP 500)."""
+
+
+def analyze_and_export(project: dict) -> dict:
+    """Анализирует проект и сохраняет результаты в EXPORT_DIR.
+
+    Общий код веб-панели (маршрут /project/{id}/analyze) и HTTP-API cryless
+    (``cryless load data`` анализирует загруженные данные на сервере), поэтому
+    и панель, и консоль Pi видят одни и те же диаграммы.
+
+    Возвращает словарь для шаблона result.html; поднимает SourceError (422)
+    для неподходящего источника и AnalysisError (500), если анализ упал.
+    """
+    project_id = project["id"]
+    src_path = Path(project["source"])
+    url_file = src_path / ".source_url"
+    has_files = src_path.is_dir() and any(
+        p for p in src_path.iterdir() if p.name != ".source_url"
+    )
+    try:
+        if not has_files and url_file.exists():
+            # проект добавлен ссылкой на репозиторий — клонируем при анализе
+            target: str | Path = url_file.read_text(encoding="utf-8").strip()
+        else:
+            target = _resolve_project_target(project)
+        if isinstance(target, Path):
+            target = str(target)
+    except (OSError, ValueError, zipfile.BadZipFile, NotADirectoryError) as e:
+        raise SourceError(str(e)) from e
+
+    try:
+        summary, tree, content = _run_gitingest(target)
+    except Exception as e:  # noqa: BLE001
+        raise AnalysisError(f"Ошибка анализа: {e}") from e
+
+    EXPORT_DIR.mkdir(parents=True, exist_ok=True)
+    png = tree_to_image(
+        tree,
+        f"{project['owner']}/{project['name']}",
+        summary.splitlines()[0] if summary else "",
+    )
+    export = EXPORT_DIR / f"project_{project_id}_tree.png"
+    export.write_bytes(png)
+    digest = EXPORT_DIR / f"project_{project_id}_digest.txt"
+    digest.write_text(content, encoding="utf-8")
+
+    # gitdiagram-стиль: диаграмма по дереву проекта (рендер в браузере)
+    tree_body = "\n".join(
+        ln for ln in tree.splitlines() if ln.strip() and not ln.startswith("Directory structure")
+    )
+    tree_diagram = tree_to_mermaid(tree_body or tree)
+
+    # Диаграмма кода (gitdiagram-static). Если анализ не дал узлов — fallback
+    # на диаграмму по дереву, чтобы Pi всегда видел содержательную картинку.
+    code_diagram, code_error = (None, "")
+    if isinstance(target, str) and Path(target).is_dir():
+        code_diagram, code_error = code_mermaid(target)
+    if code_diagram and not mermaid_has_nodes(code_diagram):
+        code_error = code_error or "статический анализ не нашёл связей между модулями"
+        code_diagram = None
+    diagram_code = code_diagram or tree_diagram
+    (EXPORT_DIR / f"project_{project_id}_diagram.mmd").write_text(
+        diagram_code, encoding="utf-8"
+    )
+
+    return {
+        "summary": summary,
+        "tree": tree,
+        "diagram_code": diagram_code,
+        "diagram_kind": "code" if code_diagram else "tree",
+        "diagram_note": code_error if code_diagram is None and code_error else "",
+        "png_name": export.name,
+    }
+
+
+
 @app.get("/project/{project_id}", response_class=HTMLResponse)
 def project_page(request: Request, project_id: int):
     user = require_user(request)
@@ -299,51 +386,12 @@ def analyze_project(request: Request, project_id: int):
     if not project:
         return JSONResponse({"detail": "Проект не найден"}, status_code=404)
 
-    src_path = Path(project["source"])
-    url_file = src_path / ".source_url"
-    has_files = src_path.is_dir() and any(
-        p for p in src_path.iterdir() if p.name != ".source_url"
-    )
     try:
-        if not has_files and url_file.exists():
-            # проект добавлен ссылкой на репозиторий — клонируем при анализе
-            target: str | Path = url_file.read_text(encoding="utf-8").strip()
-        else:
-            target = _resolve_project_target(project)
-        if isinstance(target, Path):
-            target = str(target)
-    except (OSError, ValueError, zipfile.BadZipFile, NotADirectoryError) as e:
+        result = analyze_and_export(project)
+    except SourceError as e:
         return JSONResponse({"detail": str(e)}, status_code=422)
-
-    try:
-        summary, tree, content = _run_gitingest(target)
-    except Exception as e:  # noqa: BLE001
-        return JSONResponse({"detail": f"Ошибка анализа: {e}"}, status_code=500)
-
-    png = tree_to_image(tree, f"{project['owner']}/{project['name']}", summary.splitlines()[0] if summary else "")
-    export = EXPORT_DIR / f"project_{project_id}_tree.png"
-    export.write_bytes(png)
-    digest = EXPORT_DIR / f"project_{project_id}_digest.txt"
-    digest.write_text(content, encoding="utf-8")
-
-    # gitdiagram-стиль: диаграмма по дереву проекта (рендер в браузере)
-    tree_body = "\n".join(
-        ln for ln in tree.splitlines() if ln.strip() and not ln.startswith("Directory structure")
-    )
-    tree_diagram = tree_to_mermaid(tree_body or tree)
-
-    # Диаграмма кода (gitdiagram-static). Если анализ не дал узлов — fallback
-    # на диаграмму по дереву, чтобы Pi всегда видел содержательную картинку.
-    code_diagram, code_error = (None, "")
-    if isinstance(target, str) and Path(target).is_dir():
-        code_diagram, code_error = code_mermaid(target)
-    if code_diagram and not mermaid_has_nodes(code_diagram):
-        code_error = code_error or "статический анализ не нашёл связей между модулями"
-        code_diagram = None
-    diagram_code = code_diagram or tree_diagram
-    (EXPORT_DIR / f"project_{project_id}_diagram.mmd").write_text(
-        diagram_code, encoding="utf-8"
-    )
+    except AnalysisError as e:
+        return JSONResponse({"detail": str(e)}, status_code=500)
 
     db.log_action(
         user["username"], "analyze", f"проект «{project['name']}»", project["name"]
@@ -354,12 +402,12 @@ def analyze_project(request: Request, project_id: int):
         {
             "user": user,
             "project": project,
-            "summary": summary,
-            "tree": tree,
-            "diagram_code": diagram_code,
-            "diagram_kind": "code" if code_diagram else "tree",
-            "diagram_note": code_error if code_diagram is None and code_error else "",
-            "png_name": export.name,
+            "summary": result["summary"],
+            "tree": result["tree"],
+            "diagram_code": result["diagram_code"],
+            "diagram_kind": result["diagram_kind"],
+            "diagram_note": result["diagram_note"],
+            "png_name": result["png_name"],
         },
     )
 

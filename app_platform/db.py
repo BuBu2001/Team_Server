@@ -7,7 +7,9 @@ Host ⇄ Pi (getting_started/core.py через ``log_action``), поэтому 
 Путь можно переопределить переменной окружения ``TEAM_SERVER_DB`` — это нужно
 тестам (и e2e-сценарию), чтобы не писать в рабочую базу data/team_server.db.
 """
+import hashlib
 import os
+import secrets
 import sqlite3
 from pathlib import Path
 
@@ -48,6 +50,15 @@ def init_db() -> None:
                 action TEXT NOT NULL,                  -- upload/download/analyze/...
                 details TEXT NOT NULL DEFAULT '',
                 project TEXT NOT NULL DEFAULT ''
+            );
+            -- Токены репозиториев cryless (CLI-библиотеки команд).
+            -- Хранится только SHA-256 от токена: сам токен выдаётся один раз
+            -- при `cryless create repository` и лежит в .cryless/config.json.
+            CREATE TABLE IF NOT EXISTS cryless_tokens (
+                token_hash TEXT PRIMARY KEY,
+                repo_id INTEGER NOT NULL,              -- id из projects
+                username TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
             );
             """
         )
@@ -125,7 +136,6 @@ def get_project(project_id: int) -> dict | None:
 
 
 # ---------- Журнал работы (получает данные из консоли GettingStarted) ----------
-
 def register_project(username: str, name: str, source: str) -> dict:
     """Добавляет проект; пользователь создаётся автоматически, если новый."""
     with get_conn() as conn:
@@ -172,3 +182,43 @@ def list_actions(user: str | None = None, limit: int = 50) -> list[dict]:
     with get_conn() as conn:
         rows = conn.execute(q, args).fetchall()
     return [dict(r) for r in rows]
+
+
+# ---------- Репозитории cryless (CLI-библиотека команд) ----------
+
+def find_project(owner_id: int, name: str) -> dict | None:
+    """Проект конкретного владельца по имени (у разных Pi могут совпадать)."""
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM projects WHERE owner_id = ? AND name = ?",
+            (owner_id, name),
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def issue_repo_token(repo_id: int, username: str) -> str:
+    """Выдаёт новый токен доступа к репозиторию (старые аннулируются).
+
+    В базе лежит только SHA-256: утечка БД не даёт доступа к репозиториям.
+    """
+    token = secrets.token_urlsafe(32)
+    digest = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    with get_conn() as conn:
+        conn.execute("DELETE FROM cryless_tokens WHERE repo_id = ?", (repo_id,))
+        conn.execute(
+            "INSERT INTO cryless_tokens (token_hash, repo_id, username) VALUES (?, ?, ?)",
+            (digest, repo_id, username),
+        )
+    return token
+
+
+def resolve_repo_token(token: str) -> dict | None:
+    """Токен -> {repo_id, username} или None, если токен неизвестен."""
+    digest = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT repo_id, username FROM cryless_tokens WHERE token_hash = ?",
+            (digest,),
+        ).fetchone()
+    return dict(row) if row else None
+

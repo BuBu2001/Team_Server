@@ -7,6 +7,7 @@ loguru>=0.7.0
 pathspec>=0.12.1
 Pillow>=10.0.0  # PNG-диаграммы структуры проекта (app_platform/image_gen.py)
 -e ./gitdiagram-static  # CLI gitdiagram-static (connect) + статический анализ кода
+-e ./cryless  # CLI cryless: create repository / load data / connection check
 prometheus-client
 pydantic
 python-dotenv

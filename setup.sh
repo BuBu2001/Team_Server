@@ -155,4 +155,5 @@ ok "Установлено из $REQ"
 log "Готово ✔"
 printf '  Сервер (Host):   ./run.sh\n'
 printf '  Консоль (Pi):    ./run.sh console --host <IP-хоста>\n'
+printf '  cryless (Pi):    ./run.sh cryless help\n'
 printf '  Тесты:           ./run.sh test\n'

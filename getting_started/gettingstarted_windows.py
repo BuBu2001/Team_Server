@@ -43,6 +43,13 @@ def main(argv: list[str] | None = None) -> int:
                         help="режим без интерактивного меню (для скриптов/тестов)")
     parser.add_argument("--host", default=None,
                         help="IP хоста для режима Pi без интерактивного ввода")
+    # Флаги автоматизации (для e2e-тестов и скриптов):
+    parser.add_argument("--script", default=None,
+                        help="список команд Pi через запятую (up-dir <путь>,analyz <имя>,...)")
+    parser.add_argument("--auto-demo", action="store_true",
+                        help="Pi: сразу выполнить полный демо-цикл и выйти")
+    parser.add_argument("--demo-dir", default=None,
+                        help="папка проекта для демо-цикла")
     args = parser.parse_args(argv)
 
     osinfo = get_os_specific()
@@ -58,10 +65,10 @@ def main(argv: list[str] | None = None) -> int:
     from core import (  # noqa: E402  (после настройки sys.path)
         DEFAULT_HOST_PORT,
         choose_mode,
+        load_modules,
         local_ip,
-        make_host_handler,
         print_banner,
-        run_host_session,
+        run_host_direct,
         run_pi_client,
         wait_for_peer,
     )
@@ -80,16 +87,7 @@ def main(argv: list[str] | None = None) -> int:
     if mode == "host":
         notify(f"\nВы выбрали режим Host. Порт: {port}. "
                f"IP для пользователя Pi: {local_ip()}")
-        conn = wait_for_peer("host", port, args.timeout, notify)
-        if conn is None:
-            return 1
-        try:
-            from staticdiagram.cli import main as gitdiagram_main
-        except ImportError:
-            def gitdiagram_main(a: list[str]) -> int:
-                notify("Проект gitdiagram-static не найден — функции хоста недоступны.")
-                return 127
-        run_host_session(conn, make_host_handler(gitdiagram_main, notify), notify)
+        return run_host_direct(port, args.timeout, notify) or 0
     else:
         notify("\nВы выбрали режим Pi (обычный пользователь).")
         if args.host:
@@ -97,7 +95,9 @@ def main(argv: list[str] | None = None) -> int:
         conn = wait_for_peer("pi", port, args.timeout, notify)
         if conn is None:
             return 1
-        run_pi_client(conn, notify)
+        script = args.script.split(",") if args.script else None
+        auto = {"auto_demo": bool(args.auto_demo), "demo_dir": args.demo_dir}
+        run_pi_client(conn, notify, osinfo["ask"], script=script, auto=auto)
 
     print_banner()
     notify("Спасибо за использование GettingStarted!")

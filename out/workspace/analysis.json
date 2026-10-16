@@ -1,0 +1,2546 @@
+{
+  "repository": {
+    "owner": null,
+    "name": "workspace",
+    "branch": "qwen-code-19a6dccb-ce23-4cd5-92bf-236b1e2c6536",
+    "commit": "38f1759a2b57cd6091308b7162ed45be439ecfcd",
+    "origin": "local:/workspace"
+  },
+  "project": {
+    "name": "gitingest",
+    "version": "0.3.1",
+    "description": "CLI tool to analyze and create text dumps of codebases for LLMs",
+    "license": null,
+    "dependencies": [
+      "boto3>=1.28.0",
+      "click>=8.0.0",
+      "eval-type-backport",
+      "fastapi[standard]>=0.109.1",
+      "gitpython>=3.1.0",
+      "httpx",
+      "loguru>=0.7.0",
+      "pathspec>=0.12.1",
+      "pre-commit",
+      "prometheus-client",
+      "pydantic",
+      "pytest",
+      "pytest-asyncio",
+      "pytest-cov",
+      "pytest-mock",
+      "python-dotenv",
+      "sentry-sdk[fastapi]",
+      "slowapi",
+      "starlette>=0.40.0",
+      "strenum; python_version < '3.11'",
+      "tiktoken>=0.7.0",
+      "typing_extensions>= 4.0.0; python_version < '3.10'",
+      "uvicorn>=0.11.7"
+    ],
+    "console_scripts": {
+      "gitingest": "gitingest.__main__:main"
+    },
+    "package_roots": [
+      "src"
+    ]
+  },
+  "explanation": {
+    "purpose": "CLI tool to analyze and create text dumps of codebases for LLMs",
+    "readme_title": null,
+    "total_loc": 12254,
+    "groups": [],
+    "entry_components": [
+      "app_platform/main.py",
+      "run_server.py",
+      "src/gitingest/__main__.py",
+      "src/server/__main__.py",
+      "gitdiagram-static/src/staticdiagram/cli.py",
+      "gitdiagram-static/src/staticdiagram/__main__.py",
+      "getting_started"
+    ],
+    "route_components": [
+      "app_platform/main.py",
+      "app_platform",
+      "src/server/main.py",
+      "src/server/routers/ingest.py",
+      "src/server/routers/dynamic.py",
+      "src/server/routers/index.py"
+    ],
+    "task_components": [],
+    "core_modules": [
+      {
+        "path": "src/gitingest/utils/logging_config.py",
+        "inbound": 15,
+        "loc": 201
+      },
+      {
+        "path": "src/gitingest/schemas",
+        "inbound": 9,
+        "loc": 8
+      },
+      {
+        "path": "src/gitingest/config.py",
+        "inbound": 7,
+        "loc": 15
+      },
+      {
+        "path": "src/server/server_config.py",
+        "inbound": 6,
+        "loc": 57
+      },
+      {
+        "path": "src/server/models.py",
+        "inbound": 5,
+        "loc": 199
+      },
+      {
+        "path": "src/gitingest/utils/git_utils.py",
+        "inbound": 5,
+        "loc": 532
+      },
+      {
+        "path": "src/gitingest/utils/compat_func.py",
+        "inbound": 5,
+        "loc": 45
+      },
+      {
+        "path": "src/gitingest/utils/compat_typing.py",
+        "inbound": 4,
+        "loc": 19
+      }
+    ],
+    "externals": [
+      {
+        "key": "http",
+        "label": "External HTTP APIs",
+        "users": {
+          "src/gitingest/output_formatter.py": 1
+        }
+      },
+      {
+        "key": "postgres",
+        "label": "PostgreSQL",
+        "users": {
+          "src/server/models.py": 1
+        }
+      },
+      {
+        "key": "redis",
+        "label": "Redis",
+        "users": {
+          "src/server/models.py": 1
+        }
+      },
+      {
+        "key": "s3",
+        "label": "Object storage (S3)",
+        "users": {
+          "src/server/s3_utils.py": 1
+        }
+      },
+      {
+        "key": "sqlite",
+        "label": "SQLite",
+        "users": {
+          "app_platform": 1
+        }
+      }
+    ],
+    "console_scripts": {
+      "gitingest": "gitingest.__main__:main"
+    },
+    "dependencies": [
+      "boto3>=1.28.0",
+      "click>=8.0.0",
+      "eval-type-backport",
+      "fastapi[standard]>=0.109.1",
+      "gitpython>=3.1.0",
+      "httpx",
+      "loguru>=0.7.0",
+      "pathspec>=0.12.1",
+      "pre-commit",
+      "prometheus-client",
+      "pydantic",
+      "pytest",
+      "pytest-asyncio",
+      "pytest-cov",
+      "pytest-mock",
+      "python-dotenv",
+      "sentry-sdk[fastapi]",
+      "slowapi",
+      "starlette>=0.40.0",
+      "strenum; python_version < '3.11'",
+      "tiktoken>=0.7.0",
+      "typing_extensions>= 4.0.0; python_version < '3.10'",
+      "uvicorn>=0.11.7"
+    ],
+    "coverage": {
+      "files_total": 1021,
+      "files_parsed": 70,
+      "files_failed": 0,
+      "files_skipped_tests": 41,
+      "files_skipped_other": 0,
+      "import_edges": 101,
+      "imports_resolved": 101,
+      "imports_unresolved": 112,
+      "imports_stdlib": 239,
+      "components_total": 50,
+      "components_shown": 23,
+      "component_depth": 1,
+      "top_unresolved": [
+        [
+          "fastapi",
+          24
+        ],
+        [
+          "uvicorn",
+          4
+        ],
+        [
+          "slowapi",
+          4
+        ],
+        [
+          "app_platform",
+          3
+        ],
+        [
+          "core",
+          3
+        ],
+        [
+          "staticdiagram",
+          3
+        ],
+        [
+          "typing_extensions",
+          3
+        ],
+        [
+          "pydantic",
+          3
+        ],
+        [
+          "prometheus_client",
+          3
+        ],
+        [
+          "git",
+          2
+        ],
+        [
+          "botocore",
+          2
+        ],
+        [
+          "PIL",
+          1
+        ],
+        [
+          "click",
+          1
+        ],
+        [
+          "requests",
+          1
+        ],
+        [
+          "tiktoken",
+          1
+        ]
+      ],
+      "syntax_errors": []
+    }
+  },
+  "components": [
+    {
+      "path": "app_platform/main.py",
+      "label": "Application entry",
+      "kind": "file",
+      "files": [
+        "app_platform/main.py"
+      ],
+      "loc": 345,
+      "inbound": 0,
+      "outbound": 1,
+      "pagerank": 0.01092,
+      "score": 0.6219,
+      "signals": [
+        "entrypoint:script",
+        "http_server",
+        "web:fastapi"
+      ],
+      "entrypoints": [
+        "app_platform/main.py"
+      ],
+      "routes": 12,
+      "tasks": 0,
+      "primary_file": "app_platform/main.py",
+      "docstring": "Team Server — локальная платформа в стиле GitHub с анализом через gitingest."
+    },
+    {
+      "path": "src/gitingest/utils/logging_config.py",
+      "label": "Logging Config",
+      "kind": "file",
+      "files": [
+        "src/gitingest/utils/logging_config.py"
+      ],
+      "loc": 201,
+      "inbound": 15,
+      "outbound": 0,
+      "pagerank": 0.08688,
+      "score": 0.5914,
+      "signals": [],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/gitingest/utils/logging_config.py",
+      "docstring": "Logging configuration for gitingest using loguru."
+    },
+    {
+      "path": "gitdiagram-static",
+      "label": "",
+      "kind": "package",
+      "files": [
+        "gitdiagram-static/src/staticdiagram/__init__.py",
+        "gitdiagram-static/src/staticdiagram/artifact.py",
+        "gitdiagram-static/src/staticdiagram/depgraph.py",
+        "gitdiagram-static/src/staticdiagram/explain.py",
+        "gitdiagram-static/src/staticdiagram/gettingstarted.py",
+        "gitdiagram-static/src/staticdiagram/infra.py",
+        "gitdiagram-static/src/staticdiagram/ingest.py",
+        "gitdiagram-static/src/staticdiagram/mermaid.py",
+        "gitdiagram-static/src/staticdiagram/model.py",
+        "gitdiagram-static/src/staticdiagram/pipeline.py",
+        "gitdiagram-static/src/staticdiagram/pngexport.py",
+        "gitdiagram-static/src/staticdiagram/pyanalysis.py",
+        "gitdiagram-static/src/staticdiagram/report.py",
+        "gitdiagram-static/src/staticdiagram/resolver.py",
+        "gitdiagram-static/src/staticdiagram/svgrender.py"
+      ],
+      "loc": 5256,
+      "inbound": 0,
+      "outbound": 0,
+      "pagerank": 0.01092,
+      "score": 0.5649,
+      "signals": [
+        "config:toml"
+      ],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "gitdiagram-static/src/staticdiagram/depgraph.py",
+      "docstring": "staticdiagram — architecture diagrams from static analysis, no AI."
+    },
+    {
+      "path": "getting_started",
+      "label": "Getting Started",
+      "kind": "package",
+      "files": [
+        "getting_started/core.py",
+        "getting_started/gettingstarted_linux.py",
+        "getting_started/gettingstarted_windows.py"
+      ],
+      "loc": 494,
+      "inbound": 0,
+      "outbound": 0,
+      "pagerank": 0.01092,
+      "score": 0.5478,
+      "signals": [
+        "cli:argparse",
+        "entrypoint:script"
+      ],
+      "entrypoints": [
+        "getting_started/gettingstarted_linux.py",
+        "getting_started/gettingstarted_windows.py"
+      ],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "getting_started/core.py",
+      "docstring": "Общая логика консоли GettingStarted (используется Windows- и Linux-версии)."
+    },
+    {
+      "path": "run_server.py",
+      "label": "Run Server",
+      "kind": "file",
+      "files": [
+        "run_server.py"
+      ],
+      "loc": 15,
+      "inbound": 0,
+      "outbound": 0,
+      "pagerank": 0.01092,
+      "score": 0.5159,
+      "signals": [
+        "entrypoint:script"
+      ],
+      "entrypoints": [
+        "run_server.py"
+      ],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "run_server.py",
+      "docstring": "Точка входа Team Server: python run_server.py"
+    },
+    {
+      "path": "src/gitingest/__main__.py",
+      "label": "CLI entry (Gitingest)",
+      "kind": "file",
+      "files": [
+        "src/gitingest/__main__.py"
+      ],
+      "loc": 205,
+      "inbound": 0,
+      "outbound": 3,
+      "pagerank": 0.01092,
+      "score": 0.4086,
+      "signals": [
+        "cli",
+        "cli:click",
+        "entrypoint:script"
+      ],
+      "entrypoints": [
+        "src/gitingest/__main__.py"
+      ],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/gitingest/__main__.py",
+      "docstring": "Command-line interface (CLI) for Gitingest."
+    },
+    {
+      "path": "src/server/__main__.py",
+      "label": "CLI entry (Server)",
+      "kind": "file",
+      "files": [
+        "src/server/__main__.py"
+      ],
+      "loc": 33,
+      "inbound": 0,
+      "outbound": 1,
+      "pagerank": 0.01092,
+      "score": 0.3971,
+      "signals": [
+        "entrypoint:script"
+      ],
+      "entrypoints": [
+        "src/server/__main__.py"
+      ],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/server/__main__.py",
+      "docstring": "Server module entry point for running with python -m server."
+    },
+    {
+      "path": "src/gitingest/schemas",
+      "label": "Schemas package root",
+      "kind": "module",
+      "files": [
+        "src/gitingest/schemas/__init__.py"
+      ],
+      "loc": 8,
+      "inbound": 9,
+      "outbound": 3,
+      "pagerank": 0.037809,
+      "score": 0.3615,
+      "signals": [],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/gitingest/schemas/__init__.py",
+      "docstring": "Module containing the schemas for the Gitingest package."
+    },
+    {
+      "path": "src/server/server_config.py",
+      "label": "Server Config",
+      "kind": "file",
+      "files": [
+        "src/server/server_config.py"
+      ],
+      "loc": 57,
+      "inbound": 6,
+      "outbound": 0,
+      "pagerank": 0.050895,
+      "score": 0.3467,
+      "signals": [
+        "http_server",
+        "web:fastapi"
+      ],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/server/server_config.py",
+      "docstring": "Configuration for the server."
+    },
+    {
+      "path": "gitdiagram-static/src/staticdiagram/cli.py",
+      "label": "CLI",
+      "kind": "file",
+      "files": [
+        "gitdiagram-static/src/staticdiagram/cli.py"
+      ],
+      "loc": 151,
+      "inbound": 0,
+      "outbound": 0,
+      "pagerank": 0.01092,
+      "score": 0.345,
+      "signals": [
+        "cli:argparse",
+        "entrypoint:script"
+      ],
+      "entrypoints": [
+        "gitdiagram-static/src/staticdiagram/cli.py"
+      ],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "gitdiagram-static/src/staticdiagram/cli.py",
+      "docstring": "Command line interface."
+    },
+    {
+      "path": "gitdiagram-static/src/staticdiagram/__main__.py",
+      "label": "CLI entry",
+      "kind": "file",
+      "files": [
+        "gitdiagram-static/src/staticdiagram/__main__.py"
+      ],
+      "loc": 5,
+      "inbound": 0,
+      "outbound": 0,
+      "pagerank": 0.01092,
+      "score": 0.3353,
+      "signals": [
+        "entrypoint:script"
+      ],
+      "entrypoints": [
+        "gitdiagram-static/src/staticdiagram/__main__.py"
+      ],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "gitdiagram-static/src/staticdiagram/__main__.py",
+      "docstring": null
+    },
+    {
+      "path": "src/gitingest/config.py",
+      "label": "Configuration",
+      "kind": "file",
+      "files": [
+        "src/gitingest/config.py"
+      ],
+      "loc": 15,
+      "inbound": 7,
+      "outbound": 0,
+      "pagerank": 0.034971,
+      "score": 0.3129,
+      "signals": [],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/gitingest/config.py",
+      "docstring": "Configuration file for the project."
+    },
+    {
+      "path": "app_platform",
+      "label": "App Platform",
+      "kind": "package",
+      "files": [
+        "app_platform/__init__.py",
+        "app_platform/db.py",
+        "app_platform/diagram_gen.py",
+        "app_platform/image_gen.py",
+        "app_platform/site_router.py"
+      ],
+      "loc": 419,
+      "inbound": 0,
+      "outbound": 3,
+      "pagerank": 0.01092,
+      "score": 0.2668,
+      "signals": [
+        "driver:sqlite",
+        "http_server",
+        "state:sql",
+        "web:fastapi"
+      ],
+      "entrypoints": [],
+      "routes": 2,
+      "tasks": 0,
+      "primary_file": "app_platform/site_router.py",
+      "docstring": "База данных платформы (SQLite): пользователи и проекты."
+    },
+    {
+      "path": "src/server/models.py",
+      "label": "Models",
+      "kind": "file",
+      "files": [
+        "src/server/models.py"
+      ],
+      "loc": 199,
+      "inbound": 5,
+      "outbound": 3,
+      "pagerank": 0.029117,
+      "score": 0.2664,
+      "signals": [
+        "schema:pydantic"
+      ],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/server/models.py",
+      "docstring": "Pydantic models for the query form."
+    },
+    {
+      "path": "src/gitingest/utils/git_utils.py",
+      "label": "Git Utils",
+      "kind": "file",
+      "files": [
+        "src/gitingest/utils/git_utils.py"
+      ],
+      "loc": 532,
+      "inbound": 5,
+      "outbound": 4,
+      "pagerank": 0.031751,
+      "score": 0.237,
+      "signals": [
+        "vcs:gitpython"
+      ],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/gitingest/utils/git_utils.py",
+      "docstring": "Utility functions for interacting with Git repositories."
+    },
+    {
+      "path": "src/server/main.py",
+      "label": "Application entry (Server)",
+      "kind": "file",
+      "files": [
+        "src/server/main.py"
+      ],
+      "loc": 214,
+      "inbound": 1,
+      "outbound": 5,
+      "pagerank": 0.014015,
+      "score": 0.2351,
+      "signals": [
+        "http_server",
+        "observability:errors",
+        "web:fastapi",
+        "web:starlette"
+      ],
+      "entrypoints": [],
+      "routes": 8,
+      "tasks": 0,
+      "primary_file": "src/server/main.py",
+      "docstring": "Main module for the FastAPI application."
+    },
+    {
+      "path": "src/gitingest/entrypoint.py",
+      "label": "Entrypoint",
+      "kind": "file",
+      "files": [
+        "src/gitingest/entrypoint.py"
+      ],
+      "loc": 353,
+      "inbound": 2,
+      "outbound": 11,
+      "pagerank": 0.031187,
+      "score": 0.2233,
+      "signals": [],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/gitingest/entrypoint.py",
+      "docstring": "Main entry point for ingesting a source and processing its contents."
+    },
+    {
+      "path": "src/gitingest/utils/compat_func.py",
+      "label": "Compat Func",
+      "kind": "file",
+      "files": [
+        "src/gitingest/utils/compat_func.py"
+      ],
+      "loc": 45,
+      "inbound": 5,
+      "outbound": 0,
+      "pagerank": 0.037224,
+      "score": 0.2221,
+      "signals": [],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/gitingest/utils/compat_func.py",
+      "docstring": "Compatibility functions for Python 3.8."
+    },
+    {
+      "path": "data",
+      "label": "",
+      "kind": "module",
+      "files": [
+        "data/projects/vanya_pi__myapp/myapp/main.py"
+      ],
+      "loc": 2,
+      "inbound": 0,
+      "outbound": 0,
+      "pagerank": 0.01092,
+      "score": 0.2151,
+      "signals": [],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "data/projects/vanya_pi__myapp/myapp/main.py",
+      "docstring": null
+    },
+    {
+      "path": "src/gitingest",
+      "label": "Gitingest package root",
+      "kind": "module",
+      "files": [
+        "src/gitingest/__init__.py"
+      ],
+      "loc": 6,
+      "inbound": 1,
+      "outbound": 1,
+      "pagerank": 0.020203,
+      "score": 0.205,
+      "signals": [],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/gitingest/__init__.py",
+      "docstring": "Gitingest: A package for ingesting data from Git repositories."
+    },
+    {
+      "path": "src/gitingest/utils/compat_typing.py",
+      "label": "",
+      "kind": "file",
+      "files": [
+        "src/gitingest/utils/compat_typing.py"
+      ],
+      "loc": 19,
+      "inbound": 4,
+      "outbound": 0,
+      "pagerank": 0.036119,
+      "score": 0.1968,
+      "signals": [],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/gitingest/utils/compat_typing.py",
+      "docstring": "Compatibility layer for typing."
+    },
+    {
+      "path": "src/server/query_processor.py",
+      "label": "Query Processor",
+      "kind": "file",
+      "files": [
+        "src/server/query_processor.py"
+      ],
+      "loc": 430,
+      "inbound": 2,
+      "outbound": 11,
+      "pagerank": 0.0195,
+      "score": 0.191,
+      "signals": [],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/server/query_processor.py",
+      "docstring": "Process a query by parsing input, cloning a repository, and generating a summary."
+    },
+    {
+      "path": "src/server/s3_utils.py",
+      "label": "S3 Utils",
+      "kind": "file",
+      "files": [
+        "src/server/s3_utils.py"
+      ],
+      "loc": 562,
+      "inbound": 2,
+      "outbound": 2,
+      "pagerank": 0.014413,
+      "score": 0.1835,
+      "signals": [
+        "cloud:aws",
+        "object_storage",
+        "observability:metrics"
+      ],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/server/s3_utils.py",
+      "docstring": "S3 utility functions for uploading and managing digest files."
+    },
+    {
+      "path": "src/gitingest/ingestion.py",
+      "label": "Ingestion",
+      "kind": "file",
+      "files": [
+        "src/gitingest/ingestion.py"
+      ],
+      "loc": 326,
+      "inbound": 2,
+      "outbound": 6,
+      "pagerank": 0.014837,
+      "score": 0.1692,
+      "signals": [],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/gitingest/ingestion.py",
+      "docstring": "Functions to ingest and analyze a codebase directory or single file."
+    },
+    {
+      "path": "src/gitingest/schemas/cloning.py",
+      "label": "Cloning",
+      "kind": "file",
+      "files": [
+        "src/gitingest/schemas/cloning.py"
+      ],
+      "loc": 43,
+      "inbound": 3,
+      "outbound": 0,
+      "pagerank": 0.032974,
+      "score": 0.1684,
+      "signals": [
+        "schema:pydantic"
+      ],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/gitingest/schemas/cloning.py",
+      "docstring": "Schema for the cloning process."
+    },
+    {
+      "path": "src/gitingest/query_parser.py",
+      "label": "Query Parser",
+      "kind": "file",
+      "files": [
+        "src/gitingest/query_parser.py"
+      ],
+      "loc": 191,
+      "inbound": 2,
+      "outbound": 5,
+      "pagerank": 0.014837,
+      "score": 0.1602,
+      "signals": [],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/gitingest/query_parser.py",
+      "docstring": "Module containing functions to parse and validate input sources and patterns."
+    },
+    {
+      "path": "src/gitingest/utils/exceptions.py",
+      "label": "",
+      "kind": "file",
+      "files": [
+        "src/gitingest/utils/exceptions.py"
+      ],
+      "loc": 28,
+      "inbound": 3,
+      "outbound": 0,
+      "pagerank": 0.030448,
+      "score": 0.1593,
+      "signals": [],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/gitingest/utils/exceptions.py",
+      "docstring": "Custom exceptions for the Gitingest package."
+    },
+    {
+      "path": "src/gitingest/clone.py",
+      "label": "",
+      "kind": "file",
+      "files": [
+        "src/gitingest/clone.py"
+      ],
+      "loc": 177,
+      "inbound": 2,
+      "outbound": 6,
+      "pagerank": 0.014837,
+      "score": 0.1593,
+      "signals": [
+        "vcs:gitpython"
+      ],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/gitingest/clone.py",
+      "docstring": "Module containing functions for cloning a Git repository to a local path."
+    },
+    {
+      "path": "src/server",
+      "label": "",
+      "kind": "module",
+      "files": [
+        "src/server/__init__.py"
+      ],
+      "loc": 2,
+      "inbound": 0,
+      "outbound": 0,
+      "pagerank": 0.01092,
+      "score": 0.1551,
+      "signals": [],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/server/__init__.py",
+      "docstring": "Server module."
+    },
+    {
+      "path": "src/server/server_utils.py",
+      "label": "",
+      "kind": "file",
+      "files": [
+        "src/server/server_utils.py"
+      ],
+      "loc": 74,
+      "inbound": 2,
+      "outbound": 1,
+      "pagerank": 0.015288,
+      "score": 0.1539,
+      "signals": [
+        "http_server",
+        "web:fastapi"
+      ],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/server/server_utils.py",
+      "docstring": "Utility functions for the server."
+    },
+    {
+      "path": "src/server/form_types.py",
+      "label": "",
+      "kind": "file",
+      "files": [
+        "src/server/form_types.py"
+      ],
+      "loc": 17,
+      "inbound": 1,
+      "outbound": 2,
+      "pagerank": 0.01917,
+      "score": 0.1425,
+      "signals": [
+        "http_server",
+        "web:fastapi"
+      ],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/server/form_types.py",
+      "docstring": "Reusable form type aliases for FastAPI form parameters."
+    },
+    {
+      "path": "src/gitingest/utils/ignore_patterns.py",
+      "label": "",
+      "kind": "file",
+      "files": [
+        "src/gitingest/utils/ignore_patterns.py"
+      ],
+      "loc": 241,
+      "inbound": 2,
+      "outbound": 0,
+      "pagerank": 0.025942,
+      "score": 0.1391,
+      "signals": [],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/gitingest/utils/ignore_patterns.py",
+      "docstring": "Default ignore patterns for Gitingest."
+    },
+    {
+      "path": "src/gitingest/output_formatter.py",
+      "label": "",
+      "kind": "file",
+      "files": [
+        "src/gitingest/output_formatter.py"
+      ],
+      "loc": 211,
+      "inbound": 1,
+      "outbound": 4,
+      "pagerank": 0.013022,
+      "score": 0.1357,
+      "signals": [
+        "http_client"
+      ],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/gitingest/output_formatter.py",
+      "docstring": "Functions to ingest and analyze a codebase directory or single file."
+    },
+    {
+      "path": "src/server/metrics_server.py",
+      "label": "",
+      "kind": "file",
+      "files": [
+        "src/server/metrics_server.py"
+      ],
+      "loc": 69,
+      "inbound": 1,
+      "outbound": 1,
+      "pagerank": 0.013303,
+      "score": 0.1272,
+      "signals": [
+        "http_server",
+        "observability:metrics",
+        "web:fastapi"
+      ],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/server/metrics_server.py",
+      "docstring": "Prometheus metrics server running on a separate port."
+    },
+    {
+      "path": "src/server/routers_utils.py",
+      "label": "",
+      "kind": "file",
+      "files": [
+        "src/server/routers_utils.py"
+      ],
+      "loc": 58,
+      "inbound": 1,
+      "outbound": 2,
+      "pagerank": 0.012906,
+      "score": 0.1252,
+      "signals": [
+        "http_server",
+        "web:fastapi"
+      ],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/server/routers_utils.py",
+      "docstring": "Utility functions for the ingest endpoints."
+    },
+    {
+      "path": "src/gitingest/schemas/ingestion.py",
+      "label": "",
+      "kind": "file",
+      "files": [
+        "src/gitingest/schemas/ingestion.py"
+      ],
+      "loc": 102,
+      "inbound": 2,
+      "outbound": 2,
+      "pagerank": 0.02314,
+      "score": 0.1208,
+      "signals": [
+        "schema:pydantic"
+      ],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/gitingest/schemas/ingestion.py",
+      "docstring": "Module containing the dataclasses for the ingestion process."
+    },
+    {
+      "path": "src/server/routers/ingest.py",
+      "label": "",
+      "kind": "file",
+      "files": [
+        "src/server/routers/ingest.py"
+      ],
+      "loc": 154,
+      "inbound": 1,
+      "outbound": 6,
+      "pagerank": 0.014015,
+      "score": 0.1111,
+      "signals": [
+        "http_server",
+        "observability:metrics",
+        "web:fastapi"
+      ],
+      "entrypoints": [],
+      "routes": 3,
+      "tasks": 0,
+      "primary_file": "src/server/routers/ingest.py",
+      "docstring": "Ingest endpoint for the API."
+    },
+    {
+      "path": "src/server/routers/dynamic.py",
+      "label": "",
+      "kind": "file",
+      "files": [
+        "src/server/routers/dynamic.py"
+      ],
+      "loc": 40,
+      "inbound": 2,
+      "outbound": 1,
+      "pagerank": 0.016397,
+      "score": 0.1071,
+      "signals": [
+        "http_server",
+        "web:fastapi"
+      ],
+      "entrypoints": [],
+      "routes": 1,
+      "tasks": 0,
+      "primary_file": "src/server/routers/dynamic.py",
+      "docstring": "The dynamic router module defines handlers for dynamic path requests."
+    },
+    {
+      "path": "src/gitingest/utils/query_parser_utils.py",
+      "label": "",
+      "kind": "file",
+      "files": [
+        "src/gitingest/utils/query_parser_utils.py"
+      ],
+      "loc": 244,
+      "inbound": 2,
+      "outbound": 4,
+      "pagerank": 0.015853,
+      "score": 0.107,
+      "signals": [],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/gitingest/utils/query_parser_utils.py",
+      "docstring": "Utility functions for parsing and validating query parameters."
+    },
+    {
+      "path": "src/gitingest/schemas/filesystem.py",
+      "label": "",
+      "kind": "file",
+      "files": [
+        "src/gitingest/schemas/filesystem.py"
+      ],
+      "loc": 162,
+      "inbound": 1,
+      "outbound": 3,
+      "pagerank": 0.021633,
+      "score": 0.1,
+      "signals": [],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/gitingest/schemas/filesystem.py",
+      "docstring": "Schema for the filesystem representation."
+    },
+    {
+      "path": "src/server/routers",
+      "label": "",
+      "kind": "module",
+      "files": [
+        "src/server/routers/__init__.py"
+      ],
+      "loc": 8,
+      "inbound": 0,
+      "outbound": 3,
+      "pagerank": 0.01092,
+      "score": 0.0955,
+      "signals": [],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/server/routers/__init__.py",
+      "docstring": "Module containing the routers for the FastAPI application."
+    },
+    {
+      "path": "src/gitingest/utils",
+      "label": "",
+      "kind": "module",
+      "files": [
+        "src/gitingest/utils/__init__.py"
+      ],
+      "loc": 2,
+      "inbound": 0,
+      "outbound": 0,
+      "pagerank": 0.01092,
+      "score": 0.0951,
+      "signals": [],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/gitingest/utils/__init__.py",
+      "docstring": "Utility functions for the gitingest package."
+    },
+    {
+      "path": "src/gitingest/utils/pattern_utils.py",
+      "label": "",
+      "kind": "file",
+      "files": [
+        "src/gitingest/utils/pattern_utils.py"
+      ],
+      "loc": 74,
+      "inbound": 2,
+      "outbound": 1,
+      "pagerank": 0.014837,
+      "score": 0.0924,
+      "signals": [],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/gitingest/utils/pattern_utils.py",
+      "docstring": "Pattern utilities for the Gitingest package."
+    },
+    {
+      "path": "src/gitingest/utils/notebook.py",
+      "label": "",
+      "kind": "file",
+      "files": [
+        "src/gitingest/utils/notebook.py"
+      ],
+      "loc": 160,
+      "inbound": 1,
+      "outbound": 2,
+      "pagerank": 0.01705,
+      "score": 0.0852,
+      "signals": [],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/gitingest/utils/notebook.py",
+      "docstring": "Utilities for processing Jupyter notebooks."
+    },
+    {
+      "path": "src/gitingest/utils/file_utils.py",
+      "label": "",
+      "kind": "file",
+      "files": [
+        "src/gitingest/utils/file_utils.py"
+      ],
+      "loc": 78,
+      "inbound": 1,
+      "outbound": 0,
+      "pagerank": 0.01705,
+      "score": 0.0798,
+      "signals": [],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/gitingest/utils/file_utils.py",
+      "docstring": "Utility functions for working with files and directories."
+    },
+    {
+      "path": "src/server/routers/index.py",
+      "label": "",
+      "kind": "file",
+      "files": [
+        "src/server/routers/index.py"
+      ],
+      "loc": 38,
+      "inbound": 1,
+      "outbound": 1,
+      "pagerank": 0.014015,
+      "score": 0.0794,
+      "signals": [
+        "http_server",
+        "web:fastapi"
+      ],
+      "entrypoints": [],
+      "routes": 1,
+      "tasks": 0,
+      "primary_file": "src/server/routers/index.py",
+      "docstring": "Module defining the FastAPI router for the home page of the application."
+    },
+    {
+      "path": "src/gitingest/utils/ingestion_utils.py",
+      "label": "",
+      "kind": "file",
+      "files": [
+        "src/gitingest/utils/ingestion_utils.py"
+      ],
+      "loc": 89,
+      "inbound": 1,
+      "outbound": 0,
+      "pagerank": 0.013022,
+      "score": 0.0676,
+      "signals": [],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/gitingest/utils/ingestion_utils.py",
+      "docstring": "Utility functions for the ingestion process."
+    },
+    {
+      "path": "src/gitingest/utils/timeout_wrapper.py",
+      "label": "",
+      "kind": "file",
+      "files": [
+        "src/gitingest/utils/timeout_wrapper.py"
+      ],
+      "loc": 47,
+      "inbound": 1,
+      "outbound": 2,
+      "pagerank": 0.013022,
+      "score": 0.0648,
+      "signals": [],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/gitingest/utils/timeout_wrapper.py",
+      "docstring": "Utility functions for the Gitingest package."
+    },
+    {
+      "path": "src/gitingest/utils/auth.py",
+      "label": "",
+      "kind": "file",
+      "files": [
+        "src/gitingest/utils/auth.py"
+      ],
+      "loc": 28,
+      "inbound": 1,
+      "outbound": 1,
+      "pagerank": 0.01333,
+      "score": 0.0645,
+      "signals": [],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/gitingest/utils/auth.py",
+      "docstring": "Utilities for handling authentication."
+    },
+    {
+      "path": "src/gitingest/utils/os_utils.py",
+      "label": "",
+      "kind": "file",
+      "files": [
+        "src/gitingest/utils/os_utils.py"
+      ],
+      "loc": 25,
+      "inbound": 1,
+      "outbound": 0,
+      "pagerank": 0.013022,
+      "score": 0.0633,
+      "signals": [],
+      "entrypoints": [],
+      "routes": 0,
+      "tasks": 0,
+      "primary_file": "src/gitingest/utils/os_utils.py",
+      "docstring": "Utility functions for working with the operating system."
+    }
+  ],
+  "component_edges": [
+    {
+      "from": "src/gitingest/ingestion.py",
+      "to": "src/gitingest/schemas",
+      "weight": 2,
+      "evidence_path": "src/gitingest/ingestion.py",
+      "evidence_lineno": 10,
+      "modules": {
+        "gitingest.schemas": 2
+      }
+    },
+    {
+      "from": "src/gitingest/output_formatter.py",
+      "to": "src/gitingest/schemas",
+      "weight": 2,
+      "evidence_path": "src/gitingest/output_formatter.py",
+      "evidence_lineno": 11,
+      "modules": {
+        "gitingest.schemas": 2
+      }
+    },
+    {
+      "from": "src/server/form_types.py",
+      "to": "src/gitingest/utils/compat_typing.py",
+      "weight": 2,
+      "evidence_path": "src/server/form_types.py",
+      "evidence_lineno": 9,
+      "modules": {
+        "gitingest.utils.compat_typing": 2
+      }
+    },
+    {
+      "from": "app_platform/main.py",
+      "to": "src/gitingest",
+      "weight": 1,
+      "evidence_path": "app_platform/main.py",
+      "evidence_lineno": 215,
+      "modules": {
+        "gitingest": 1
+      }
+    },
+    {
+      "from": "app_platform",
+      "to": "src/server/main.py",
+      "weight": 1,
+      "evidence_path": "app_platform/site_router.py",
+      "evidence_lineno": 43,
+      "modules": {
+        "server.main": 1
+      }
+    },
+    {
+      "from": "app_platform",
+      "to": "src/server/models.py",
+      "weight": 1,
+      "evidence_path": "app_platform/site_router.py",
+      "evidence_lineno": 104,
+      "modules": {
+        "server.models": 1
+      }
+    },
+    {
+      "from": "app_platform",
+      "to": "src/server/query_processor.py",
+      "weight": 1,
+      "evidence_path": "app_platform/site_router.py",
+      "evidence_lineno": 105,
+      "modules": {
+        "server.query_processor": 1
+      }
+    },
+    {
+      "from": "src/gitingest",
+      "to": "src/gitingest/entrypoint.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/__init__.py",
+      "evidence_lineno": 3,
+      "modules": {
+        "gitingest.entrypoint": 1
+      }
+    },
+    {
+      "from": "src/gitingest/__main__.py",
+      "to": "src/gitingest/config.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/__main__.py",
+      "evidence_lineno": 12,
+      "modules": {
+        "gitingest.config": 1
+      }
+    },
+    {
+      "from": "src/gitingest/__main__.py",
+      "to": "src/gitingest/entrypoint.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/__main__.py",
+      "evidence_lineno": 13,
+      "modules": {
+        "gitingest.entrypoint": 1
+      }
+    },
+    {
+      "from": "src/gitingest/__main__.py",
+      "to": "src/gitingest/utils/logging_config.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/__main__.py",
+      "evidence_lineno": 16,
+      "modules": {
+        "gitingest.utils.logging_config": 1
+      }
+    },
+    {
+      "from": "src/gitingest/clone.py",
+      "to": "src/gitingest/config.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/clone.py",
+      "evidence_lineno": 10,
+      "modules": {
+        "gitingest.config": 1
+      }
+    },
+    {
+      "from": "src/gitingest/clone.py",
+      "to": "src/gitingest/utils/git_utils.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/clone.py",
+      "evidence_lineno": 11,
+      "modules": {
+        "gitingest.utils.git_utils": 1
+      }
+    },
+    {
+      "from": "src/gitingest/clone.py",
+      "to": "src/gitingest/utils/logging_config.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/clone.py",
+      "evidence_lineno": 20,
+      "modules": {
+        "gitingest.utils.logging_config": 1
+      }
+    },
+    {
+      "from": "src/gitingest/clone.py",
+      "to": "src/gitingest/utils/os_utils.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/clone.py",
+      "evidence_lineno": 21,
+      "modules": {
+        "gitingest.utils.os_utils": 1
+      }
+    },
+    {
+      "from": "src/gitingest/clone.py",
+      "to": "src/gitingest/utils/timeout_wrapper.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/clone.py",
+      "evidence_lineno": 22,
+      "modules": {
+        "gitingest.utils.timeout_wrapper": 1
+      }
+    },
+    {
+      "from": "src/gitingest/clone.py",
+      "to": "src/gitingest/schemas",
+      "weight": 1,
+      "evidence_path": "src/gitingest/clone.py",
+      "evidence_lineno": 25,
+      "modules": {
+        "gitingest.schemas": 1
+      }
+    },
+    {
+      "from": "src/gitingest/entrypoint.py",
+      "to": "src/gitingest/clone.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/entrypoint.py",
+      "evidence_lineno": 15,
+      "modules": {
+        "gitingest.clone": 1
+      }
+    },
+    {
+      "from": "src/gitingest/entrypoint.py",
+      "to": "src/gitingest/config.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/entrypoint.py",
+      "evidence_lineno": 16,
+      "modules": {
+        "gitingest.config": 1
+      }
+    },
+    {
+      "from": "src/gitingest/entrypoint.py",
+      "to": "src/gitingest/ingestion.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/entrypoint.py",
+      "evidence_lineno": 17,
+      "modules": {
+        "gitingest.ingestion": 1
+      }
+    },
+    {
+      "from": "src/gitingest/entrypoint.py",
+      "to": "src/gitingest/query_parser.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/entrypoint.py",
+      "evidence_lineno": 18,
+      "modules": {
+        "gitingest.query_parser": 1
+      }
+    },
+    {
+      "from": "src/gitingest/entrypoint.py",
+      "to": "src/gitingest/utils/auth.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/entrypoint.py",
+      "evidence_lineno": 19,
+      "modules": {
+        "gitingest.utils.auth": 1
+      }
+    },
+    {
+      "from": "src/gitingest/entrypoint.py",
+      "to": "src/gitingest/utils/compat_func.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/entrypoint.py",
+      "evidence_lineno": 20,
+      "modules": {
+        "gitingest.utils.compat_func": 1
+      }
+    },
+    {
+      "from": "src/gitingest/entrypoint.py",
+      "to": "src/gitingest/utils/ignore_patterns.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/entrypoint.py",
+      "evidence_lineno": 21,
+      "modules": {
+        "gitingest.utils.ignore_patterns": 1
+      }
+    },
+    {
+      "from": "src/gitingest/entrypoint.py",
+      "to": "src/gitingest/utils/logging_config.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/entrypoint.py",
+      "evidence_lineno": 22,
+      "modules": {
+        "gitingest.utils.logging_config": 1
+      }
+    },
+    {
+      "from": "src/gitingest/entrypoint.py",
+      "to": "src/gitingest/utils/pattern_utils.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/entrypoint.py",
+      "evidence_lineno": 23,
+      "modules": {
+        "gitingest.utils.pattern_utils": 1
+      }
+    },
+    {
+      "from": "src/gitingest/entrypoint.py",
+      "to": "src/gitingest/utils/query_parser_utils.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/entrypoint.py",
+      "evidence_lineno": 24,
+      "modules": {
+        "gitingest.utils.query_parser_utils": 1
+      }
+    },
+    {
+      "from": "src/gitingest/entrypoint.py",
+      "to": "src/gitingest/schemas",
+      "weight": 1,
+      "evidence_path": "src/gitingest/entrypoint.py",
+      "evidence_lineno": 29,
+      "modules": {
+        "gitingest.schemas": 1
+      }
+    },
+    {
+      "from": "src/gitingest/ingestion.py",
+      "to": "src/gitingest/config.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/ingestion.py",
+      "evidence_lineno": 8,
+      "modules": {
+        "gitingest.config": 1
+      }
+    },
+    {
+      "from": "src/gitingest/ingestion.py",
+      "to": "src/gitingest/output_formatter.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/ingestion.py",
+      "evidence_lineno": 9,
+      "modules": {
+        "gitingest.output_formatter": 1
+      }
+    },
+    {
+      "from": "src/gitingest/ingestion.py",
+      "to": "src/gitingest/utils/ingestion_utils.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/ingestion.py",
+      "evidence_lineno": 11,
+      "modules": {
+        "gitingest.utils.ingestion_utils": 1
+      }
+    },
+    {
+      "from": "src/gitingest/ingestion.py",
+      "to": "src/gitingest/utils/logging_config.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/ingestion.py",
+      "evidence_lineno": 12,
+      "modules": {
+        "gitingest.utils.logging_config": 1
+      }
+    },
+    {
+      "from": "src/gitingest/output_formatter.py",
+      "to": "src/gitingest/utils/compat_func.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/output_formatter.py",
+      "evidence_lineno": 12,
+      "modules": {
+        "gitingest.utils.compat_func": 1
+      }
+    },
+    {
+      "from": "src/gitingest/output_formatter.py",
+      "to": "src/gitingest/utils/logging_config.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/output_formatter.py",
+      "evidence_lineno": 13,
+      "modules": {
+        "gitingest.utils.logging_config": 1
+      }
+    },
+    {
+      "from": "src/gitingest/query_parser.py",
+      "to": "src/gitingest/config.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/query_parser.py",
+      "evidence_lineno": 9,
+      "modules": {
+        "gitingest.config": 1
+      }
+    },
+    {
+      "from": "src/gitingest/query_parser.py",
+      "to": "src/gitingest/schemas",
+      "weight": 1,
+      "evidence_path": "src/gitingest/query_parser.py",
+      "evidence_lineno": 10,
+      "modules": {
+        "gitingest.schemas": 1
+      }
+    },
+    {
+      "from": "src/gitingest/query_parser.py",
+      "to": "src/gitingest/utils/git_utils.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/query_parser.py",
+      "evidence_lineno": 11,
+      "modules": {
+        "gitingest.utils.git_utils": 1
+      }
+    },
+    {
+      "from": "src/gitingest/query_parser.py",
+      "to": "src/gitingest/utils/logging_config.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/query_parser.py",
+      "evidence_lineno": 12,
+      "modules": {
+        "gitingest.utils.logging_config": 1
+      }
+    },
+    {
+      "from": "src/gitingest/query_parser.py",
+      "to": "src/gitingest/utils/query_parser_utils.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/query_parser.py",
+      "evidence_lineno": 13,
+      "modules": {
+        "gitingest.utils.query_parser_utils": 1
+      }
+    },
+    {
+      "from": "src/gitingest/schemas",
+      "to": "src/gitingest/schemas/cloning.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/schemas/__init__.py",
+      "evidence_lineno": 3,
+      "modules": {
+        "gitingest.schemas.cloning": 1
+      }
+    },
+    {
+      "from": "src/gitingest/schemas",
+      "to": "src/gitingest/schemas/filesystem.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/schemas/__init__.py",
+      "evidence_lineno": 4,
+      "modules": {
+        "gitingest.schemas.filesystem": 1
+      }
+    },
+    {
+      "from": "src/gitingest/schemas",
+      "to": "src/gitingest/schemas/ingestion.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/schemas/__init__.py",
+      "evidence_lineno": 5,
+      "modules": {
+        "gitingest.schemas.ingestion": 1
+      }
+    },
+    {
+      "from": "src/gitingest/schemas/filesystem.py",
+      "to": "src/gitingest/utils/compat_func.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/schemas/filesystem.py",
+      "evidence_lineno": 10,
+      "modules": {
+        "gitingest.utils.compat_func": 1
+      }
+    },
+    {
+      "from": "src/gitingest/schemas/filesystem.py",
+      "to": "src/gitingest/utils/file_utils.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/schemas/filesystem.py",
+      "evidence_lineno": 11,
+      "modules": {
+        "gitingest.utils.file_utils": 1
+      }
+    },
+    {
+      "from": "src/gitingest/schemas/filesystem.py",
+      "to": "src/gitingest/utils/notebook.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/schemas/filesystem.py",
+      "evidence_lineno": 12,
+      "modules": {
+        "gitingest.utils.notebook": 1
+      }
+    },
+    {
+      "from": "src/gitingest/schemas/ingestion.py",
+      "to": "src/gitingest/config.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/schemas/ingestion.py",
+      "evidence_lineno": 10,
+      "modules": {
+        "gitingest.config": 1
+      }
+    },
+    {
+      "from": "src/gitingest/schemas/ingestion.py",
+      "to": "src/gitingest/schemas/cloning.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/schemas/ingestion.py",
+      "evidence_lineno": 11,
+      "modules": {
+        "gitingest.schemas.cloning": 1
+      }
+    },
+    {
+      "from": "src/gitingest/utils/auth.py",
+      "to": "src/gitingest/utils/git_utils.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/utils/auth.py",
+      "evidence_lineno": 7,
+      "modules": {
+        "gitingest.utils.git_utils": 1
+      }
+    },
+    {
+      "from": "src/gitingest/utils/git_utils.py",
+      "to": "src/gitingest/utils/compat_func.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/utils/git_utils.py",
+      "evidence_lineno": 16,
+      "modules": {
+        "gitingest.utils.compat_func": 1
+      }
+    },
+    {
+      "from": "src/gitingest/utils/git_utils.py",
+      "to": "src/gitingest/utils/exceptions.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/utils/git_utils.py",
+      "evidence_lineno": 17,
+      "modules": {
+        "gitingest.utils.exceptions": 1
+      }
+    },
+    {
+      "from": "src/gitingest/utils/git_utils.py",
+      "to": "src/gitingest/utils/logging_config.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/utils/git_utils.py",
+      "evidence_lineno": 18,
+      "modules": {
+        "gitingest.utils.logging_config": 1
+      }
+    },
+    {
+      "from": "src/gitingest/utils/git_utils.py",
+      "to": "src/gitingest/schemas",
+      "weight": 1,
+      "evidence_path": "src/gitingest/utils/git_utils.py",
+      "evidence_lineno": 21,
+      "modules": {
+        "gitingest.schemas": 1
+      }
+    },
+    {
+      "from": "src/gitingest/utils/notebook.py",
+      "to": "src/gitingest/utils/exceptions.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/utils/notebook.py",
+      "evidence_lineno": 9,
+      "modules": {
+        "gitingest.utils.exceptions": 1
+      }
+    },
+    {
+      "from": "src/gitingest/utils/notebook.py",
+      "to": "src/gitingest/utils/logging_config.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/utils/notebook.py",
+      "evidence_lineno": 10,
+      "modules": {
+        "gitingest.utils.logging_config": 1
+      }
+    },
+    {
+      "from": "src/gitingest/utils/pattern_utils.py",
+      "to": "src/gitingest/utils/ignore_patterns.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/utils/pattern_utils.py",
+      "evidence_lineno": 8,
+      "modules": {
+        "gitingest.utils.ignore_patterns": 1
+      }
+    },
+    {
+      "from": "src/gitingest/utils/query_parser_utils.py",
+      "to": "src/gitingest/utils/compat_typing.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/utils/query_parser_utils.py",
+      "evidence_lineno": 9,
+      "modules": {
+        "gitingest.utils.compat_typing": 1
+      }
+    },
+    {
+      "from": "src/gitingest/utils/query_parser_utils.py",
+      "to": "src/gitingest/utils/git_utils.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/utils/query_parser_utils.py",
+      "evidence_lineno": 10,
+      "modules": {
+        "gitingest.utils.git_utils": 1
+      }
+    },
+    {
+      "from": "src/gitingest/utils/query_parser_utils.py",
+      "to": "src/gitingest/utils/logging_config.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/utils/query_parser_utils.py",
+      "evidence_lineno": 11,
+      "modules": {
+        "gitingest.utils.logging_config": 1
+      }
+    },
+    {
+      "from": "src/gitingest/utils/query_parser_utils.py",
+      "to": "src/gitingest/schemas",
+      "weight": 1,
+      "evidence_path": "src/gitingest/utils/query_parser_utils.py",
+      "evidence_lineno": 14,
+      "modules": {
+        "gitingest.schemas": 1
+      }
+    },
+    {
+      "from": "src/gitingest/utils/timeout_wrapper.py",
+      "to": "src/gitingest/utils/compat_typing.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/utils/timeout_wrapper.py",
+      "evidence_lineno": 7,
+      "modules": {
+        "gitingest.utils.compat_typing": 1
+      }
+    },
+    {
+      "from": "src/gitingest/utils/timeout_wrapper.py",
+      "to": "src/gitingest/utils/exceptions.py",
+      "weight": 1,
+      "evidence_path": "src/gitingest/utils/timeout_wrapper.py",
+      "evidence_lineno": 8,
+      "modules": {
+        "gitingest.utils.exceptions": 1
+      }
+    },
+    {
+      "from": "src/server/__main__.py",
+      "to": "src/gitingest/utils/logging_config.py",
+      "weight": 1,
+      "evidence_path": "src/server/__main__.py",
+      "evidence_lineno": 8,
+      "modules": {
+        "gitingest.utils.logging_config": 1
+      }
+    },
+    {
+      "from": "src/server/main.py",
+      "to": "src/gitingest/utils/logging_config.py",
+      "weight": 1,
+      "evidence_path": "src/server/main.py",
+      "evidence_lineno": 18,
+      "modules": {
+        "gitingest.utils.logging_config": 1
+      }
+    },
+    {
+      "from": "src/server/main.py",
+      "to": "src/server/metrics_server.py",
+      "weight": 1,
+      "evidence_path": "src/server/main.py",
+      "evidence_lineno": 19,
+      "modules": {
+        "server.metrics_server": 1
+      }
+    },
+    {
+      "from": "src/server/main.py",
+      "to": "src/server/routers/dynamic.py",
+      "weight": 1,
+      "evidence_path": "src/server/main.py",
+      "evidence_lineno": 20,
+      "modules": {
+        "server.routers": 1
+      }
+    },
+    {
+      "from": "src/server/main.py",
+      "to": "src/server/server_config.py",
+      "weight": 1,
+      "evidence_path": "src/server/main.py",
+      "evidence_lineno": 21,
+      "modules": {
+        "server.server_config": 1
+      }
+    },
+    {
+      "from": "src/server/main.py",
+      "to": "src/server/server_utils.py",
+      "weight": 1,
+      "evidence_path": "src/server/main.py",
+      "evidence_lineno": 22,
+      "modules": {
+        "server.server_utils": 1
+      }
+    },
+    {
+      "from": "src/server/metrics_server.py",
+      "to": "src/gitingest/utils/logging_config.py",
+      "weight": 1,
+      "evidence_path": "src/server/metrics_server.py",
+      "evidence_lineno": 8,
+      "modules": {
+        "gitingest.utils.logging_config": 1
+      }
+    },
+    {
+      "from": "src/server/models.py",
+      "to": "src/gitingest/utils/compat_func.py",
+      "weight": 1,
+      "evidence_path": "src/server/models.py",
+      "evidence_lineno": 10,
+      "modules": {
+        "gitingest.utils.compat_func": 1
+      }
+    },
+    {
+      "from": "src/server/models.py",
+      "to": "src/server/server_config.py",
+      "weight": 1,
+      "evidence_path": "src/server/models.py",
+      "evidence_lineno": 11,
+      "modules": {
+        "server.server_config": 1
+      }
+    },
+    {
+      "from": "src/server/models.py",
+      "to": "src/server/form_types.py",
+      "weight": 1,
+      "evidence_path": "src/server/models.py",
+      "evidence_lineno": 15,
+      "modules": {
+        "server.form_types": 1
+      }
+    },
+    {
+      "from": "src/server/query_processor.py",
+      "to": "src/gitingest/clone.py",
+      "weight": 1,
+      "evidence_path": "src/server/query_processor.py",
+      "evidence_lineno": 9,
+      "modules": {
+        "gitingest.clone": 1
+      }
+    },
+    {
+      "from": "src/server/query_processor.py",
+      "to": "src/gitingest/ingestion.py",
+      "weight": 1,
+      "evidence_path": "src/server/query_processor.py",
+      "evidence_lineno": 10,
+      "modules": {
+        "gitingest.ingestion": 1
+      }
+    },
+    {
+      "from": "src/server/query_processor.py",
+      "to": "src/gitingest/query_parser.py",
+      "weight": 1,
+      "evidence_path": "src/server/query_processor.py",
+      "evidence_lineno": 11,
+      "modules": {
+        "gitingest.query_parser": 1
+      }
+    },
+    {
+      "from": "src/server/query_processor.py",
+      "to": "src/gitingest/utils/git_utils.py",
+      "weight": 1,
+      "evidence_path": "src/server/query_processor.py",
+      "evidence_lineno": 12,
+      "modules": {
+        "gitingest.utils.git_utils": 1
+      }
+    },
+    {
+      "from": "src/server/query_processor.py",
+      "to": "src/gitingest/utils/logging_config.py",
+      "weight": 1,
+      "evidence_path": "src/server/query_processor.py",
+      "evidence_lineno": 13,
+      "modules": {
+        "gitingest.utils.logging_config": 1
+      }
+    },
+    {
+      "from": "src/server/query_processor.py",
+      "to": "src/gitingest/utils/pattern_utils.py",
+      "weight": 1,
+      "evidence_path": "src/server/query_processor.py",
+      "evidence_lineno": 14,
+      "modules": {
+        "gitingest.utils.pattern_utils": 1
+      }
+    },
+    {
+      "from": "src/server/query_processor.py",
+      "to": "src/server/models.py",
+      "weight": 1,
+      "evidence_path": "src/server/query_processor.py",
+      "evidence_lineno": 15,
+      "modules": {
+        "server.models": 1
+      }
+    },
+    {
+      "from": "src/server/query_processor.py",
+      "to": "src/server/s3_utils.py",
+      "weight": 1,
+      "evidence_path": "src/server/query_processor.py",
+      "evidence_lineno": 16,
+      "modules": {
+        "server.s3_utils": 1
+      }
+    },
+    {
+      "from": "src/server/query_processor.py",
+      "to": "src/server/server_config.py",
+      "weight": 1,
+      "evidence_path": "src/server/query_processor.py",
+      "evidence_lineno": 25,
+      "modules": {
+        "server.server_config": 1
+      }
+    },
+    {
+      "from": "src/server/query_processor.py",
+      "to": "src/gitingest/schemas/cloning.py",
+      "weight": 1,
+      "evidence_path": "src/server/query_processor.py",
+      "evidence_lineno": 31,
+      "modules": {
+        "gitingest.schemas.cloning": 1
+      }
+    },
+    {
+      "from": "src/server/query_processor.py",
+      "to": "src/gitingest/schemas/ingestion.py",
+      "weight": 1,
+      "evidence_path": "src/server/query_processor.py",
+      "evidence_lineno": 32,
+      "modules": {
+        "gitingest.schemas.ingestion": 1
+      }
+    },
+    {
+      "from": "src/server/routers_utils.py",
+      "to": "src/server/models.py",
+      "weight": 1,
+      "evidence_path": "src/server/routers_utils.py",
+      "evidence_lineno": 10,
+      "modules": {
+        "server.models": 1
+      }
+    },
+    {
+      "from": "src/server/routers_utils.py",
+      "to": "src/server/query_processor.py",
+      "weight": 1,
+      "evidence_path": "src/server/routers_utils.py",
+      "evidence_lineno": 11,
+      "modules": {
+        "server.query_processor": 1
+      }
+    },
+    {
+      "from": "src/server/s3_utils.py",
+      "to": "src/gitingest/utils/logging_config.py",
+      "weight": 1,
+      "evidence_path": "src/server/s3_utils.py",
+      "evidence_lineno": 15,
+      "modules": {
+        "gitingest.utils.logging_config": 1
+      }
+    },
+    {
+      "from": "src/server/s3_utils.py",
+      "to": "src/server/models.py",
+      "weight": 1,
+      "evidence_path": "src/server/s3_utils.py",
+      "evidence_lineno": 16,
+      "modules": {
+        "server.models": 1
+      }
+    },
+    {
+      "from": "src/server/server_utils.py",
+      "to": "src/gitingest/utils/logging_config.py",
+      "weight": 1,
+      "evidence_path": "src/server/server_utils.py",
+      "evidence_lineno": 9,
+      "modules": {
+        "gitingest.utils.logging_config": 1
+      }
+    },
+    {
+      "from": "src/server/routers",
+      "to": "src/server/routers/dynamic.py",
+      "weight": 1,
+      "evidence_path": "src/server/routers/__init__.py",
+      "evidence_lineno": 3,
+      "modules": {
+        "server.routers.dynamic": 1
+      }
+    },
+    {
+      "from": "src/server/routers",
+      "to": "src/server/routers/index.py",
+      "weight": 1,
+      "evidence_path": "src/server/routers/__init__.py",
+      "evidence_lineno": 4,
+      "modules": {
+        "server.routers.index": 1
+      }
+    },
+    {
+      "from": "src/server/routers",
+      "to": "src/server/routers/ingest.py",
+      "weight": 1,
+      "evidence_path": "src/server/routers/__init__.py",
+      "evidence_lineno": 5,
+      "modules": {
+        "server.routers.ingest": 1
+      }
+    },
+    {
+      "from": "src/server/routers/dynamic.py",
+      "to": "src/server/server_config.py",
+      "weight": 1,
+      "evidence_path": "src/server/routers/dynamic.py",
+      "evidence_lineno": 6,
+      "modules": {
+        "server.server_config": 1
+      }
+    },
+    {
+      "from": "src/server/routers/index.py",
+      "to": "src/server/server_config.py",
+      "weight": 1,
+      "evidence_path": "src/server/routers/index.py",
+      "evidence_lineno": 6,
+      "modules": {
+        "server.server_config": 1
+      }
+    },
+    {
+      "from": "src/server/routers/ingest.py",
+      "to": "src/gitingest/config.py",
+      "weight": 1,
+      "evidence_path": "src/server/routers/ingest.py",
+      "evidence_lineno": 10,
+      "modules": {
+        "gitingest.config": 1
+      }
+    },
+    {
+      "from": "src/server/routers/ingest.py",
+      "to": "src/server/models.py",
+      "weight": 1,
+      "evidence_path": "src/server/routers/ingest.py",
+      "evidence_lineno": 11,
+      "modules": {
+        "server.models": 1
+      }
+    },
+    {
+      "from": "src/server/routers/ingest.py",
+      "to": "src/server/routers_utils.py",
+      "weight": 1,
+      "evidence_path": "src/server/routers/ingest.py",
+      "evidence_lineno": 12,
+      "modules": {
+        "server.routers_utils": 1
+      }
+    },
+    {
+      "from": "src/server/routers/ingest.py",
+      "to": "src/server/s3_utils.py",
+      "weight": 1,
+      "evidence_path": "src/server/routers/ingest.py",
+      "evidence_lineno": 13,
+      "modules": {
+        "server.s3_utils": 1
+      }
+    },
+    {
+      "from": "src/server/routers/ingest.py",
+      "to": "src/server/server_config.py",
+      "weight": 1,
+      "evidence_path": "src/server/routers/ingest.py",
+      "evidence_lineno": 14,
+      "modules": {
+        "server.server_config": 1
+      }
+    },
+    {
+      "from": "src/server/routers/ingest.py",
+      "to": "src/server/server_utils.py",
+      "weight": 1,
+      "evidence_path": "src/server/routers/ingest.py",
+      "evidence_lineno": 15,
+      "modules": {
+        "server.server_utils": 1
+      }
+    }
+  ],
+  "coverage": {
+    "files_total": 1021,
+    "files_parsed": 70,
+    "files_failed": 0,
+    "files_skipped_tests": 41,
+    "files_skipped_other": 0,
+    "import_edges": 101,
+    "imports_resolved": 101,
+    "imports_unresolved": 112,
+    "imports_stdlib": 239,
+    "components_total": 50,
+    "components_shown": 23,
+    "component_depth": 1,
+    "top_unresolved": [
+      [
+        "fastapi",
+        24
+      ],
+      [
+        "uvicorn",
+        4
+      ],
+      [
+        "slowapi",
+        4
+      ],
+      [
+        "app_platform",
+        3
+      ],
+      [
+        "core",
+        3
+      ],
+      [
+        "staticdiagram",
+        3
+      ],
+      [
+        "typing_extensions",
+        3
+      ],
+      [
+        "pydantic",
+        3
+      ],
+      [
+        "prometheus_client",
+        3
+      ],
+      [
+        "git",
+        2
+      ],
+      [
+        "botocore",
+        2
+      ],
+      [
+        "PIL",
+        1
+      ],
+      [
+        "click",
+        1
+      ],
+      [
+        "requests",
+        1
+      ],
+      [
+        "tiktoken",
+        1
+      ]
+    ],
+    "syntax_errors": []
+  },
+  "infra": {
+    "services": [
+      {
+        "name": "app",
+        "image": "ghcr.io/coderamp-labs/gitingest:latest",
+        "evidence": "compose.yml"
+      },
+      {
+        "name": "app-dev",
+        "image": "",
+        "evidence": "compose.yml"
+      },
+      {
+        "name": "minio",
+        "image": "minio/minio:latest",
+        "evidence": "compose.yml"
+      },
+      {
+        "name": "minio-setup",
+        "image": "minio/mc",
+        "evidence": "compose.yml"
+      },
+      {
+        "name": "api",
+        "image": "",
+        "evidence": "gitdiagram-static/tests/fixtures/shop_api/docker-compose.yml"
+      },
+      {
+        "name": "db",
+        "image": "postgres:16-alpine",
+        "evidence": "gitdiagram-static/tests/fixtures/shop_api/docker-compose.yml"
+      },
+      {
+        "name": "cache",
+        "image": "redis:7-alpine",
+        "evidence": "gitdiagram-static/tests/fixtures/shop_api/docker-compose.yml"
+      },
+      {
+        "name": "worker",
+        "image": "",
+        "evidence": "gitdiagram-static/tests/fixtures/shop_api/docker-compose.yml"
+      }
+    ],
+    "system_services": [
+      {
+        "name": "minio",
+        "image": "minio/minio:latest",
+        "evidence": "compose.yml",
+        "system": "MinIO (S3)",
+        "matched": "minio"
+      },
+      {
+        "name": "minio-setup",
+        "image": "minio/mc",
+        "evidence": "compose.yml",
+        "system": "MinIO (S3)",
+        "matched": "minio"
+      },
+      {
+        "name": "db",
+        "image": "postgres:16-alpine",
+        "evidence": "gitdiagram-static/tests/fixtures/shop_api/docker-compose.yml",
+        "system": "PostgreSQL",
+        "matched": "postgres"
+      },
+      {
+        "name": "cache",
+        "image": "redis:7-alpine",
+        "evidence": "gitdiagram-static/tests/fixtures/shop_api/docker-compose.yml",
+        "system": "Redis",
+        "matched": "redis"
+      }
+    ],
+    "dockerfiles": [
+      {
+        "path": "Dockerfile",
+        "base": [
+          "python:3.13.5-slim@sha256:4c2cf9917bd1cbacc5e9b07320025bdb7cdf2df7b0ceaccb55e9dd7e30987419",
+          "python:3.13.5-slim@sha256:4c2cf9917bd1cbacc5e9b07320025bdb7cdf2df7b0ceaccb55e9dd7e30987419"
+        ],
+        "entrypoint": [
+          "[\"python\", \"-m\", \"server\"]"
+        ],
+        "expose": [
+          "8000",
+          "9090"
+        ],
+        "installs": []
+      },
+      {
+        "path": "gitdiagram-static/Dockerfile",
+        "base": [
+          "python:3.12-slim"
+        ],
+        "entrypoint": [
+          "[\"staticdiagram\"]",
+          "[\"--help\"]"
+        ],
+        "expose": [],
+        "installs": [
+          "RUN pip install --no-cache-dir . && python -m unittest discover -s tests -q"
+        ]
+      },
+      {
+        "path": "gitdiagram-static/tests/fixtures/shop_api/Dockerfile",
+        "base": [
+          "python:3.12-slim"
+        ],
+        "entrypoint": [
+          "[\"uvicorn\", \"shop.main:app\", \"--host\", \"0.0.0.0\", \"--port\", \"8000\"]"
+        ],
+        "expose": [
+          "8000"
+        ],
+        "installs": [
+          "RUN pip install --no-cache-dir ."
+        ]
+      },
+      {
+        "path": "third_party/gitdiagram/Dockerfile",
+        "base": [
+          "oven/bun:1.3.14-slim",
+          "node:22-bookworm-slim",
+          "node:22-bookworm-slim"
+        ],
+        "entrypoint": [
+          "[\"tini\", \"--\"]",
+          "[\"node\", \"server.js\"]"
+        ],
+        "expose": [
+          "3000"
+        ],
+        "installs": []
+      }
+    ],
+    "workflows": [],
+    "env_example": {
+      "path": ".env.example",
+      "keys": [
+        "ALLOWED_HOSTS",
+        "GITINGEST_METRICS_HOST",
+        "GITINGEST_METRICS_PORT",
+        "GITINGEST_SENTRY_TRACES_SAMPLE_RATE",
+        "GITINGEST_SENTRY_PROFILE_SESSION_SAMPLE_RATE",
+        "GITINGEST_SENTRY_PROFILE_LIFECYCLE",
+        "GITINGEST_SENTRY_SEND_DEFAULT_PII",
+        "GITINGEST_SENTRY_ENVIRONMENT",
+        "MINIO_ROOT_USER",
+        "MINIO_ROOT_PASSWORD",
+        "S3_ENDPOINT",
+        "S3_ACCESS_KEY",
+        "S3_SECRET_KEY",
+        "S3_BUCKET_NAME",
+        "S3_REGION",
+        "S3_ALIAS_HOST"
+      ]
+    },
+    "makefile": null,
+    "infra_paths": [
+      "Dockerfile",
+      "compose.yml",
+      "gitdiagram-static/Dockerfile",
+      "gitdiagram-static/tests/fixtures/shop_api/Dockerfile",
+      "gitdiagram-static/tests/fixtures/shop_api/Makefile",
+      "gitdiagram-static/tests/fixtures/shop_api/docker-compose.yml",
+      "third_party/gitdiagram/Dockerfile",
+      "third_party/gitdiagram/.github/workflows/ci.yml",
+      "third_party/gitdiagram/.github/workflows/cloudflare.yml",
+      "third_party/gitdiagram/.github/workflows/cost-watch.yml",
+      "third_party/gitdiagram/.github/workflows/sponsor-readme.yml"
+    ]
+  }
+}

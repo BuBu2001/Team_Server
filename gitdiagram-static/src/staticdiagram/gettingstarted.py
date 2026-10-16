@@ -1,15 +1,19 @@
 """Интеграция консоли GettingStarted (Host/Pi) с gitdiagram-static.
 
-Модуль тонко оборачивает скрипты из ``<корень репозитория>/getting_started``
-и предоставляет subcommand для CLI::
+GettingStarted — единая локальная система из двух консолей, которые
+устанавливаются на два компьютера в одной сети:
 
-    gitdiagram-static connect            # интерактивный выбор Host / Pi
+  * Host — сервер: принимает файлы/проекты от Pi, строит для них диаграммы
+    (gitdiagram-static + app_platform.diagram_gen/image_gen), ведёт журнал
+    работы (app_platform.db) и отдаёт результаты по сети;
+  * Pi   — обычный пользователь: отправляет файлы хосту, смотрит диаграммы,
+    скачивает данные обратно, следит за своей работой.
+
+Модуль предоставляет subcommand для CLI::
+
+    gitdiagram-static connect                 # интерактивный выбор Host / Pi
     gitdiagram-static connect --role host
     gitdiagram-static connect --role pi --host 192.168.1.10
-
-Хост выполняет все рабочие функции проекта (генерацию диаграмм через
-``staticdiagram.cli.main``), а пользователь Pi подключается к хосту по TCP
-и получает результаты анализа.
 """
 
 from __future__ import annotations
@@ -29,7 +33,8 @@ def is_available() -> bool:
 
 def _bootstrap() -> None:
     """Достаёт core.py и пакет staticdiagram (на случай запуска без install)."""
-    for p in (str(GETTING_STARTED_DIR), str(_ROOT / "gitdiagram-static" / "src")):
+    for p in (str(GETTING_STARTED_DIR), str(_ROOT / "gitdiagram-static" / "src"),
+              str(_ROOT)):
         if p not in sys.path and Path(p).is_dir():
             sys.path.insert(0, p)
 
@@ -39,6 +44,9 @@ def run_connect(
     port: Optional[int] = None,
     timeout: float = 0,
     host_ip: Optional[str] = None,
+    script: Optional[list] = None,
+    auto_demo: bool = False,
+    demo_dir: Optional[str] = None,
 ) -> int:
     """Запускает консоль GettingStarted. role: None — выбрать в меню,
     'host'/'pi' — пропустить меню. Возвращает код выхода."""
@@ -49,12 +57,12 @@ def run_connect(
     from core import (  # noqa: E402
         DEFAULT_HOST_PORT,
         choose_mode,
-        make_host_handler,
-        run_host_session,
+        load_modules,
+        print_banner,
+        run_host_direct,
         run_pi_client,
         wait_for_peer,
     )
-    from staticdiagram.cli import main as gitdiagram_main  # type: ignore
 
     port = port or DEFAULT_HOST_PORT
     notify = print
@@ -67,42 +75,26 @@ def run_connect(
 
     if role == "host":
         notify(f"\nВы выбрали режим Host. Порт: {port}.")
-        conn = wait_for_peer("host", port, timeout, notify)
-        if conn is None:
-            return 1
-        run_host_session(conn, make_host_handler(gitdiagram_main, notify), notify)
-        return 0
+        return run_host_direct(port, timeout, notify) or 0
 
     notify("\nВы выбрали режим Pi (обычный пользователь).")
     if host_ip:
-        # Неинтерактивный ввод IP для wait_for_peer.
-        _patch_input_default(host_ip)
+        import os
+
+        os.environ["GETTINGSTARTED_HOST_IP"] = host_ip
     conn = wait_for_peer("pi", port, timeout, notify)
     if conn is None:
         return 1
-    run_pi_client(conn, notify)
+    run_pi_client(conn, notify, input, script=script,
+                  auto={"auto_demo": auto_demo, "demo_dir": demo_dir})
     return 0
-
-
-def _patch_input_default(value: str) -> None:
-    import builtins
-
-    real_input = builtins.input
-
-    def patched(prompt: str = "") -> str:
-        if "IP адрес хоста" in prompt:
-            print(f"{prompt}{value}")
-            return value
-        return real_input(prompt)
-
-    builtins.input = patched  # type: ignore[assignment]
 
 
 def add_connect_subcommand(subparsers) -> None:
     """Регистрирует `connect` в argparse-парсере staticdiagram."""
     parser = subparsers.add_parser(
         "connect",
-        help="запустить консоль GettingStarted (Host/Pi подключение к хосту)",
+        help="запустить консоль GettingStarted (Host/Pi: файлы, диаграммы, журнал)",
     )
     parser.add_argument("--role", choices=["host", "pi"], default=None,
                         help="режим; по умолчанию — выбор в меню")
@@ -112,6 +104,12 @@ def add_connect_subcommand(subparsers) -> None:
                         help="секунды ожидания пары (0 — ждать всегда)")
     parser.add_argument("--host", dest="host_ip", default=None,
                         help="IP хоста (для режима Pi)")
+    parser.add_argument("--script", nargs="*", default=None,
+                        help="команды Pi без интерактива (тесты): up-dir <путь>, ...")
+    parser.add_argument("--auto-demo", action="store_true",
+                        help="Pi: выполнить полный демо-цикл и выйти")
+    parser.add_argument("--demo-dir", default=None,
+                        help="папка проекта для демо-цикла")
 
 
 def handle_connect_args(args) -> Optional[int]:
@@ -120,4 +118,7 @@ def handle_connect_args(args) -> Optional[int]:
     if cmd != "connect":
         return None
     return run_connect(role=args.role, port=args.port,
-                       timeout=args.timeout, host_ip=args.host_ip)
+                       timeout=args.timeout, host_ip=args.host_ip,
+                       script=getattr(args, "script", None),
+                       auto_demo=getattr(args, "auto_demo", False),
+                       demo_dir=getattr(args, "demo_dir", None))

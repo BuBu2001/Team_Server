@@ -1,0 +1,670 @@
+{
+  "groups": [],
+  "nodes": [
+    {
+      "id": "app_platform_main_py",
+      "label": "Application entry",
+      "type": "12 routes",
+      "description": "Team Server — локальная платформа в стиле GitHub с анализом через gitingest.",
+      "groupId": null,
+      "path": "app_platform/main.py",
+      "shape": null
+    },
+    {
+      "id": "getting_started",
+      "label": "Getting Started",
+      "type": "Общая логика консоли…",
+      "description": "Общая логика консоли GettingStarted (используется Windows- и Linux-версии).",
+      "groupId": null,
+      "path": "getting_started",
+      "shape": null
+    },
+    {
+      "id": "run_server_py",
+      "label": "Run Server",
+      "type": "Точка входа Team Server: python…",
+      "description": "Точка входа Team Server: python run_server.py",
+      "groupId": null,
+      "path": "run_server.py",
+      "shape": null
+    },
+    {
+      "id": "src_gitingest_main_py",
+      "label": "CLI entry (Gitingest)",
+      "type": "1 CLI command",
+      "description": "Command-line interface (CLI) for Gitingest.",
+      "groupId": null,
+      "path": "src/gitingest/__main__.py",
+      "shape": null
+    },
+    {
+      "id": "src_server_main_py",
+      "label": "CLI entry (Server)",
+      "type": "Server module entry point for…",
+      "description": "Server module entry point for running with python -m server.",
+      "groupId": null,
+      "path": "src/server/__main__.py",
+      "shape": null
+    },
+    {
+      "id": "gitdiagram_static_src_staticdiagram_cli_py",
+      "label": "CLI",
+      "type": "Command line interface",
+      "description": "Command line interface.",
+      "groupId": null,
+      "path": "gitdiagram-static/src/staticdiagram/cli.py",
+      "shape": null
+    },
+    {
+      "id": "gitdiagram_static_src_staticdiagram_main_py",
+      "label": "CLI entry",
+      "type": "module",
+      "description": null,
+      "groupId": null,
+      "path": "gitdiagram-static/src/staticdiagram/__main__.py",
+      "shape": null
+    },
+    {
+      "id": "src_gitingest_utils_logging_config_py",
+      "label": "Logging Config",
+      "type": "module",
+      "description": "Logging configuration for gitingest using loguru.",
+      "groupId": null,
+      "path": "src/gitingest/utils/logging_config.py",
+      "shape": null
+    },
+    {
+      "id": "src_gitingest_schemas",
+      "label": "Schemas package root",
+      "type": "containing the schemas for the…",
+      "description": "Module containing the schemas for the Gitingest package.",
+      "groupId": null,
+      "path": "src/gitingest/schemas",
+      "shape": "document"
+    },
+    {
+      "id": "src_server_server_config_py",
+      "label": "Server Config",
+      "type": "Configuration for the server",
+      "description": "Configuration for the server.",
+      "groupId": null,
+      "path": "src/server/server_config.py",
+      "shape": null
+    },
+    {
+      "id": "src_gitingest_config_py",
+      "label": "Configuration",
+      "type": "module",
+      "description": "Configuration file for the project.",
+      "groupId": null,
+      "path": "src/gitingest/config.py",
+      "shape": null
+    },
+    {
+      "id": "app_platform",
+      "label": "App Platform",
+      "type": "2 routes",
+      "description": "База данных платформы (SQLite): пользователи и проекты.",
+      "groupId": null,
+      "path": "app_platform",
+      "shape": "database"
+    },
+    {
+      "id": "src_server_models_py",
+      "label": "Models",
+      "type": "module",
+      "description": "Pydantic models for the query form.",
+      "groupId": null,
+      "path": "src/server/models.py",
+      "shape": "document"
+    },
+    {
+      "id": "src_gitingest_utils_git_utils_py",
+      "label": "Git Utils",
+      "type": "Utility functions for…",
+      "description": "Utility functions for interacting with Git repositories.",
+      "groupId": null,
+      "path": "src/gitingest/utils/git_utils.py",
+      "shape": null
+    },
+    {
+      "id": "src_server_main_py_2",
+      "label": "Application entry (Server)",
+      "type": "8 routes",
+      "description": "Main module for the FastAPI application.",
+      "groupId": null,
+      "path": "src/server/main.py",
+      "shape": null
+    },
+    {
+      "id": "src_gitingest_entrypoint_py",
+      "label": "Entrypoint",
+      "type": "Main entry point for ingesting a…",
+      "description": "Main entry point for ingesting a source and processing its contents.",
+      "groupId": null,
+      "path": "src/gitingest/entrypoint.py",
+      "shape": null
+    },
+    {
+      "id": "src_gitingest_utils_compat_func_py",
+      "label": "Compat Func",
+      "type": "Compatibility functions for…",
+      "description": "Compatibility functions for Python 3.8.",
+      "groupId": null,
+      "path": "src/gitingest/utils/compat_func.py",
+      "shape": null
+    },
+    {
+      "id": "src_gitingest",
+      "label": "Gitingest package root",
+      "type": "Gitingest: A package for…",
+      "description": "Gitingest: A package for ingesting data from Git repositories.",
+      "groupId": null,
+      "path": "src/gitingest",
+      "shape": null
+    },
+    {
+      "id": "src_server_query_processor_py",
+      "label": "Query Processor",
+      "type": "Process a query by parsing…",
+      "description": "Process a query by parsing input, cloning a repository, and generating a summary.",
+      "groupId": null,
+      "path": "src/server/query_processor.py",
+      "shape": null
+    },
+    {
+      "id": "src_server_s3_utils_py",
+      "label": "S3 Utils",
+      "type": "S3 utility functions for…",
+      "description": "S3 utility functions for uploading and managing digest files.",
+      "groupId": null,
+      "path": "src/server/s3_utils.py",
+      "shape": null
+    },
+    {
+      "id": "src_gitingest_ingestion_py",
+      "label": "Ingestion",
+      "type": "Functions to ingest and analyze…",
+      "description": "Functions to ingest and analyze a codebase directory or single file.",
+      "groupId": null,
+      "path": "src/gitingest/ingestion.py",
+      "shape": null
+    },
+    {
+      "id": "src_gitingest_schemas_cloning_py",
+      "label": "Cloning",
+      "type": "module",
+      "description": "Schema for the cloning process.",
+      "groupId": null,
+      "path": "src/gitingest/schemas/cloning.py",
+      "shape": "document"
+    },
+    {
+      "id": "src_gitingest_query_parser_py",
+      "label": "Query Parser",
+      "type": "containing functions to parse…",
+      "description": "Module containing functions to parse and validate input sources and patterns.",
+      "groupId": null,
+      "path": "src/gitingest/query_parser.py",
+      "shape": null
+    },
+    {
+      "id": "ext_http",
+      "label": "External HTTP APIs",
+      "type": "external system",
+      "description": null,
+      "groupId": null,
+      "path": null,
+      "shape": "hexagon"
+    },
+    {
+      "id": "ext_postgres",
+      "label": "PostgreSQL",
+      "type": "external system",
+      "description": null,
+      "groupId": null,
+      "path": null,
+      "shape": "database"
+    },
+    {
+      "id": "ext_redis",
+      "label": "Redis",
+      "type": "external system",
+      "description": null,
+      "groupId": null,
+      "path": null,
+      "shape": "database"
+    },
+    {
+      "id": "ext_s3",
+      "label": "Object storage (S3)",
+      "type": "external system",
+      "description": null,
+      "groupId": null,
+      "path": null,
+      "shape": "database"
+    },
+    {
+      "id": "ext_sqlite",
+      "label": "SQLite",
+      "type": "external system",
+      "description": null,
+      "groupId": null,
+      "path": null,
+      "shape": "database"
+    },
+    {
+      "id": "actor_http_client",
+      "label": "FastAPI client",
+      "type": "actor",
+      "description": null,
+      "groupId": null,
+      "path": null,
+      "shape": "circle"
+    },
+    {
+      "id": "actor_cli_user",
+      "label": "Terminal user",
+      "type": "actor",
+      "description": null,
+      "groupId": null,
+      "path": null,
+      "shape": "circle"
+    }
+  ],
+  "edges": [
+    {
+      "from": "app_platform_main_py",
+      "to": "src_gitingest",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "app_platform/main.py"
+    },
+    {
+      "from": "src_gitingest_main_py",
+      "to": "src_gitingest_config_py",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/gitingest/__main__.py"
+    },
+    {
+      "from": "src_server_main_py",
+      "to": "src_gitingest_utils_logging_config_py",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/server/__main__.py"
+    },
+    {
+      "from": "src_gitingest_main_py",
+      "to": "src_gitingest_utils_logging_config_py",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/gitingest/__main__.py"
+    },
+    {
+      "from": "src_gitingest_ingestion_py",
+      "to": "src_gitingest_schemas",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/gitingest/ingestion.py"
+    },
+    {
+      "from": "src_server_main_py_2",
+      "to": "src_server_server_config_py",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/server/main.py"
+    },
+    {
+      "from": "app_platform",
+      "to": "src_server_main_py_2",
+      "label": "routes to",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "app_platform/site_router.py"
+    },
+    {
+      "from": "app_platform",
+      "to": "src_server_models_py",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "app_platform/site_router.py"
+    },
+    {
+      "from": "src_gitingest_query_parser_py",
+      "to": "src_gitingest_utils_git_utils_py",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/gitingest/query_parser.py"
+    },
+    {
+      "from": "src_gitingest",
+      "to": "src_gitingest_entrypoint_py",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/gitingest/__init__.py"
+    },
+    {
+      "from": "src_gitingest_entrypoint_py",
+      "to": "src_gitingest_utils_compat_func_py",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/gitingest/entrypoint.py"
+    },
+    {
+      "from": "app_platform",
+      "to": "src_server_query_processor_py",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "app_platform/site_router.py"
+    },
+    {
+      "from": "src_server_query_processor_py",
+      "to": "src_server_s3_utils_py",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/server/query_processor.py"
+    },
+    {
+      "from": "src_gitingest_schemas",
+      "to": "src_gitingest_schemas_cloning_py",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/gitingest/schemas/__init__.py"
+    },
+    {
+      "from": "src_gitingest_entrypoint_py",
+      "to": "src_gitingest_query_parser_py",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/gitingest/entrypoint.py"
+    },
+    {
+      "from": "src_gitingest_main_py",
+      "to": "src_gitingest_entrypoint_py",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/gitingest/__main__.py"
+    },
+    {
+      "from": "src_gitingest_entrypoint_py",
+      "to": "src_gitingest_config_py",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/gitingest/entrypoint.py"
+    },
+    {
+      "from": "src_gitingest_entrypoint_py",
+      "to": "src_gitingest_ingestion_py",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/gitingest/entrypoint.py"
+    },
+    {
+      "from": "src_gitingest_entrypoint_py",
+      "to": "src_gitingest_schemas",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/gitingest/entrypoint.py"
+    },
+    {
+      "from": "src_gitingest_entrypoint_py",
+      "to": "src_gitingest_utils_logging_config_py",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/gitingest/entrypoint.py"
+    },
+    {
+      "from": "src_gitingest_ingestion_py",
+      "to": "src_gitingest_config_py",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/gitingest/ingestion.py"
+    },
+    {
+      "from": "src_gitingest_ingestion_py",
+      "to": "src_gitingest_utils_logging_config_py",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/gitingest/ingestion.py"
+    },
+    {
+      "from": "src_gitingest_query_parser_py",
+      "to": "src_gitingest_config_py",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/gitingest/query_parser.py"
+    },
+    {
+      "from": "src_gitingest_query_parser_py",
+      "to": "src_gitingest_schemas",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/gitingest/query_parser.py"
+    },
+    {
+      "from": "src_gitingest_query_parser_py",
+      "to": "src_gitingest_utils_logging_config_py",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/gitingest/query_parser.py"
+    },
+    {
+      "from": "src_gitingest_utils_git_utils_py",
+      "to": "src_gitingest_schemas",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/gitingest/utils/git_utils.py"
+    },
+    {
+      "from": "src_gitingest_utils_git_utils_py",
+      "to": "src_gitingest_utils_compat_func_py",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/gitingest/utils/git_utils.py"
+    },
+    {
+      "from": "src_gitingest_utils_git_utils_py",
+      "to": "src_gitingest_utils_logging_config_py",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/gitingest/utils/git_utils.py"
+    },
+    {
+      "from": "src_server_main_py_2",
+      "to": "src_gitingest_utils_logging_config_py",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/server/main.py"
+    },
+    {
+      "from": "src_server_models_py",
+      "to": "src_gitingest_utils_compat_func_py",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/server/models.py"
+    },
+    {
+      "from": "src_server_models_py",
+      "to": "src_server_server_config_py",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/server/models.py"
+    },
+    {
+      "from": "src_server_query_processor_py",
+      "to": "src_gitingest_ingestion_py",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/server/query_processor.py"
+    },
+    {
+      "from": "src_server_query_processor_py",
+      "to": "src_gitingest_query_parser_py",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/server/query_processor.py"
+    },
+    {
+      "from": "src_server_query_processor_py",
+      "to": "src_gitingest_schemas_cloning_py",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/server/query_processor.py"
+    },
+    {
+      "from": "src_server_query_processor_py",
+      "to": "src_gitingest_utils_git_utils_py",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/server/query_processor.py"
+    },
+    {
+      "from": "src_server_query_processor_py",
+      "to": "src_gitingest_utils_logging_config_py",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/server/query_processor.py"
+    },
+    {
+      "from": "src_server_query_processor_py",
+      "to": "src_server_models_py",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/server/query_processor.py"
+    },
+    {
+      "from": "src_server_query_processor_py",
+      "to": "src_server_server_config_py",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/server/query_processor.py"
+    },
+    {
+      "from": "src_server_s3_utils_py",
+      "to": "src_gitingest_utils_logging_config_py",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/server/s3_utils.py"
+    },
+    {
+      "from": "src_server_s3_utils_py",
+      "to": "src_server_models_py",
+      "label": "imports",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/server/s3_utils.py"
+    },
+    {
+      "from": "src_server_models_py",
+      "to": "ext_postgres",
+      "label": "queries",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "gitdiagram-static/tests/fixtures/shop_api/docker-compose.yml"
+    },
+    {
+      "from": "src_server_models_py",
+      "to": "ext_redis",
+      "label": "caches in",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "gitdiagram-static/tests/fixtures/shop_api/docker-compose.yml"
+    },
+    {
+      "from": "src_server_s3_utils_py",
+      "to": "ext_s3",
+      "label": "stores in",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/server/s3_utils.py"
+    },
+    {
+      "from": "app_platform",
+      "to": "ext_sqlite",
+      "label": "queries",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "app_platform/db.py"
+    },
+    {
+      "from": "actor_http_client",
+      "to": "app_platform_main_py",
+      "label": "requests",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "app_platform/main.py"
+    },
+    {
+      "from": "actor_http_client",
+      "to": "src_server_main_py_2",
+      "label": "requests",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "src/server/main.py"
+    },
+    {
+      "from": "actor_cli_user",
+      "to": "app_platform_main_py",
+      "label": "invokes",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "app_platform/main.py"
+    },
+    {
+      "from": "actor_cli_user",
+      "to": "getting_started",
+      "label": "invokes",
+      "description": null,
+      "style": "solid",
+      "evidencePath": "getting_started/gettingstarted_linux.py"
+    }
+  ],
+  "generator": "staticdiagram",
+  "model": null,
+  "repository": {
+    "owner": null,
+    "name": "workspace",
+    "branch": "qwen-code-19a6dccb-ce23-4cd5-92bf-236b1e2c6536",
+    "commit": "38f1759a2b57cd6091308b7162ed45be439ecfcd"
+  },
+  "explanation": "workspace is a Python codebase of 70 parsed modules (12,254 lines) packaging as `gitingest`. Its 23 main components are Application entry, Logging Config, Getting Started, Run Server, CLI entry (Gitingest), CLI entry (Server). HTTP requests are handled in `app_platform/main.py` (12 route handlers). Execution starts at `app_platform/main.py`, exposed as the `gitingest` command. The most depended-on module is `src/gitingest/utils/logging_config.py`, imported by 15 other components (15 import statements). Imports and infrastructure show external systems: External HTTP APIs, PostgreSQL, Redis, Object storage (S3). Built from 101 resolved internal imports; no model was called."
+}

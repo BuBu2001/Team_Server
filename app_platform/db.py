@@ -29,6 +29,14 @@ def init_db() -> None:
                 source TEXT NOT NULL,                  -- путь к папке проекта на сервере
                 added_at TEXT NOT NULL DEFAULT (datetime('now'))
             );
+            CREATE TABLE IF NOT EXISTS actions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ts TEXT NOT NULL DEFAULT (datetime('now')),
+                user TEXT NOT NULL,                    -- 'host' / имя пользователя Pi
+                action TEXT NOT NULL,                  -- upload/download/analyze/...
+                details TEXT NOT NULL DEFAULT '',
+                project TEXT NOT NULL DEFAULT ''
+            );
             """
         )
 
@@ -102,3 +110,53 @@ def get_project(project_id: int) -> dict | None:
             (project_id,),
         ).fetchone()
     return dict(row) if row else None
+
+
+# ---------- Журнал работы (получает данные из консоли GettingStarted) ----------
+
+def register_project(username: str, name: str, source: str) -> dict:
+    """Добавляет проект; пользователь создаётся автоматически, если новый."""
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT id FROM users WHERE username = ?", (username,)
+        ).fetchone()
+        if row is None:
+            cur = conn.execute(
+                "INSERT INTO users (username, role) VALUES (?, 'pi')", (username,)
+            )
+            uid = cur.lastrowid
+        else:
+            uid = row["id"]
+        existing = conn.execute(
+            "SELECT * FROM projects WHERE owner_id = ? AND name = ?", (uid, name)
+        ).fetchone()
+        if existing:
+            conn.execute("UPDATE projects SET source = ? WHERE id = ?",
+                         (source, existing["id"]))
+            return dict(existing) | {"source": source}
+        cur = conn.execute(
+            "INSERT INTO projects (owner_id, name, source) VALUES (?, ?, ?)",
+            (uid, name, source),
+        )
+        return {"id": cur.lastrowid, "owner_id": uid, "name": name, "source": source}
+
+
+def log_action(user: str, action: str, details: str = "", project: str = "") -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "INSERT INTO actions (user, action, details, project) VALUES (?, ?, ?, ?)",
+            (user, action, details, project),
+        )
+
+
+def list_actions(user: str | None = None, limit: int = 50) -> list[dict]:
+    q = "SELECT ts, user, action, details, project FROM actions "
+    args: tuple = ()
+    if user is not None:
+        q += "WHERE user = ? "
+        args = (user,)
+    q += "ORDER BY id DESC LIMIT ?"
+    args += (limit,)
+    with get_conn() as conn:
+        rows = conn.execute(q, args).fetchall()
+    return [dict(r) for r in rows]

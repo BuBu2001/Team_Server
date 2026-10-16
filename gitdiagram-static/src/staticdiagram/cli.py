@@ -28,8 +28,8 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
-        "target",
-        help="owner/repo, a git URL, or a local directory",
+        "target", nargs="?", default=None,
+        help="owner/repo, a git URL, or a local directory (не нужен для команды connect)",
     )
     parser.add_argument("--branch", help="branch or ref to analyse (default: repository default)")
     parser.add_argument("--out", type=Path, default=Path("out"), help="output directory (default: ./out)")
@@ -79,12 +79,19 @@ def main(argv: Optional[list[str]] = None) -> int:
         from . import gettingstarted
 
         return gettingstarted.run_connect(
-            role=args.role, port=args.port, timeout=args.timeout, host_ip=args.host_ip
+            role=args.role, port=args.port, timeout=args.timeout, host_ip=args.host_ip,
+            script=getattr(args, "script", None),
+            auto_demo=getattr(args, "auto_demo", False),
+            demo_dir=getattr(args, "demo_dir", None),
         )
 
     if getattr(args, "command", None) is not None:
         parser.print_help()
         return 2
+
+    if args.target is None:
+        parser.error("the following arguments are required: target "
+                     "(или используйте subcommand 'connect')")
 
     options = AnalyzeOptions(
         max_nodes=args.max_nodes,

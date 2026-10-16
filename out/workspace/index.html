@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>gitingest — architecture map</title>
+<style>
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 32px 24px 64px; background: #f8fafc; color: #0f172a;
+       font: 15px/1.6 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; }
+main { max-width: 1180px; margin: 0 auto; }
+header h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -0.01em; }
+header .meta { color: #64748b; font-size: 13px; margin-bottom: 4px; }
+.badge { display: inline-block; background: #dcfce7; color: #14532d; border: 1px solid #86efac;
+         border-radius: 999px; padding: 2px 10px; font-size: 11.5px; font-weight: 700;
+         letter-spacing: 0.04em; text-transform: uppercase; }
+.card { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 20px 22px;
+        margin-top: 20px; box-shadow: 0 1px 2px rgba(15,23,42,.04); }
+.card h2 { margin: 0 0 12px; font-size: 16px; letter-spacing: .02em; text-transform: uppercase;
+           color: #475569; }
+.diagram { overflow: auto; background: #fff; }
+.diagram svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid #eef2f7; vertical-align: top; }
+th { color: #64748b; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+code { background: #f1f5f9; border-radius: 5px; padding: 1px 5px; font-size: 12.5px;
+       font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+a { color: #2563eb; text-decoration: none; }
+a:hover { text-decoration: underline; }
+details summary { cursor: pointer; color: #475569; font-size: 13px; margin-bottom: 8px; }
+pre { background: #0f172a; color: #e2e8f0; padding: 14px 16px; border-radius: 10px;
+      overflow: auto; font-size: 12.5px; line-height: 1.5; }
+ul { margin: 8px 0 0; padding-left: 20px; }
+li { margin: 3px 0; }
+.pill { display:inline-block; background:#eef2ff; color:#3730a3; border-radius:6px;
+        padding:1px 7px; font-size:11.5px; margin:0 4px 4px 0; }
+footer { margin-top: 26px; color: #94a3b8; font-size: 12px; text-align: center; }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>gitingest</h1>
+  <div class="meta">local:/workspace · branch <code>qwen-code-19a6dccb-ce23-4cd5-92bf-236b1e2c6536</code> · commit <code>38f1759a2b</code> · 30 nodes · 48 edges</div>
+  <div class="meta"><span class="badge">no AI</span> <span class="meta">static analysis of imports, entry points and infrastructure</span></div>
+</header>
+
+<div class="card">
+  <h2>Overview</h2>
+  <p>workspace is a Python codebase of 70 parsed modules (12,254 lines) packaging as <code>gitingest</code>. Its 23 main components are Application entry, Logging Config, Getting Started, Run Server, CLI entry (Gitingest), CLI entry (Server). HTTP requests are handled in <code>app_platform/main.py</code> (12 route handlers). Execution starts at <code>app_platform/main.py</code>, exposed as the <code>gitingest</code> command. The most depended-on module is <code>src/gitingest/utils/logging_config.py</code>, imported by 15 other components (15 import statements). Imports and infrastructure show external systems: External HTTP APIs, PostgreSQL, Redis, Object storage (S3). Built from 101 resolved internal imports; no model was called.</p>
+</div>
+
+<div class="card diagram">
+  <h2>Architecture map</h2>
+  <svg xmlns="http://www.w3.org/2000/svg" width="2147" height="1236" viewBox="0 0 2147 1236" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif">
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#64748b"/></marker>
+<marker id="arrowDash" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#94a3b8"/></marker>
+</defs>
+<rect width="2147" height="1236" fill="#ffffff"/>
+<text x="24" y="30" font-size="17" font-weight="700" fill="#0f172a">gitingest</text>
+<text x="24" y="50" font-size="11.5" fill="#64748b">workspace · qwen-code-19a6dccb-ce23-4cd5-92bf-236b1e2c6536 · 38f1759a · 30 components, 48 relations</text>
+<path d="M367.9 308.0 C425.2 308.0, 453.9 398.0, 511.2 398.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M812.6 160.0 C812.6 466.9, 887.6 535.1, 887.6 842.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M1040.1 160.0 C1040.1 533.5, 1119.6 616.5, 1119.6 990.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M812.6 160.0 C812.6 533.5, 1119.6 616.5, 1119.6 990.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M839.6 752.0 C839.6 859.1, 914.6 882.9, 914.6 990.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M1179.1 308.0 C1179.1 481.7, 1321.6 520.3, 1321.6 694.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M1245.1 160.0 C1245.1 200.5, 1179.1 209.5, 1179.1 250.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M1245.1 160.0 C1245.1 333.7, 1216.8 372.3, 1216.8 546.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M1083.6 752.0 C1083.6 792.5, 1068.6 801.5, 1068.6 842.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M511.2 456.0 C632.6 456.0, 693.4 546.0, 814.8 546.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M814.8 604.0 C1016.3 604.0, 1117.1 990.0, 1318.6 990.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M1245.1 160.0 C1124.3 160.0, 1063.9 250.0, 943.1 250.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M943.1 308.0 C943.1 348.5, 958.0 357.5, 958.0 398.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M914.6 1048.0 C914.6 1088.5, 928.9 1097.5, 928.9 1138.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M814.8 604.0 C922.3 604.0, 976.1 694.0, 1083.6 694.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M812.6 160.0 C812.6 333.7, 814.8 372.3, 814.8 546.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M814.8 604.0 C814.8 711.1, 887.6 734.9, 887.6 842.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M814.8 604.0 C814.8 644.5, 839.6 653.5, 839.6 694.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M814.8 604.0 C814.8 777.7, 914.6 816.3, 914.6 990.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M814.8 604.0 C814.8 777.7, 1119.6 816.3, 1119.6 990.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M839.6 752.0 C839.6 792.5, 887.6 801.5, 887.6 842.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M839.6 752.0 C951.6 752.0, 1007.6 990.0, 1119.6 990.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M1083.6 752.0 C1005.2 752.0, 966.0 842.0, 887.6 842.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M1083.6 752.0 C1083.6 859.1, 914.6 882.9, 914.6 990.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M1083.6 752.0 C1083.6 859.1, 1119.6 882.9, 1119.6 990.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M1068.6 900.0 C1007.0 900.0, 976.2 990.0, 914.6 990.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M1068.6 900.0 C1168.6 900.0, 1218.6 990.0, 1318.6 990.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M1068.6 900.0 C1068.6 940.5, 1119.6 949.5, 1119.6 990.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M1179.1 308.0 C1179.1 614.9, 1119.6 683.1, 1119.6 990.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M1216.8 604.0 C1216.8 777.7, 1318.6 816.3, 1318.6 990.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M1216.8 604.0 C1258.7 604.0, 1279.7 694.0, 1321.6 694.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M943.1 308.0 C943.1 481.7, 839.6 520.3, 839.6 694.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M943.1 308.0 C943.1 481.7, 1083.6 520.3, 1083.6 694.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M943.1 308.0 C943.1 681.5, 928.9 764.5, 928.9 1138.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M943.1 308.0 C943.1 548.3, 1068.6 601.7, 1068.6 842.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M943.1 308.0 C943.1 614.9, 1119.6 683.1, 1119.6 990.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M943.1 308.0 C1052.6 308.0, 1107.3 546.0, 1216.8 546.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M943.1 308.0 C943.1 481.7, 1321.6 520.3, 1321.6 694.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M958.0 456.0 C958.0 696.3, 1119.6 749.7, 1119.6 990.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M958.0 456.0 C1061.6 456.0, 1113.3 546.0, 1216.8 546.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M1216.8 604.0 C1338.3 604.0, 1399.1 694.0, 1520.6 694.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M1216.8 604.0 C1404.7 604.0, 1498.7 694.0, 1686.6 694.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M958.0 456.0 C958.0 496.5, 1035.3 505.5, 1035.3 546.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M1245.1 160.0 C1301.1 160.0, 1329.1 250.0, 1385.1 250.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M624.1 160.0 C521.6 160.0, 470.4 250.0, 367.9 250.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M624.1 160.0 C846.1 160.0, 957.1 250.0, 1179.1 250.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M118.0 160.0 C218.0 160.0, 268.0 250.0, 367.9 250.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M118.0 160.0 C118.0 200.5, 118.0 209.5, 118.0 250.0" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+<g class="node"><rect x="724.1" y="102.0" width="177.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="812.6" y="127.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">CLI entry (Gitingest)</text><text x="812.6" y="144.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">1 CLI command</text></g>
+<g class="node"><ellipse cx="118.0" cy="131.0" rx="66.0" ry="29.0" fill="#dbeafe" stroke="#2563eb" stroke-width="1.6"/><text x="118.0" y="127.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#172554">Terminal user</text><text x="118.0" y="144.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#172554" opacity="0.78">actor</text></g>
+<g class="node"><ellipse cx="624.1" cy="131.0" rx="66.0" ry="29.0" fill="#dbeafe" stroke="#2563eb" stroke-width="1.6"/><text x="624.1" y="127.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#172554">FastAPI client</text><text x="624.1" y="144.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#172554" opacity="0.78">actor</text></g>
+<g class="node"><path d="M1179.1 111.0 v40.0 a66.0 9.0 0 0 0 132.0 0 v-40.0" fill="#fef3c7" stroke="#d97706" stroke-width="1.6"/><ellipse cx="1245.1" cy="111.0" rx="66.0" ry="9.0" fill="#fef3c7" stroke="#d97706" stroke-width="1.6"/><text x="1245.1" y="127.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#78350f">App Platform</text><text x="1245.1" y="144.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#78350f" opacity="0.78">2 routes</text></g>
+<g class="node"><rect x="935.1" y="102.0" width="210.0" height="58.0" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="1.6"/><text x="1040.1" y="127.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#14532d">CLI entry (Server)</text><text x="1040.1" y="144.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#14532d" opacity="0.78">Server module entry point for…</text></g>
+<g class="node"><polygon points="1363.1,102.0 1483.1,102.0 1501.1,131.0 1483.1,160.0 1363.1,160.0 1345.1,131.0" fill="#dcfce7" stroke="#16a34a" stroke-width="1.6"/><text x="1423.1" y="127.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#14532d">External HTTP APIs</text><text x="1423.1" y="144.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#14532d" opacity="0.78">external system</text></g>
+<g class="node"><rect x="1535.1" y="102.0" width="162.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="1616.1" y="127.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">CLI</text><text x="1616.1" y="144.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">Command line interface</text></g>
+<g class="node"><rect x="1731.1" y="102.0" width="132.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="1797.1" y="127.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">CLI entry</text><text x="1797.1" y="144.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">module</text></g>
+<g class="node"><rect x="1897.1" y="102.0" width="210.0" height="58.0" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="1.6"/><text x="2002.1" y="127.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#14532d">Run Server</text><text x="2002.1" y="144.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#14532d" opacity="0.78">Точка входа Team Server: pyth…</text></g>
+<g class="node"><rect x="293.4" y="250.0" width="149.0" height="58.0" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="1.6"/><text x="367.9" y="275.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#14532d">Application entry</text><text x="367.9" y="292.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#14532d" opacity="0.78">12 routes</text></g>
+<g class="node"><rect x="40.0" y="250.0" width="156.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="118.0" y="275.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">Getting Started</text><text x="118.0" y="292.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">Общая логика консоли…</text></g>
+<g class="node"><rect x="847.1" y="250.0" width="192.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="943.1" y="275.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">Query Processor</text><text x="943.1" y="292.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">Process a query by parsing…</text></g>
+<g class="node"><rect x="1073.1" y="250.0" width="212.0" height="58.0" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="1.6"/><text x="1179.1" y="275.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#14532d">Application entry (Server)</text><text x="1179.1" y="292.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#14532d" opacity="0.78">8 routes</text></g>
+<g class="node"><path d="M1319.1 259.0 v40.0 a66.0 9.0 0 0 0 132.0 0 v-40.0" fill="#fef3c7" stroke="#d97706" stroke-width="1.6"/><ellipse cx="1385.1" cy="259.0" rx="66.0" ry="9.0" fill="#fef3c7" stroke="#d97706" stroke-width="1.6"/><text x="1385.1" y="275.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#78350f">SQLite</text><text x="1385.1" y="292.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#78350f" opacity="0.78">external system</text></g>
+<g class="node"><rect x="419.2" y="398.0" width="184.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="511.2" y="423.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">Gitingest package root</text><text x="511.2" y="440.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">Gitingest: A package for…</text></g>
+<g class="node"><rect x="868.0" y="398.0" width="180.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="958.0" y="423.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">S3 Utils</text><text x="958.0" y="440.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">S3 utility functions for…</text></g>
+<g class="node"><rect x="709.8" y="546.0" width="210.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="814.8" y="571.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">Entrypoint</text><text x="814.8" y="588.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">Main entry point for ingestin…</text></g>
+<g class="node"><path d="M953.8 555.0 v40.0 a81.5 9.0 0 0 0 163.0 0 v-40.0" fill="#fef3c7" stroke="#d97706" stroke-width="1.6"/><ellipse cx="1035.3" cy="555.0" rx="81.5" ry="9.0" fill="#fef3c7" stroke="#d97706" stroke-width="1.6"/><text x="1035.3" y="571.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#78350f">Object storage (S3)</text><text x="1035.3" y="588.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#78350f" opacity="0.78">external system</text></g>
+<g class="node"><rect x="1150.8" y="546.0" width="132.0" height="58.0" rx="10" fill="#e0e7ff" stroke="#4f46e5" stroke-width="1.6"/><text x="1216.8" y="571.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#312e81">Models</text><text x="1216.8" y="588.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#312e81" opacity="0.78">module</text></g>
+<g class="node"><rect x="734.6" y="694.0" width="210.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="839.6" y="719.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">Ingestion</text><text x="839.6" y="736.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">Functions to ingest and analy…</text></g>
+<g class="node"><rect x="978.6" y="694.0" width="210.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="1083.6" y="719.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">Query Parser</text><text x="1083.6" y="736.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">containing functions to parse…</text></g>
+<g class="node"><path d="M1454.6 703.0 v40.0 a66.0 9.0 0 0 0 132.0 0 v-40.0" fill="#fef3c7" stroke="#d97706" stroke-width="1.6"/><ellipse cx="1520.6" cy="703.0" rx="66.0" ry="9.0" fill="#fef3c7" stroke="#d97706" stroke-width="1.6"/><text x="1520.6" y="719.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#78350f">PostgreSQL</text><text x="1520.6" y="736.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#78350f" opacity="0.78">external system</text></g>
+<g class="node"><path d="M1620.6 703.0 v40.0 a66.0 9.0 0 0 0 132.0 0 v-40.0" fill="#fef3c7" stroke="#d97706" stroke-width="1.6"/><ellipse cx="1686.6" cy="703.0" rx="66.0" ry="9.0" fill="#fef3c7" stroke="#d97706" stroke-width="1.6"/><text x="1686.6" y="719.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#78350f">Redis</text><text x="1686.6" y="736.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#78350f" opacity="0.78">external system</text></g>
+<g class="node"><rect x="1222.6" y="694.0" width="198.0" height="58.0" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="1.6"/><text x="1321.6" y="719.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#14532d">Server Config</text><text x="1321.6" y="736.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#14532d" opacity="0.78">Configuration for the server</text></g>
+<g class="node"><rect x="821.6" y="842.0" width="132.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="887.6" y="867.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">Configuration</text><text x="887.6" y="884.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">module</text></g>
+<g class="node"><rect x="987.6" y="842.0" width="162.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="1068.6" y="867.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">Git Utils</text><text x="1068.6" y="884.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">Utility functions for…</text></g>
+<g class="node"><rect x="809.6" y="990.0" width="210.0" height="58.0" rx="10" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="914.6" y="1015.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">Schemas package root</text><text x="914.6" y="1032.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">containing the schemas for th…</text></g>
+<g class="node"><rect x="1219.6" y="990.0" width="198.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="1318.6" y="1015.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">Compat Func</text><text x="1318.6" y="1032.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">Compatibility functions for…</text></g>
+<g class="node"><rect x="1053.6" y="990.0" width="132.0" height="58.0" rx="8" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="1119.6" y="1015.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">Logging Config</text><text x="1119.6" y="1032.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">module</text></g>
+<g class="node"><rect x="862.9" y="1138.0" width="132.0" height="58.0" rx="10" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.6"/><text x="928.9" y="1163.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="600" fill="#134e4a">Cloning</text><text x="928.9" y="1180.0" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10.5" fill="#134e4a" opacity="0.78">module</text></g>
+<rect x="414.9" y="345.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="439.5" y="356.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="825.5" y="493.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="850.1" y="504.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="1048.1" y="525.8" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="1072.7" y="537.3" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="913.9" y="525.8" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="938.6" y="537.3" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="827.5" y="813.6" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="852.2" y="825.1" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="1225.7" y="493.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="1250.3" y="504.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="1181.5" y="197.0" width="61.1" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="1212.1" y="208.5" text-anchor="middle" font-size="10" fill="#475569">routes to</text>
+<rect x="1206.3" y="345.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="1231.0" y="356.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="1051.5" y="789.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="1076.1" y="800.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="638.3" y="493.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="663.0" y="504.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="1014.8" y="754.4" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="1039.5" y="765.9" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="1069.4" y="197.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="1094.1" y="208.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="925.9" y="345.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="950.6" y="356.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="897.1" y="1085.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="921.7" y="1096.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="924.5" y="641.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="949.2" y="652.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="789.1" y="345.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="813.7" y="356.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="802.4" y="665.6" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="827.0" y="677.1" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="802.5" y="641.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="827.2" y="652.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="840.1" y="789.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="864.7" y="800.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="942.6" y="789.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="967.2" y="800.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="823.0" y="770.3" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="847.6" y="781.8" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="924.5" y="821.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="949.2" y="832.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="982.3" y="773.1" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="1006.9" y="784.6" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="1030.6" y="813.6" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="1055.3" y="825.1" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="1088.9" y="912.4" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="1113.6" y="923.9" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="967.0" y="937.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="991.6" y="948.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="1169.0" y="937.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="1193.6" y="948.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="1069.5" y="937.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="1094.1" y="948.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="1124.7" y="641.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="1149.4" y="652.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="1243.1" y="789.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="1267.7" y="800.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="1244.5" y="641.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="1269.2" y="652.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="876.0" y="473.8" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="900.6" y="485.3" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="988.7" y="493.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="1013.3" y="504.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="912.6" y="673.8" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="937.3" y="685.3" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="1003.4" y="620.5" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="1028.0" y="632.0" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="1006.7" y="641.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="1031.4" y="652.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="1055.3" y="419.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="1080.0" y="430.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="1107.7" y="493.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="1132.3" y="504.5" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="985.7" y="661.5" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="1010.3" y="673.0" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="1048.8" y="484.9" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="1073.4" y="496.4" text-anchor="middle" font-size="10" fill="#475569">imports</text>
+<rect x="1344.0" y="641.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="1368.7" y="652.5" text-anchor="middle" font-size="10" fill="#475569">queries</text>
+<rect x="1421.1" y="641.0" width="61.1" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="1451.7" y="652.5" text-anchor="middle" font-size="10" fill="#475569">caches in</text>
+<rect x="940.4" y="474.3" width="61.1" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="971.0" y="485.8" text-anchor="middle" font-size="10" fill="#475569">stores in</text>
+<rect x="1290.4" y="197.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="1315.1" y="208.5" text-anchor="middle" font-size="10" fill="#475569">queries</text>
+<rect x="468.4" y="197.0" width="55.2" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="496.0" y="208.5" text-anchor="middle" font-size="10" fill="#475569">requests</text>
+<rect x="874.0" y="197.0" width="55.2" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="901.6" y="208.5" text-anchor="middle" font-size="10" fill="#475569">requests</text>
+<rect x="218.3" y="197.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="243.0" y="208.5" text-anchor="middle" font-size="10" fill="#475569">invokes</text>
+<rect x="93.3" y="197.0" width="49.3" height="15" rx="7" fill="#ffffff" opacity="0.92"/>
+<text x="118.0" y="208.5" text-anchor="middle" font-size="10" fill="#475569">invokes</text>
+<text x="33" y="1226" text-anchor="end" font-size="10" fill="#94a3b8">generated by staticdiagram · no AI</text>
+</svg>
+  <details style="margin-top:14px">
+    <summary>Mermaid source</summary>
+    <pre>flowchart TD
+
+node_app_platform_main_py[&quot;Application entry&lt;br/&gt;12 routes&quot;]
+node_getting_started[&quot;Getting Started&lt;br/&gt;Общая логика консоли…&quot;]
+node_run_server_py[&quot;Run Server&lt;br/&gt;[run_server.py]&quot;]
+node_src_gitingest_main_py[&quot;CLI entry &amp;#40;Gitingest&amp;#41;&lt;br/&gt;1 CLI command&quot;]
+node_src_server_main_py[&quot;CLI entry &amp;#40;Server&amp;#41;&lt;br/&gt;[__main__.py]&quot;]
+node_gitdiagram_static_src_staticdiagram_cli_py[&quot;CLI&lt;br/&gt;Command line interface&quot;]
+node_gitdiagram_static_src_staticdiagram_main_py[&quot;CLI entry&lt;br/&gt;[__main__.py]&quot;]
+node_src_gitingest_utils_logging_config_py[&quot;Logging Config&lt;br/&gt;[logging_config.py]&quot;]
+node_src_gitingest_schemas[&quot;Schemas package root&quot;]
+node_src_server_server_config_py[&quot;Server Config&lt;br/&gt;Configuration for the server&quot;]
+node_src_gitingest_config_py[&quot;Configuration&lt;br/&gt;[config.py]&quot;]
+node_app_platform[(&quot;App Platform&lt;br/&gt;2 routes&quot;)]
+node_src_server_models_py[&quot;Models&lt;br/&gt;[models.py]&quot;]
+node_src_gitingest_utils_git_utils_py[&quot;Git Utils&lt;br/&gt;Utility functions for…&quot;]
+node_src_server_main_py_2[&quot;Application entry &amp;#40;Server&amp;#41;&lt;br/&gt;8 routes&quot;]
+node_src_gitingest_entrypoint_py[&quot;Entrypoint&lt;br/&gt;[entrypoint.py]&quot;]
+node_src_gitingest_utils_compat_func_py[&quot;Compat Func&lt;br/&gt;Compatibility functions for…&quot;]
+node_src_gitingest[&quot;Gitingest package root&lt;br/&gt;Gitingest: A package for…&quot;]
+node_src_server_query_processor_py[&quot;Query Processor&lt;br/&gt;[query_processor.py]&quot;]
+node_src_server_s3_utils_py[&quot;S3 Utils&lt;br/&gt;S3 utility functions for…&quot;]
+node_src_gitingest_ingestion_py[&quot;Ingestion&lt;br/&gt;[ingestion.py]&quot;]
+node_src_gitingest_schemas_cloning_py[&quot;Cloning&lt;br/&gt;[cloning.py]&quot;]
+node_src_gitingest_query_parser_py[&quot;Query Parser&lt;br/&gt;containing functions to parse…&quot;]
+node_ext_http{{&quot;External HTTP APIs&lt;br/&gt;external system&quot;}}
+node_ext_postgres[(&quot;PostgreSQL&lt;br/&gt;external system&quot;)]
+node_ext_redis[(&quot;Redis&lt;br/&gt;external system&quot;)]
+node_ext_s3[(&quot;Object storage &amp;#40;S3&amp;#41;&lt;br/&gt;external system&quot;)]
+node_ext_sqlite[(&quot;SQLite&lt;br/&gt;external system&quot;)]
+node_actor_http_client((&quot;FastAPI client&lt;br/&gt;actor&quot;))
+node_actor_cli_user((&quot;Terminal user&lt;br/&gt;actor&quot;))
+
+node_app_platform_main_py --&gt;|&quot;imports&quot;| node_src_gitingest
+node_src_gitingest_main_py --&gt;|&quot;imports&quot;| node_src_gitingest_config_py
+node_src_server_main_py --&gt;|&quot;imports&quot;| node_src_gitingest_utils_logging_config_py
+node_src_gitingest_main_py --&gt;|&quot;imports&quot;| node_src_gitingest_utils_logging_config_py
+node_src_gitingest_ingestion_py --&gt;|&quot;imports&quot;| node_src_gitingest_schemas
+node_src_server_main_py_2 --&gt;|&quot;imports&quot;| node_src_server_server_config_py
+node_app_platform --&gt;|&quot;routes to&quot;| node_src_server_main_py_2
+node_app_platform --&gt;|&quot;imports&quot;| node_src_server_models_py
+node_src_gitingest_query_parser_py --&gt;|&quot;imports&quot;| node_src_gitingest_utils_git_utils_py
+node_src_gitingest --&gt;|&quot;imports&quot;| node_src_gitingest_entrypoint_py
+node_src_gitingest_entrypoint_py --&gt;|&quot;imports&quot;| node_src_gitingest_utils_compat_func_py
+node_app_platform --&gt;|&quot;imports&quot;| node_src_server_query_processor_py
+node_src_server_query_processor_py --&gt;|&quot;imports&quot;| node_src_server_s3_utils_py
+node_src_gitingest_schemas --&gt;|&quot;imports&quot;| node_src_gitingest_schemas_cloning_py
+node_src_gitingest_entrypoint_py --&gt;|&quot;imports&quot;| node_src_gitingest_query_parser_py
+node_src_gitingest_main_py --&gt;|&quot;imports&quot;| node_src_gitingest_entrypoint_py
+node_src_gitingest_entrypoint_py --&gt;|&quot;imports&quot;| node_src_gitingest_config_py
+node_src_gitingest_entrypoint_py --&gt;|&quot;imports&quot;| node_src_gitingest_ingestion_py
+node_src_gitingest_entrypoint_py --&gt;|&quot;imports&quot;| node_src_gitingest_schemas
+node_src_gitingest_entrypoint_py --&gt;|&quot;imports&quot;| node_src_gitingest_utils_logging_config_py
+node_src_gitingest_ingestion_py --&gt;|&quot;imports&quot;| node_src_gitingest_config_py
+node_src_gitingest_ingestion_py --&gt;|&quot;imports&quot;| node_src_gitingest_utils_logging_config_py
+node_src_gitingest_query_parser_py --&gt;|&quot;imports&quot;| node_src_gitingest_config_py
+node_src_gitingest_query_parser_py --&gt;|&quot;imports&quot;| node_src_gitingest_schemas
+node_src_gitingest_query_parser_py --&gt;|&quot;imports&quot;| node_src_gitingest_utils_logging_config_py
+node_src_gitingest_utils_git_utils_py --&gt;|&quot;imports&quot;| node_src_gitingest_schemas
+node_src_gitingest_utils_git_utils_py --&gt;|&quot;imports&quot;| node_src_gitingest_utils_compat_func_py
+node_src_gitingest_utils_git_utils_py --&gt;|&quot;imports&quot;| node_src_gitingest_utils_logging_config_py
+node_src_server_main_py_2 --&gt;|&quot;imports&quot;| node_src_gitingest_utils_logging_config_py
+node_src_server_models_py --&gt;|&quot;imports&quot;| node_src_gitingest_utils_compat_func_py
+node_src_server_models_py --&gt;|&quot;imports&quot;| node_src_server_server_config_py
+node_src_server_query_processor_py --&gt;|&quot;imports&quot;| node_src_gitingest_ingestion_py
+node_src_server_query_processor_py --&gt;|&quot;imports&quot;| node_src_gitingest_query_parser_py
+node_src_server_query_processor_py --&gt;|&quot;imports&quot;| node_src_gitingest_schemas_cloning_py
+node_src_server_query_processor_py --&gt;|&quot;imports&quot;| node_src_gitingest_utils_git_utils_py
+node_src_server_query_processor_py --&gt;|&quot;imports&quot;| node_src_gitingest_utils_logging_config_py
+node_src_server_query_processor_py --&gt;|&quot;imports&quot;| node_src_server_models_py
+node_src_server_query_processor_py --&gt;|&quot;imports&quot;| node_src_server_server_config_py
+node_src_server_s3_utils_py --&gt;|&quot;imports&quot;| node_src_gitingest_utils_logging_config_py
+node_src_server_s3_utils_py --&gt;|&quot;imports&quot;| node_src_server_models_py
+node_src_server_models_py --&gt;|&quot;queries&quot;| node_ext_postgres
+node_src_server_models_py --&gt;|&quot;caches in&quot;| node_ext_redis
+node_src_server_s3_utils_py --&gt;|&quot;stores in&quot;| node_ext_s3
+node_app_platform --&gt;|&quot;queries&quot;| node_ext_sqlite
+node_actor_http_client --&gt;|&quot;requests&quot;| node_app_platform_main_py
+node_actor_http_client --&gt;|&quot;requests&quot;| node_src_server_main_py_2
+node_actor_cli_user --&gt;|&quot;invokes&quot;| node_app_platform_main_py
+node_actor_cli_user --&gt;|&quot;invokes&quot;| node_getting_started
+
+classDef toneNeutral fill:#f8fafc,stroke:#334155,stroke-width:1.5px,color:#0f172a
+classDef toneBlue fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px,color:#172554
+classDef toneAmber fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,color:#78350f
+classDef toneMint fill:#dcfce7,stroke:#16a34a,stroke-width:1.5px,color:#14532d
+classDef toneRose fill:#ffe4e6,stroke:#e11d48,stroke-width:1.5px,color:#881337
+classDef toneIndigo fill:#e0e7ff,stroke:#4f46e5,stroke-width:1.5px,color:#312e81
+classDef toneTeal fill:#ccfbf1,stroke:#0f766e,stroke-width:1.5px,color:#134e4a
+class node_app_platform_main_py,node_run_server_py,node_src_server_main_py,node_src_server_server_config_py,node_src_server_main_py_2,node_ext_http toneMint
+class node_getting_started,node_src_gitingest_main_py,node_gitdiagram_static_src_staticdiagram_cli_py,node_gitdiagram_static_src_staticdiagram_main_py,node_src_gitingest_utils_logging_config_py,node_src_gitingest_schemas,node_src_gitingest_config_py,node_src_gitingest_utils_git_utils_py,node_src_gitingest_entrypoint_py,node_src_gitingest_utils_compat_func_py,node_src_gitingest,node_src_server_query_processor_py,node_src_server_s3_utils_py,node_src_gitingest_ingestion_py,node_src_gitingest_schemas_cloning_py,node_src_gitingest_query_parser_py toneTeal
+class node_app_platform,node_ext_postgres,node_ext_redis,node_ext_s3,node_ext_sqlite toneAmber
+class node_src_server_models_py toneIndigo
+class node_actor_http_client,node_actor_cli_user toneBlue</pre>
+  </details>
+</div>
+
+<div class="card">
+  <h2>Components</h2>
+  <table><thead><tr><th>Component</th><th>Path</th><th class="num">Files</th><th class="num">Lines</th><th class="num">Imported by</th><th class="num">Depends on</th><th>Signals</th></tr></thead><tbody><tr><td>Application entry</td><td>`app_platform/main.py`</td><td class="num">1</td><td class="num">345</td><td class="num">0</td><td class="num">1</td><td><span class="pill">entrypoint:script</span><span class="pill">http_server</span><span class="pill">web:fastapi</span></td></tr><tr><td>Logging Config</td><td>`src/gitingest/utils/logging_config.py`</td><td class="num">1</td><td class="num">201</td><td class="num">15</td><td class="num">0</td><td></td></tr><tr><td>Getting Started</td><td>`getting_started`</td><td class="num">3</td><td class="num">494</td><td class="num">0</td><td class="num">0</td><td><span class="pill">cli:argparse</span><span class="pill">entrypoint:script</span></td></tr><tr><td>Run Server</td><td>`run_server.py`</td><td class="num">1</td><td class="num">15</td><td class="num">0</td><td class="num">0</td><td><span class="pill">entrypoint:script</span></td></tr><tr><td>CLI entry (Gitingest)</td><td>`src/gitingest/__main__.py`</td><td class="num">1</td><td class="num">205</td><td class="num">0</td><td class="num">3</td><td><span class="pill">cli</span><span class="pill">cli:click</span><span class="pill">entrypoint:script</span></td></tr><tr><td>CLI entry (Server)</td><td>`src/server/__main__.py`</td><td class="num">1</td><td class="num">33</td><td class="num">0</td><td class="num">1</td><td><span class="pill">entrypoint:script</span></td></tr><tr><td>Schemas package root</td><td>`src/gitingest/schemas`</td><td class="num">1</td><td class="num">8</td><td class="num">9</td><td class="num">3</td><td></td></tr><tr><td>Server Config</td><td>`src/server/server_config.py`</td><td class="num">1</td><td class="num">57</td><td class="num">6</td><td class="num">0</td><td><span class="pill">http_server</span><span class="pill">web:fastapi</span></td></tr><tr><td>CLI</td><td>`gitdiagram-static/src/staticdiagram/cli.py`</td><td class="num">1</td><td class="num">151</td><td class="num">0</td><td class="num">0</td><td><span class="pill">cli:argparse</span><span class="pill">entrypoint:script</span></td></tr><tr><td>CLI entry</td><td>`gitdiagram-static/src/staticdiagram/__main__.py`</td><td class="num">1</td><td class="num">5</td><td class="num">0</td><td class="num">0</td><td><span class="pill">entrypoint:script</span></td></tr><tr><td>Configuration</td><td>`src/gitingest/config.py`</td><td class="num">1</td><td class="num">15</td><td class="num">7</td><td class="num">0</td><td></td></tr><tr><td>App Platform</td><td>`app_platform`</td><td class="num">5</td><td class="num">419</td><td class="num">0</td><td class="num">3</td><td><span class="pill">driver:sqlite</span><span class="pill">http_server</span><span class="pill">state:sql</span><span class="pill">web:fastapi</span></td></tr><tr><td>Models</td><td>`src/server/models.py`</td><td class="num">1</td><td class="num">199</td><td class="num">5</td><td class="num">3</td><td><span class="pill">schema:pydantic</span></td></tr><tr><td>Git Utils</td><td>`src/gitingest/utils/git_utils.py`</td><td class="num">1</td><td class="num">532</td><td class="num">5</td><td class="num">4</td><td><span class="pill">vcs:gitpython</span></td></tr><tr><td>Application entry (Server)</td><td>`src/server/main.py`</td><td class="num">1</td><td class="num">214</td><td class="num">1</td><td class="num">5</td><td><span class="pill">http_server</span><span class="pill">observability:errors</span><span class="pill">web:fastapi</span><span class="pill">web:starlette</span></td></tr><tr><td>Entrypoint</td><td>`src/gitingest/entrypoint.py`</td><td class="num">1</td><td class="num">353</td><td class="num">2</td><td class="num">11</td><td></td></tr><tr><td>Compat Func</td><td>`src/gitingest/utils/compat_func.py`</td><td class="num">1</td><td class="num">45</td><td class="num">5</td><td class="num">0</td><td></td></tr><tr><td>Gitingest package root</td><td>`src/gitingest`</td><td class="num">1</td><td class="num">6</td><td class="num">1</td><td class="num">1</td><td></td></tr><tr><td>Query Processor</td><td>`src/server/query_processor.py`</td><td class="num">1</td><td class="num">430</td><td class="num">2</td><td class="num">11</td><td></td></tr><tr><td>S3 Utils</td><td>`src/server/s3_utils.py`</td><td class="num">1</td><td class="num">562</td><td class="num">2</td><td class="num">2</td><td><span class="pill">cloud:aws</span><span class="pill">object_storage</span><span class="pill">observability:metrics</span></td></tr><tr><td>Ingestion</td><td>`src/gitingest/ingestion.py`</td><td class="num">1</td><td class="num">326</td><td class="num">2</td><td class="num">6</td><td></td></tr><tr><td>Cloning</td><td>`src/gitingest/schemas/cloning.py`</td><td class="num">1</td><td class="num">43</td><td class="num">3</td><td class="num">0</td><td><span class="pill">schema:pydantic</span></td></tr><tr><td>Query Parser</td><td>`src/gitingest/query_parser.py`</td><td class="num">1</td><td class="num">191</td><td class="num">2</td><td class="num">5</td><td></td></tr></tbody></table>
+</div>
+
+<div class="card">
+  <h2>Connections</h2>
+  <table><thead><tr><th>From</th><th>Relation</th><th>To</th><th>Evidence</th></tr></thead><tbody><tr><td>Application entry</td><td>imports</td><td>Gitingest package root <span style='color:#94a3b8'>src/gitingest</span></td><td>`app_platform/main.py`</td></tr><tr><td>CLI entry (Gitingest)</td><td>imports</td><td>Configuration <span style='color:#94a3b8'>src/gitingest/config.py</span></td><td>`src/gitingest/__main__.py`</td></tr><tr><td>CLI entry (Server)</td><td>imports</td><td>Logging Config <span style='color:#94a3b8'>src/gitingest/utils/logging_config.py</span></td><td>`src/server/__main__.py`</td></tr><tr><td>CLI entry (Gitingest)</td><td>imports</td><td>Logging Config <span style='color:#94a3b8'>src/gitingest/utils/logging_config.py</span></td><td>`src/gitingest/__main__.py`</td></tr><tr><td>Ingestion</td><td>imports</td><td>Schemas package root <span style='color:#94a3b8'>src/gitingest/schemas</span></td><td>`src/gitingest/ingestion.py`</td></tr><tr><td>Application entry (Server)</td><td>imports</td><td>Server Config <span style='color:#94a3b8'>src/server/server_config.py</span></td><td>`src/server/main.py`</td></tr><tr><td>App Platform</td><td>routes to</td><td>Application entry (Server) <span style='color:#94a3b8'>src/server/main.py</span></td><td>`app_platform/site_router.py`</td></tr><tr><td>App Platform</td><td>imports</td><td>Models <span style='color:#94a3b8'>src/server/models.py</span></td><td>`app_platform/site_router.py`</td></tr><tr><td>Query Parser</td><td>imports</td><td>Git Utils <span style='color:#94a3b8'>src/gitingest/utils/git_utils.py</span></td><td>`src/gitingest/query_parser.py`</td></tr><tr><td>Gitingest package root</td><td>imports</td><td>Entrypoint <span style='color:#94a3b8'>src/gitingest/entrypoint.py</span></td><td>`src/gitingest/__init__.py`</td></tr><tr><td>Entrypoint</td><td>imports</td><td>Compat Func <span style='color:#94a3b8'>src/gitingest/utils/compat_func.py</span></td><td>`src/gitingest/entrypoint.py`</td></tr><tr><td>App Platform</td><td>imports</td><td>Query Processor <span style='color:#94a3b8'>src/server/query_processor.py</span></td><td>`app_platform/site_router.py`</td></tr><tr><td>Query Processor</td><td>imports</td><td>S3 Utils <span style='color:#94a3b8'>src/server/s3_utils.py</span></td><td>`src/server/query_processor.py`</td></tr><tr><td>Schemas package root</td><td>imports</td><td>Cloning <span style='color:#94a3b8'>src/gitingest/schemas/cloning.py</span></td><td>`src/gitingest/schemas/__init__.py`</td></tr><tr><td>Entrypoint</td><td>imports</td><td>Query Parser <span style='color:#94a3b8'>src/gitingest/query_parser.py</span></td><td>`src/gitingest/entrypoint.py`</td></tr><tr><td>CLI entry (Gitingest)</td><td>imports</td><td>Entrypoint <span style='color:#94a3b8'>src/gitingest/entrypoint.py</span></td><td>`src/gitingest/__main__.py`</td></tr><tr><td>Entrypoint</td><td>imports</td><td>Configuration <span style='color:#94a3b8'>src/gitingest/config.py</span></td><td>`src/gitingest/entrypoint.py`</td></tr><tr><td>Entrypoint</td><td>imports</td><td>Ingestion <span style='color:#94a3b8'>src/gitingest/ingestion.py</span></td><td>`src/gitingest/entrypoint.py`</td></tr><tr><td>Entrypoint</td><td>imports</td><td>Schemas package root <span style='color:#94a3b8'>src/gitingest/schemas</span></td><td>`src/gitingest/entrypoint.py`</td></tr><tr><td>Entrypoint</td><td>imports</td><td>Logging Config <span style='color:#94a3b8'>src/gitingest/utils/logging_config.py</span></td><td>`src/gitingest/entrypoint.py`</td></tr><tr><td>Ingestion</td><td>imports</td><td>Configuration <span style='color:#94a3b8'>src/gitingest/config.py</span></td><td>`src/gitingest/ingestion.py`</td></tr><tr><td>Ingestion</td><td>imports</td><td>Logging Config <span style='color:#94a3b8'>src/gitingest/utils/logging_config.py</span></td><td>`src/gitingest/ingestion.py`</td></tr><tr><td>Query Parser</td><td>imports</td><td>Configuration <span style='color:#94a3b8'>src/gitingest/config.py</span></td><td>`src/gitingest/query_parser.py`</td></tr><tr><td>Query Parser</td><td>imports</td><td>Schemas package root <span style='color:#94a3b8'>src/gitingest/schemas</span></td><td>`src/gitingest/query_parser.py`</td></tr><tr><td>Query Parser</td><td>imports</td><td>Logging Config <span style='color:#94a3b8'>src/gitingest/utils/logging_config.py</span></td><td>`src/gitingest/query_parser.py`</td></tr><tr><td>Git Utils</td><td>imports</td><td>Schemas package root <span style='color:#94a3b8'>src/gitingest/schemas</span></td><td>`src/gitingest/utils/git_utils.py`</td></tr><tr><td>Git Utils</td><td>imports</td><td>Compat Func <span style='color:#94a3b8'>src/gitingest/utils/compat_func.py</span></td><td>`src/gitingest/utils/git_utils.py`</td></tr><tr><td>Git Utils</td><td>imports</td><td>Logging Config <span style='color:#94a3b8'>src/gitingest/utils/logging_config.py</span></td><td>`src/gitingest/utils/git_utils.py`</td></tr><tr><td>Application entry (Server)</td><td>imports</td><td>Logging Config <span style='color:#94a3b8'>src/gitingest/utils/logging_config.py</span></td><td>`src/server/main.py`</td></tr><tr><td>Models</td><td>imports</td><td>Compat Func <span style='color:#94a3b8'>src/gitingest/utils/compat_func.py</span></td><td>`src/server/models.py`</td></tr><tr><td>Models</td><td>imports</td><td>Server Config <span style='color:#94a3b8'>src/server/server_config.py</span></td><td>`src/server/models.py`</td></tr><tr><td>Query Processor</td><td>imports</td><td>Ingestion <span style='color:#94a3b8'>src/gitingest/ingestion.py</span></td><td>`src/server/query_processor.py`</td></tr><tr><td>Query Processor</td><td>imports</td><td>Query Parser <span style='color:#94a3b8'>src/gitingest/query_parser.py</span></td><td>`src/server/query_processor.py`</td></tr><tr><td>Query Processor</td><td>imports</td><td>Cloning <span style='color:#94a3b8'>src/gitingest/schemas/cloning.py</span></td><td>`src/server/query_processor.py`</td></tr><tr><td>Query Processor</td><td>imports</td><td>Git Utils <span style='color:#94a3b8'>src/gitingest/utils/git_utils.py</span></td><td>`src/server/query_processor.py`</td></tr><tr><td>Query Processor</td><td>imports</td><td>Logging Config <span style='color:#94a3b8'>src/gitingest/utils/logging_config.py</span></td><td>`src/server/query_processor.py`</td></tr><tr><td>Query Processor</td><td>imports</td><td>Models <span style='color:#94a3b8'>src/server/models.py</span></td><td>`src/server/query_processor.py`</td></tr><tr><td>Query Processor</td><td>imports</td><td>Server Config <span style='color:#94a3b8'>src/server/server_config.py</span></td><td>`src/server/query_processor.py`</td></tr><tr><td>S3 Utils</td><td>imports</td><td>Logging Config <span style='color:#94a3b8'>src/gitingest/utils/logging_config.py</span></td><td>`src/server/s3_utils.py`</td></tr><tr><td>S3 Utils</td><td>imports</td><td>Models <span style='color:#94a3b8'>src/server/models.py</span></td><td>`src/server/s3_utils.py`</td></tr><tr><td>Models</td><td>queries</td><td>PostgreSQL</td><td>`gitdiagram-static/tests/fixtures/shop_api/docker-compose.yml`</td></tr><tr><td>Models</td><td>caches in</td><td>Redis</td><td>`gitdiagram-static/tests/fixtures/shop_api/docker-compose.yml`</td></tr><tr><td>S3 Utils</td><td>stores in</td><td>Object storage (S3)</td><td>`src/server/s3_utils.py`</td></tr><tr><td>App Platform</td><td>queries</td><td>SQLite</td><td>`app_platform/db.py`</td></tr><tr><td>FastAPI client</td><td>requests</td><td>Application entry <span style='color:#94a3b8'>app_platform/main.py</span></td><td>`app_platform/main.py`</td></tr><tr><td>FastAPI client</td><td>requests</td><td>Application entry (Server) <span style='color:#94a3b8'>src/server/main.py</span></td><td>`src/server/main.py`</td></tr><tr><td>Terminal user</td><td>invokes</td><td>Application entry <span style='color:#94a3b8'>app_platform/main.py</span></td><td>`app_platform/main.py`</td></tr><tr><td>Terminal user</td><td>invokes</td><td>Getting Started <span style='color:#94a3b8'>getting_started</span></td><td>`getting_started/gettingstarted_linux.py`</td></tr></tbody></table>
+</div>
+
+<div class="card"><h2>Entry points</h2><ul><li><code>app_platform/main.py</code> — part of **Application entry** (<code>app_platform/main.py</code>)</li>
+<li><code>run_server.py</code> — part of **Run Server** (<code>run_server.py</code>)</li>
+<li><code>src/gitingest/__main__.py</code> — part of **CLI entry (Gitingest)** (<code>src/gitingest/__main__.py</code>)</li>
+<li><code>src/server/__main__.py</code> — part of **CLI entry (Server)** (<code>src/server/__main__.py</code>)</li>
+<li><code>gitdiagram-static/src/staticdiagram/cli.py</code> — part of **CLI** (<code>gitdiagram-static/src/staticdiagram/cli.py</code>)</li>
+<li><code>gitdiagram-static/src/staticdiagram/__main__.py</code> — part of **CLI entry** (<code>gitdiagram-static/src/staticdiagram/__main__.py</code>)</li>
+<li><code>getting_started/gettingstarted_linux.py</code> — part of **Getting Started** (<code>getting_started</code>)</li>
+<li><code>getting_started/gettingstarted_windows.py</code> — part of **Getting Started** (<code>getting_started</code>)</li>
+<li>CLI commands in <code>src/gitingest/__main__.py</code> — 1 command</li>
+<li>console script <code>gitingest</code> → <code>gitingest.__main__:main</code></li>
+<li>HTTP routes in <code>app_platform/main.py</code> — 12 handlers</li>
+<li>HTTP routes in <code>app_platform</code> — 2 handlers</li>
+<li>HTTP routes in <code>src/server/main.py</code> — 8 handlers</li>
+<li>HTTP routes in <code>src/server/routers/ingest.py</code> — 3 handlers</li>
+<li>HTTP routes in <code>src/server/routers/dynamic.py</code> — 1 handler</li>
+<li>HTTP routes in <code>src/server/routers/index.py</code> — 1 handler</li></ul></div><div class="card"><h2>State and external systems</h2><ul><li>**External HTTP APIs** — used by <code>src/gitingest/output_formatter.py</code> (seen in <code>src/gitingest/output_formatter.py</code>)</li>
+<li>**PostgreSQL** — used by <code>src/server/models.py</code> (seen in <code>gitdiagram-static/tests/fixtures/shop_api/docker-compose.yml</code>)</li>
+<li>**Redis** — used by <code>src/server/models.py</code> (seen in <code>gitdiagram-static/tests/fixtures/shop_api/docker-compose.yml</code>)</li>
+<li>**Object storage (S3)** — used by <code>src/server/s3_utils.py</code> (seen in <code>src/server/s3_utils.py</code>)</li>
+<li>**SQLite** — used by <code>app_platform</code> (seen in <code>app_platform/db.py</code>)</li>
+<li>**MinIO (S3)** — service <code>minio</code> in <code>compose.yml</code></li>
+<li>**MinIO (S3)** — service <code>minio-setup</code> in <code>compose.yml</code></li>
+<li>**PostgreSQL** — service <code>db</code> in <code>gitdiagram-static/tests/fixtures/shop_api/docker-compose.yml</code></li>
+<li>**Redis** — service <code>cache</code> in <code>gitdiagram-static/tests/fixtures/shop_api/docker-compose.yml</code></li></ul></div><div class="card"><h2>Runtime dependencies</h2><p><code>boto3</code>, <code>click</code>, <code>eval-type-backport</code>, <code>fastapi</code>, <code>gitpython</code>, <code>httpx</code>, <code>loguru</code>, <code>pathspec</code>, <code>pre-commit</code>, <code>prometheus-client</code>, <code>pydantic</code>, <code>pytest</code>, <code>pytest-asyncio</code>, <code>pytest-cov</code>, <code>pytest-mock</code>, <code>python-dotenv</code>, <code>sentry-sdk</code>, <code>slowapi</code> (of 23 declared)</p></div><div class="card"><h2>Deployment and operations</h2><ul><li><code>Dockerfile</code> — python:3.13.5-slim@sha256:4c2cf9917bd1cbacc5e9b07320025bdb7cdf2df7b0ceaccb55e9dd7e30987419, runs [&quot;python&quot;, &quot;-m&quot;, &quot;server&quot;]</li>
+<li><code>gitdiagram-static/Dockerfile</code> — python:3.12-slim, runs [&quot;staticdiagram&quot;]</li>
+<li><code>gitdiagram-static/tests/fixtures/shop_api/Dockerfile</code> — python:3.12-slim, runs [&quot;uvicorn&quot;, &quot;shop.main:app&quot;, &quot;--host&quot;, &quot;0.0.0.0&quot;, &quot;--port&quot;, &quot;8000&quot;]</li>
+<li>compose service <code>app</code> = <code>ghcr.io/coderamp-labs/gitingest:latest</code> (compose.yml)</li>
+<li>compose service <code>app-dev</code> (compose.yml)</li>
+<li>compose service <code>minio</code> = <code>minio/minio:latest</code> (compose.yml)</li>
+<li>compose service <code>minio-setup</code> = <code>minio/mc</code> (compose.yml)</li>
+<li>compose service <code>api</code> (gitdiagram-static/tests/fixtures/shop_api/docker-compose.yml)</li>
+<li>compose service <code>db</code> = <code>postgres:16-alpine</code> (gitdiagram-static/tests/fixtures/shop_api/docker-compose.yml)</li>
+<li>compose service <code>cache</code> = <code>redis:7-alpine</code> (gitdiagram-static/tests/fixtures/shop_api/docker-compose.yml)</li>
+<li>compose service <code>worker</code> (gitdiagram-static/tests/fixtures/shop_api/docker-compose.yml)</li>
+<li><code>.env.example</code> declares 16 settings: <code>ALLOWED_HOSTS</code>, <code>GITINGEST_METRICS_HOST</code>, <code>GITINGEST_METRICS_PORT</code>, <code>GITINGEST_SENTRY_TRACES_SAMPLE_RATE</code>, <code>GITINGEST_SENTRY_PROFILE_SESSION_SAMPLE_RATE</code>, <code>GITINGEST_SENTRY_PROFILE_LIFECYCLE</code>, <code>GITINGEST_SENTRY_SEND_DEFAULT_PII</code>, <code>GITINGEST_SENTRY_ENVIRONMENT</code>, <code>MINIO_ROOT_USER</code>, <code>MINIO_ROOT_PASSWORD</code>, <code>S3_ENDPOINT</code>, <code>S3_ACCESS_KEY</code></li></ul></div><div class="card"><h2>Coverage and limits</h2><ul><li>Parsed 70 of 1021 repository files; 41 skipped as tests/examples/docs, 0 skipped as vendored, sensitive or oversized.</li>
+<li>101 imports resolved to repository paths, 112 point outside the repository (stdlib or third-party), 239 were stdlib.</li>
+<li>50 components detected at directory depth 1; 23 shown on the diagram.</li>
+<li>Top unresolved import roots (treated as external): <code>fastapi</code>, <code>uvicorn</code>, <code>slowapi</code>, <code>app_platform</code>, <code>core</code>, <code>staticdiagram</code>, <code>typing_extensions</code>, <code>pydantic</code>.</li>
+<li>Only static imports are traced. Wiring through configuration, HTTP calls, message brokers, plugin registries or <code>globals()</code>-style dynamic imports is not detected, and neither is runtime behaviour.</li></ul></div>
+
+<div class="card">
+  <h2>Coverage</h2>
+  <ul><li>Repository files: <strong>1021</strong></li><li>Python modules parsed: <strong>70</strong></li><li>Skipped (tests/examples/docs): <strong>41</strong></li><li>Skipped (vendored/oversized/sensitive): <strong>0</strong></li><li>Internal imports resolved: <strong>101</strong></li><li>Imports to stdlib: <strong>239</strong></li><li>Imports outside the repository: <strong>112</strong></li><li>Components detected: <strong>50</strong> (depth 1, 23 on the diagram)</li><li>Unparsable files: <strong>0</strong></li></ul>
+</div>
+
+
+
+<footer>Generated by staticdiagram — deterministic static analysis, zero model calls.</footer>
+</main>
+</body>
+</html>

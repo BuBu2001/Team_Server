@@ -1,0 +1,94 @@
+flowchart TD
+
+node_app_platform_main_py["Application entry<br/>12 routes"]
+node_getting_started["Getting Started<br/>Общая логика консоли…"]
+node_run_server_py["Run Server<br/>[run_server.py]"]
+node_src_gitingest_main_py["CLI entry &#40;Gitingest&#41;<br/>1 CLI command"]
+node_src_server_main_py["CLI entry &#40;Server&#41;<br/>[__main__.py]"]
+node_gitdiagram_static_src_staticdiagram_cli_py["CLI<br/>Command line interface"]
+node_gitdiagram_static_src_staticdiagram_main_py["CLI entry<br/>[__main__.py]"]
+node_src_gitingest_utils_logging_config_py["Logging Config<br/>[logging_config.py]"]
+node_src_gitingest_schemas["Schemas package root"]
+node_src_server_server_config_py["Server Config<br/>Configuration for the server"]
+node_src_gitingest_config_py["Configuration<br/>[config.py]"]
+node_app_platform[("App Platform<br/>2 routes")]
+node_src_server_models_py["Models<br/>[models.py]"]
+node_src_gitingest_utils_git_utils_py["Git Utils<br/>Utility functions for…"]
+node_src_server_main_py_2["Application entry &#40;Server&#41;<br/>8 routes"]
+node_src_gitingest_entrypoint_py["Entrypoint<br/>[entrypoint.py]"]
+node_src_gitingest_utils_compat_func_py["Compat Func<br/>Compatibility functions for…"]
+node_src_gitingest["Gitingest package root<br/>Gitingest: A package for…"]
+node_src_server_query_processor_py["Query Processor<br/>[query_processor.py]"]
+node_src_server_s3_utils_py["S3 Utils<br/>S3 utility functions for…"]
+node_src_gitingest_ingestion_py["Ingestion<br/>[ingestion.py]"]
+node_src_gitingest_schemas_cloning_py["Cloning<br/>[cloning.py]"]
+node_src_gitingest_query_parser_py["Query Parser<br/>containing functions to parse…"]
+node_ext_http{{"External HTTP APIs<br/>external system"}}
+node_ext_postgres[("PostgreSQL<br/>external system")]
+node_ext_redis[("Redis<br/>external system")]
+node_ext_s3[("Object storage &#40;S3&#41;<br/>external system")]
+node_ext_sqlite[("SQLite<br/>external system")]
+node_actor_http_client(("FastAPI client<br/>actor"))
+node_actor_cli_user(("Terminal user<br/>actor"))
+
+node_app_platform_main_py -->|"imports"| node_src_gitingest
+node_src_gitingest_main_py -->|"imports"| node_src_gitingest_config_py
+node_src_server_main_py -->|"imports"| node_src_gitingest_utils_logging_config_py
+node_src_gitingest_main_py -->|"imports"| node_src_gitingest_utils_logging_config_py
+node_src_gitingest_ingestion_py -->|"imports"| node_src_gitingest_schemas
+node_src_server_main_py_2 -->|"imports"| node_src_server_server_config_py
+node_app_platform -->|"routes to"| node_src_server_main_py_2
+node_app_platform -->|"imports"| node_src_server_models_py
+node_src_gitingest_query_parser_py -->|"imports"| node_src_gitingest_utils_git_utils_py
+node_src_gitingest -->|"imports"| node_src_gitingest_entrypoint_py
+node_src_gitingest_entrypoint_py -->|"imports"| node_src_gitingest_utils_compat_func_py
+node_app_platform -->|"imports"| node_src_server_query_processor_py
+node_src_server_query_processor_py -->|"imports"| node_src_server_s3_utils_py
+node_src_gitingest_schemas -->|"imports"| node_src_gitingest_schemas_cloning_py
+node_src_gitingest_entrypoint_py -->|"imports"| node_src_gitingest_query_parser_py
+node_src_gitingest_main_py -->|"imports"| node_src_gitingest_entrypoint_py
+node_src_gitingest_entrypoint_py -->|"imports"| node_src_gitingest_config_py
+node_src_gitingest_entrypoint_py -->|"imports"| node_src_gitingest_ingestion_py
+node_src_gitingest_entrypoint_py -->|"imports"| node_src_gitingest_schemas
+node_src_gitingest_entrypoint_py -->|"imports"| node_src_gitingest_utils_logging_config_py
+node_src_gitingest_ingestion_py -->|"imports"| node_src_gitingest_config_py
+node_src_gitingest_ingestion_py -->|"imports"| node_src_gitingest_utils_logging_config_py
+node_src_gitingest_query_parser_py -->|"imports"| node_src_gitingest_config_py
+node_src_gitingest_query_parser_py -->|"imports"| node_src_gitingest_schemas
+node_src_gitingest_query_parser_py -->|"imports"| node_src_gitingest_utils_logging_config_py
+node_src_gitingest_utils_git_utils_py -->|"imports"| node_src_gitingest_schemas
+node_src_gitingest_utils_git_utils_py -->|"imports"| node_src_gitingest_utils_compat_func_py
+node_src_gitingest_utils_git_utils_py -->|"imports"| node_src_gitingest_utils_logging_config_py
+node_src_server_main_py_2 -->|"imports"| node_src_gitingest_utils_logging_config_py
+node_src_server_models_py -->|"imports"| node_src_gitingest_utils_compat_func_py
+node_src_server_models_py -->|"imports"| node_src_server_server_config_py
+node_src_server_query_processor_py -->|"imports"| node_src_gitingest_ingestion_py
+node_src_server_query_processor_py -->|"imports"| node_src_gitingest_query_parser_py
+node_src_server_query_processor_py -->|"imports"| node_src_gitingest_schemas_cloning_py
+node_src_server_query_processor_py -->|"imports"| node_src_gitingest_utils_git_utils_py
+node_src_server_query_processor_py -->|"imports"| node_src_gitingest_utils_logging_config_py
+node_src_server_query_processor_py -->|"imports"| node_src_server_models_py
+node_src_server_query_processor_py -->|"imports"| node_src_server_server_config_py
+node_src_server_s3_utils_py -->|"imports"| node_src_gitingest_utils_logging_config_py
+node_src_server_s3_utils_py -->|"imports"| node_src_server_models_py
+node_src_server_models_py -->|"queries"| node_ext_postgres
+node_src_server_models_py -->|"caches in"| node_ext_redis
+node_src_server_s3_utils_py -->|"stores in"| node_ext_s3
+node_app_platform -->|"queries"| node_ext_sqlite
+node_actor_http_client -->|"requests"| node_app_platform_main_py
+node_actor_http_client -->|"requests"| node_src_server_main_py_2
+node_actor_cli_user -->|"invokes"| node_app_platform_main_py
+node_actor_cli_user -->|"invokes"| node_getting_started
+
+classDef toneNeutral fill:#f8fafc,stroke:#334155,stroke-width:1.5px,color:#0f172a
+classDef toneBlue fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px,color:#172554
+classDef toneAmber fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,color:#78350f
+classDef toneMint fill:#dcfce7,stroke:#16a34a,stroke-width:1.5px,color:#14532d
+classDef toneRose fill:#ffe4e6,stroke:#e11d48,stroke-width:1.5px,color:#881337
+classDef toneIndigo fill:#e0e7ff,stroke:#4f46e5,stroke-width:1.5px,color:#312e81
+classDef toneTeal fill:#ccfbf1,stroke:#0f766e,stroke-width:1.5px,color:#134e4a
+class node_app_platform_main_py,node_run_server_py,node_src_server_main_py,node_src_server_server_config_py,node_src_server_main_py_2,node_ext_http toneMint
+class node_getting_started,node_src_gitingest_main_py,node_gitdiagram_static_src_staticdiagram_cli_py,node_gitdiagram_static_src_staticdiagram_main_py,node_src_gitingest_utils_logging_config_py,node_src_gitingest_schemas,node_src_gitingest_config_py,node_src_gitingest_utils_git_utils_py,node_src_gitingest_entrypoint_py,node_src_gitingest_utils_compat_func_py,node_src_gitingest,node_src_server_query_processor_py,node_src_server_s3_utils_py,node_src_gitingest_ingestion_py,node_src_gitingest_schemas_cloning_py,node_src_gitingest_query_parser_py toneTeal
+class node_app_platform,node_ext_postgres,node_ext_redis,node_ext_s3,node_ext_sqlite toneAmber
+class node_src_server_models_py toneIndigo
+class node_actor_http_client,node_actor_cli_user toneBlue

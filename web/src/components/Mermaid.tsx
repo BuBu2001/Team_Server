@@ -44,6 +44,7 @@ export function Mermaid({ code, className = "" }: { code: string; className?: st
 
   const idRef = useRef(`mmd-${++counter}`);
   const boxRef = useRef<HTMLDivElement | null>(null);
+  const innerRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
 
   /** Масштаб вокруг центра видимой области. */
@@ -85,6 +86,25 @@ export function Mermaid({ code, className = "" }: { code: string; className?: st
     setOffset({ x: 0, y: 0 });
   }, [code]);
 
+  // Вписываем диаграмму в контейнер, чтобы она не обрезалась при загрузке.
+  const fitView = useCallback(() => {
+    const box = boxRef.current;
+    const inner = innerRef.current;
+    if (!box || !inner) return;
+    const bw = box.clientWidth;
+    const bh = box.clientHeight;
+    const iw = inner.offsetWidth;   // нерастянутый размер содержимого
+    const ih = inner.offsetHeight;
+    if (!bw || !bh || !iw || !ih) return;
+    const scale = clamp(Math.min(bw / iw, bh / ih), MIN_ZOOM, MAX_ZOOM);
+    setZoom(scale);
+    setOffset({ x: (bw - iw * scale) / 2, y: 8 });
+  }, []);
+
+  useEffect(() => {
+    if (svg) fitView();
+  }, [svg, fitView]);
+
   // Масштаб колесом: слушатель должен быть не-пассивным, чтобы гасить скролл.
   useEffect(() => {
     const el = boxRef.current;
@@ -114,11 +134,6 @@ export function Mermaid({ code, className = "" }: { code: string; className?: st
     if (dragRef.current) e.currentTarget.releasePointerCapture(e.pointerId);
     dragRef.current = null;
     setGrabbing(false);
-  }
-
-  function resetView() {
-    setZoom(1);
-    setOffset({ x: 0, y: 0 });
   }
 
   if (error) {
@@ -151,7 +166,7 @@ export function Mermaid({ code, className = "" }: { code: string; className?: st
           <button className={ctl} onClick={() => zoomBy(1.25)} title="Приблизить (колесо вверх)">
             <Plus size={15} />
           </button>
-          <button className={ctl} onClick={resetView} title="Сбросить вид (100%)">
+          <button className={ctl} onClick={fitView} title="Вписать диаграмму в экран">
             <Maximize2 size={14} />
           </button>
         </div>
@@ -167,6 +182,7 @@ export function Mermaid({ code, className = "" }: { code: string; className?: st
           }`}
         >
           <div
+            ref={innerRef}
             style={{
               transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`,
               transformOrigin: "0 0",
@@ -178,7 +194,7 @@ export function Mermaid({ code, className = "" }: { code: string; className?: st
       </div>
 
       <p className="mt-2 text-center text-xs text-ink-400">
-        Колесо мыши — приблизить/отдалить, перетаскивание — сдвинуть, кнопка в углу — сброс.
+        Колесо мыши — приблизить/отдалить, перетаскивание — сдвинуть, кнопка в углу — вписать в экран.
       </p>
     </div>
   );

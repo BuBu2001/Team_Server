@@ -1,0 +1,29 @@
+flowchart TD
+    0[/"🗂 vcheeto__cpp-flag-generator"/]
+    0 --> 1(&quot;📄 README.md&quot;)
+    0 --> 2(&quot;📄 CHANGELOG.md&quot;)
+    0 --> 3(&quot;📄 CMakeLists.txt&quot;)
+    0 --> 4(&quot;📄 CONTRIBUTING.md&quot;)
+    0 --> 5(&quot;📄 GDD.md&quot;)
+    0 --> 6(&quot;📄 LICENSE&quot;)
+    0 --> 7(&quot;📄 SECURITY.md&quot;)
+    0 --> 8(&quot;📄 .crylessignore&quot;)
+    0 --> 9[/"📁 config"/]
+    9 --> 10(&quot;📄 flags.json&quot;)
+    0 --> 11[/"📁 src"/]
+    11 --> 12(&quot;📄 color.cpp&quot;)
+    11 --> 13(&quot;📄 color.h&quot;)
+    11 --> 14(&quot;📄 config.cpp&quot;)
+    11 --> 15(&quot;📄 config.h&quot;)
+    11 --> 16(&quot;📄 generator.cpp&quot;)
+    11 --> 17(&quot;📄 generator.h&quot;)
+    11 --> 18(&quot;📄 gui.cpp&quot;)
+    11 --> 19(&quot;📄 layers.cpp&quot;)
+    11 --> 20(&quot;📄 layers.h&quot;)
+    11 --> 21(&quot;📄 main.cpp&quot;)
+    0 --> 22[/"📁 tools"/]
+    22 --> 23(&quot;📄 verify.py&quot;)
+    classDef dir fill:#1f6feb22,stroke:#1f6feb,color:#58a6ff;
+    classDef file fill:#21262d,stroke:#30363d,color:#c9d1d9;
+    class 0,9,11,22 dir;
+    class 1,2,3,4,5,6,7,8,10,12,13,14,15,16,17,18,19,20,21,23 file;

@@ -1,0 +1,2998 @@
+================================================
+FILE: README.md
+================================================
+# Flaggen
+
+Процедурный генератор флагов в геральдическом стиле на C++17 + Cairo.
+
+Каждый флаг собирается из четырёх слоёв (поле → деление → полоса → эмблема),
+соблюдает правило тинктуры и контраст, детерминирован по сиду и рендерится как
+векторная графика (PNG / SVG / PDF).
+
+| | | |
+|---|---|---|
+| ![example 1](examples/example_01.png) | ![example 2](examples/example_02.png) | ![example 3](examples/example_03.png) |
+
+---
+
+## Возможности
+
+- **16 делений поля** — per_fess, per_pale, per_bend, per_saltire, per_quarterly,
+  per_chevron, barry/paly/bendy, gyronny.
+- **20 геральдических полос** — fess, pale, bend, cross, nordic, saltire, chevron,
+  pile, pall, bordure, orle, chief, base, canton, lozenge и др.
+- **15 эмблем** — звёзды, серп, солнце, кольцо, крест-пате, флёр-де-лис,
+  трилистник и др.
+- **Палитра с гарантиями контраста (WCAG)** и фолбэком синий/золото/белый.
+- **Фимбриация** — геральдическая окантовка эмблемы и полосы.
+- **Правила несовместимости**, симметрия шеврона, безопасная раскладка у краёв.
+- **Вывод PNG / SVG / PDF**, размер любой, формат по умолчанию 1200×800 (3:2).
+- **GUI-конструктор** (GTK3): случайный флаг, ручные слои/цвета, сохранение.
+- **Всё настраивается** через `config/flags.json`.
+
+## Требования
+
+- CMake ≥ 3.16
+- C++17 компилятор
+- [cairo](https://www.cairographics.org/)
+- GTK3 (только для `flaggen_gui`)
+- nlohmann_json (опционально; иначе ищется в `/usr/include`)
+
+Debian/Ubuntu:
+
+```sh
+sudo apt install cmake g++ libcairo2-dev libgtk-3-dev nlohmann-json3-dev
+```
+
+## Сборка
+
+```sh
+cmake -S . -B build
+cmake --build build -j4
+```
+
+Бинарники: `build/flaggen` (CLI) и `build/flaggen_gui` (конструктор).
+
+## Использование (CLI)
+
+```sh
+./build/flaggen --seed 42 --output flag.png          # PNG
+./build/flaggen --seed 7  --width 1600 --height 1000 --output flag.svg
+./build/flaggen --seed 1  --output flag.pdf
+./build/flaggen --output auto.png                    # сид = время запуска
+```
+
+Формат: `flaggen [--seed N] [--width W] [--height H] --output <файл.png|svg|pdf>`.
+
+В `stdout` печатается строка-метаданные флага:
+
+```
+seed=42 division=per_quarterly ordinary=saltire charge=fleur_de_lis (center)
+row=1 palette=(#E8E8E8 #1242A2 #EEBD2C) charge=#1142A5 scale=0.75 contrast=7.43
+ofimb anchors=(600,400) -> flag.png
+```
+
+- `contrast` — худший контраст эмблемы с фоном (WCAG);
+- `fimbriation` — окантовка эмблемы; `ofimb` — окантовка полосы;
+- `anchors` — координаты эмблем (несколько при рядах/компоновках).
+
+### Пакетная генерация
+
+```sh
+for s in $(seq 1 100); do
+  ./build/flaggen --seed $s --output batch/$s.png
+done
+```
+
+## GUI
+
+```sh
+./build/flaggen_gui
+```
+
+Конструктор: **Случайный флаг**, выбор слоёв/цветов и **Применить**,
+**Стереть рисунок**, **Сохранить…**.
+
+## Конфигурация
+
+`config/flags.json` — JSON со списками `divisions`, `ordinaries`, `charges`.
+Каждый элемент: `render`-тип, геометрия (`thickness`, `size`, `outerRadius`,
+`innerRadius`, `offsetX`, `points`), правила выравнивания (`rigidX`, `rigidY`,
+`requiredAlignmentX/Y`, выражения вроде `"width/2"`) и `incompatible`-списки.
+
+Добавление новой эмблемы: запись в `config/flags.json` + ветка в
+`drawCharge()` в `src/layers.cpp` (см. `CONTRIBUTING.md`).
+
+## Структура проекта
+
+```
+config/flags.json      — все деления, полосы, эмблемы и правила
+src/color.*            — палитра и контраст (WCAG)
+src/config.*           — загрузка конфигурации
+src/layers.*           — отрисовка слоёв, эмблем, фимбриация
+src/generator.*        — генерация кандидатов, раскладка, оценка, рендер
+src/main.cpp           — CLI
+src/gui.cpp            — GTK-конструктор
+GDD.md                 — дизайн-документ проекта
+```
+
+## Документация
+
+- [GDD.md](GDD.md) — дизайн-документ (алгоритмы, правила, дорожная карта)
+- [CONTRIBUTING.md](CONTRIBUTING.md) — как вносить изменения
+- [CHANGELOG.md](CHANGELOG.md) — история версий
+- [SECURITY.md](SECURITY.md) — безопасность
+
+## Лицензия
+
+MIT — см. [LICENSE](LICENSE).
+
+---
+
+# Flaggen (English)
+
+Procedural heraldic flag generator in C++17 + Cairo.
+
+Each flag is composed of four layers (field → division → ordinary → charge),
+respects the rule of tincture and contrast, is deterministic per seed, and
+renders as vector graphics (PNG / SVG / PDF).
+
+## Features
+
+- **16 field divisions** — per_fess, per_pale, per_bend, per_saltire,
+  per_quarterly, per_chevron, barry/paly/bendy, gyronny.
+- **20 heraldic ordinaries** — fess, pale, bend, cross, nordic, saltire, chevron,
+  pile, pall, bordure, orle, chief, base, canton, lozenge, etc.
+- **15 charges** — stars, crescent, sun, annulet, cross-patee, fleur-de-lis,
+  trefoil, etc.
+- **Palette with guaranteed contrast (WCAG)** and a blue/gold/white fallback.
+- **Fimbriation** — heraldic outline for both charges and ordinaries.
+- **Incompatibility rules**, chevron symmetry, edge-safe layout.
+- **PNG / SVG / PDF output**, any size; default 1200×800 (3:2).
+- **GTK3 GUI constructor**: random flag, manual layers/colors, save.
+- **Everything configurable** via `config/flags.json`.
+
+## Requirements
+
+- CMake ≥ 3.16, C++17 compiler
+- cairo
+- GTK3 (for `flaggen_gui` only)
+- nlohmann_json (optional; otherwise searched in `/usr/include`)
+
+Debian/Ubuntu:
+
+```sh
+sudo apt install cmake g++ libcairo2-dev libgtk-3-dev nlohmann-json3-dev
+```
+
+## Build
+
+```sh
+cmake -S . -B build
+cmake --build build -j4
+```
+
+Binaries: `build/flaggen` (CLI) and `build/flaggen_gui` (constructor).
+
+## Usage (CLI)
+
+```sh
+./build/flaggen --seed 42 --output flag.png          # PNG
+./build/flaggen --seed 7  --width 1600 --height 1000 --output flag.svg
+./build/flaggen --seed 1  --output flag.pdf
+./build/flaggen --output auto.png                    # seed = wall clock
+```
+
+Usage: `flaggen [--seed N] [--width W] [--height H] --output <file.png|svg|pdf>`.
+
+A metadata line is printed to stdout:
+
+```
+seed=42 division=per_quarterly ordinary=saltire charge=fleur_de_lis (center)
+row=1 palette=(#E8E8E8 #1242A2 #EEBD2C) charge=#1142A5 scale=0.75 contrast=7.43
+ofimb anchors=(600,400) -> flag.png
+```
+
+- `contrast` — worst-case charge contrast vs background (WCAG);
+- `fimbriation` — charge outline; `ofimb` — ordinary outline;
+- `anchors` — charge coordinates (several for rows/layouts).
+
+### Batch generation
+
+```sh
+for s in $(seq 1 100); do
+  ./build/flaggen --seed $s --output batch/$s.png
+done
+```
+
+## GUI
+
+```sh
+./build/flaggen_gui
+```
+
+Constructor: **Random flag**, manual layers/colors + **Apply**, **Erase**,
+**Save…**.
+
+## Configuration
+
+`config/flags.json` — JSON lists `divisions`, `ordinaries`, `charges`. Each entry
+has a `render` type, geometry (`thickness`, `size`, `outerRadius`, `innerRadius`,
+`offsetX`, `points`), alignment rules (`rigidX`, `rigidY`,
+`requiredAlignmentX/Y`, expressions like `"width/2"`) and `incompatible` lists.
+
+Adding a new charge: an entry in `config/flags.json` + a branch in `drawCharge()`
+in `src/layers.cpp` (see `CONTRIBUTING.md`).
+
+## Project structure
+
+```
+config/flags.json      — all divisions, ordinaries, charges and rules
+src/color.*            — palette and contrast (WCAG)
+src/config.*           — configuration loading
+src/layers.*           — layer / charge rendering, fimbriation
+src/generator.*        — candidate generation, layout, scoring, render
+src/main.cpp           — CLI
+src/gui.cpp            — GTK constructor
+GDD.md                 — project design document
+```
+
+## Docs
+
+- [GDD.md](GDD.md) — design document (algorithms, rules, roadmap)
+- [CONTRIBUTING.md](CONTRIBUTING.md) — how to contribute
+- [CHANGELOG.md](CHANGELOG.md) — version history
+- [SECURITY.md](SECURITY.md) — security policy
+
+## License
+
+MIT — see [LICENSE](LICENSE).
+
+
+
+================================================
+FILE: CHANGELOG.md
+================================================
+# История изменений / Changelog
+
+Формат: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Версии —
+[SemVer](https://semver.org/). / Format:
+[Keep a Changelog](https://keepachangelog.com/en/1.0.0/), versions
+[SemVer](https://semver.org/).
+
+## [Unreleased]
+
+### Added / Добавлено
+- **Фимбриация полос** — геральдическая окантовка ordinary: функционально при
+  `min(contrast(c, a), contrast(c, b)) < 2.0`, иначе декоративно (~16%).
+  Цвет — противоположная светимость полосы (белый/чёрный), штрих `m*0.03`.
+  (Ordinary fimbriation: functional when the band blends with the background,
+  decorative otherwise; white/black by band luminance, stroke `m*0.03`.)
+- **Клампинг лейаута у краёв флага** — `maxR` ограничивается так, чтобы эмблема
+  (включая углы квадрата, фактор 1.414×) полностью помещалась во флаг.
+  (Layout clamp: charges including square corners stay fully inside the flag.)
+- **Инструмент верификации** — `tools/verify.py` для батч-проверки генератора.
+  (Batch verifier `tools/verify.py`.)
+- Документация: `GDD.md`, `README.md`, `CONTRIBUTING.md`, `CHANGELOG.md`,
+  `SECURITY.md`, `LICENSE` (MIT), `.gitignore`.
+
+## [0.2.0] — 2026-08-11
+
+### Added / Добавлено
+- **Полевые компоновки эмблем** — 3-в-ряд, 2-в-ряд, 3-в-колонну, 2-в-колонну,
+  сетка 2×2 на открытом поле (`none`/`canton`/`orle`/`bordure`).
+  (Field charge arrangements: rows, columns and 2×2 grid on open fields.)
+- **Новые эмблемы**: `fleur_de_lis`, `trefoil`.
+  (New charges: fleur_de_lis, trefoil.)
+
+### Fixed / Исправлено
+- Шеврон отрисован как настоящая V-лента: две квады-рукава + круг-колпачок на
+  острие; жёлоб под остриём пуст для эмблемы. Устранена дырка на точке Λ.
+  (Chevron is now a true V-band of two arm quads plus an apex cap; the trough
+  under the apex is empty for the charge.)
+- Эмблема шеврона помещается в жёлоб `(w/2, 0.62h)` и масштабируется
+  (maxR = 0.11m); шеврон принудительно симметричен (`rigidX`/`rigidY`,
+  `"width/2"`, `"height/2"`).
+- Устранено дублирование последнего якоря в `resolveCharge`.
+
+## [0.1.0] — 2026-08-01
+
+### Added / Добавлено
+- Базовый генератор: 16 делений, 20 полос, 13 эмблем.
+- Палитра с гарантиями контраста (WCAG) и фолбэком синий/золото/белый.
+- Фимбриация эмблем при контрасте < 1.8 (кроме crescent/annulet).
+- Ряды эмблем вдоль полос (2–3) для `fess`/`chief`/`base`/`pale` и вариантов.
+- CLI: PNG/SVG/PDF, `--seed`/`--width`/`--height`/`--output`, строка-метаданные.
+- GUI-конструктор (GTK3): случайный флаг, применение слоёв/цветов, сохранение.
+
+
+
+================================================
+FILE: CMakeLists.txt
+================================================
+cmake_minimum_required(VERSION 3.16)
+project(flaggen CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+endif()
+
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(CAIRO REQUIRED IMPORTED_TARGET cairo)
+
+find_package(nlohmann_json QUIET)
+
+add_library(flaggen_core STATIC
+    src/color.cpp
+    src/config.cpp
+    src/layers.cpp
+    src/generator.cpp
+)
+target_include_directories(flaggen_core PUBLIC src)
+target_link_libraries(flaggen_core PUBLIC PkgConfig::CAIRO)
+
+if(NOT nlohmann_json_FOUND)
+    target_include_directories(flaggen_core PUBLIC /usr/include)
+endif()
+
+add_executable(flaggen
+    src/main.cpp
+)
+target_include_directories(flaggen PRIVATE src)
+target_link_libraries(flaggen PRIVATE flaggen_core)
+
+pkg_check_modules(GTK3 REQUIRED IMPORTED_TARGET gtk+-3.0)
+
+add_executable(flaggen_gui
+    src/gui.cpp
+)
+target_link_libraries(flaggen_gui PRIVATE flaggen_core PkgConfig::GTK3)
+
+
+
+================================================
+FILE: CONTRIBUTING.md
+================================================
+[Binary file]
+
+
+================================================
+FILE: GDD.md
+================================================
+[Binary file]
+
+
+================================================
+FILE: LICENSE
+================================================
+MIT License
+
+Copyright (c) 2026 VCheeto
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+
+================================================
+FILE: SECURITY.md
+================================================
+[Binary file]
+
+
+================================================
+FILE: .crylessignore
+================================================
+# cryless: что НЕ отправлять на сервер (синтаксис как в .gitignore)
+.cryless/
+.git/
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.log
+.env
+.idea/
+.vscode/
+node_modules/
+dist/
+build/
+*.zip
+*.tar.gz
+
+
+
+================================================
+FILE: config/flags.json
+================================================
+{
+  "divisions": [
+    {
+      "id": "per_fess",
+      "render": "horizontal_split",
+      "rigidX": false,
+      "rigidY": false,
+      "incompatible": []
+    },
+    {
+      "id": "per_pale",
+      "render": "vertical_split",
+      "rigidX": false,
+      "rigidY": false,
+      "incompatible": []
+    },
+    {
+      "id": "per_bend",
+      "render": "diagonal_bend",
+      "rigidX": false,
+      "rigidY": false,
+      "incompatible": []
+    },
+    {
+      "id": "per_bend_sinister",
+      "render": "diagonal_bend_sinister",
+      "rigidX": false,
+      "rigidY": false,
+      "incompatible": []
+    },
+    {
+      "id": "per_saltire",
+      "render": "diagonal_cross",
+      "rigidX": true,
+      "rigidY": true,
+      "requiredAlignmentX": "width/2",
+      "requiredAlignmentY": "height/2",
+      "incompatible": [
+        "pale_dexter",
+        "pale_sinister",
+        "nordic"
+      ]
+    },
+    {
+      "id": "per_quarterly",
+      "render": "quarterly",
+      "rigidX": false,
+      "rigidY": false,
+      "incompatible": []
+    },
+    {
+      "id": "per_chevron",
+      "render": "chevron_division",
+      "rigidX": false,
+      "rigidY": false,
+      "incompatible": []
+    },
+    {
+      "id": "per_chevron_inverted",
+      "render": "chevron_division_inverted",
+      "rigidX": false,
+      "rigidY": false,
+      "incompatible": []
+    },
+    {
+      "id": "barry_5",
+      "render": "barry",
+      "stripes": 5,
+      "rigidX": false,
+      "rigidY": false,
+      "incompatible": []
+    },
+    {
+      "id": "barry_7",
+      "render": "barry",
+      "stripes": 7,
+      "rigidX": false,
+      "rigidY": false,
+      "incompatible": []
+    },
+    {
+      "id": "barry_9",
+      "render": "barry",
+      "stripes": 9,
+      "rigidX": false,
+      "rigidY": false,
+      "incompatible": []
+    },
+    {
+      "id": "paly_5",
+      "render": "paly",
+      "stripes": 5,
+      "rigidX": false,
+      "rigidY": false,
+      "incompatible": []
+    },
+    {
+      "id": "paly_7",
+      "render": "paly",
+      "stripes": 7,
+      "rigidX": false,
+      "rigidY": false,
+      "incompatible": []
+    },
+    {
+      "id": "bendy_5",
+      "render": "bendy",
+      "stripes": 5,
+      "rigidX": false,
+      "rigidY": false,
+      "incompatible": []
+    },
+    {
+      "id": "bendy_7",
+      "render": "bendy",
+      "stripes": 7,
+      "rigidX": false,
+      "rigidY": false,
+      "incompatible": []
+    },
+    {
+      "id": "gyronny_8",
+      "render": "gyronny",
+      "stripes": 8,
+      "rigidX": false,
+      "rigidY": false,
+      "incompatible": []
+    }
+  ],
+  "ordinaries": [
+    {
+      "id": "none",
+      "render": "none",
+      "rigidX": false,
+      "rigidY": false,
+      "thickness": 0.0,
+      "incompatible": []
+    },
+    {
+      "id": "fess",
+      "render": "fess",
+      "rigidX": true,
+      "requiredAlignmentX": "width/2",
+      "rigidY": false,
+      "thickness": 0.33,
+      "incompatible": [
+        "barry_5",
+        "barry_7",
+        "barry_9"
+      ]
+    },
+    {
+      "id": "pale",
+      "render": "pale",
+      "rigidX": false,
+      "rigidY": true,
+      "requiredAlignmentY": "height/2",
+      "thickness": 0.33,
+      "incompatible": [
+        "paly_5",
+        "paly_7"
+      ]
+    },
+    {
+      "id": "pale_dexter",
+      "render": "pale_dexter",
+      "rigidX": false,
+      "rigidY": false,
+      "thickness": 0.15,
+      "incompatible": []
+    },
+    {
+      "id": "pale_sinister",
+      "render": "pale_sinister",
+      "rigidX": false,
+      "rigidY": false,
+      "thickness": 0.18,
+      "incompatible": []
+    },
+    {
+      "id": "bend",
+      "render": "bend",
+      "rigidX": false,
+      "rigidY": false,
+      "thickness": 0.24,
+      "incompatible": [
+        "bendy_5",
+        "bendy_7"
+      ]
+    },
+    {
+      "id": "bend_sinister",
+      "render": "bend_sinister",
+      "rigidX": false,
+      "rigidY": false,
+      "thickness": 0.24,
+      "incompatible": [
+        "bendy_5",
+        "bendy_7"
+      ]
+    },
+    {
+      "id": "cross",
+      "render": "cross",
+      "rigidX": true,
+      "requiredAlignmentX": "width/2",
+      "rigidY": true,
+      "requiredAlignmentY": "height/2",
+      "thickness": 0.28,
+      "incompatible": [
+        "barry_5",
+        "barry_7",
+        "barry_9"
+      ]
+    },
+    {
+      "id": "nordic",
+      "render": "nordic",
+      "rigidX": true,
+      "requiredAlignmentX": "width/4",
+      "rigidY": true,
+      "requiredAlignmentY": "height/2",
+      "thickness": 0.18,
+      "incompatible": [
+        "paly_5",
+        "paly_7",
+        "per_pale"
+      ]
+    },
+    {
+      "id": "saltire",
+      "render": "saltire",
+      "rigidX": true,
+      "requiredAlignmentX": "width/2",
+      "rigidY": true,
+      "requiredAlignmentY": "height/2",
+      "thickness": 0.22,
+      "incompatible": [
+        "barry_5",
+        "barry_7",
+        "barry_9",
+        "per_saltire",
+        "gyronny_8"
+      ]
+    },
+    {
+      "id": "chevron",
+      "render": "chevron",
+      "rigidX": true,
+      "requiredAlignmentX": "width/2",
+      "rigidY": true,
+      "requiredAlignmentY": "height/2",
+      "thickness": 0.15,
+      "incompatible": [
+        "per_chevron",
+        "per_chevron_inverted"
+      ]
+    },
+    {
+      "id": "pile",
+      "render": "pile",
+      "rigidX": true,
+      "requiredAlignmentX": "width/2",
+      "rigidY": false,
+      "thickness": 0.3,
+      "incompatible": [
+        "per_chevron",
+        "per_chevron_inverted"
+      ]
+    },
+    {
+      "id": "pall",
+      "render": "pall",
+      "rigidX": true,
+      "requiredAlignmentX": "width/2",
+      "rigidY": false,
+      "thickness": 0.15,
+      "incompatible": [
+        "per_chevron",
+        "per_chevron_inverted"
+      ]
+    },
+    {
+      "id": "bordure",
+      "render": "bordure",
+      "rigidX": true,
+      "requiredAlignmentX": "width/2",
+      "rigidY": true,
+      "requiredAlignmentY": "height/2",
+      "thickness": 0.1,
+      "incompatible": []
+    },
+    {
+      "id": "orle",
+      "render": "orle",
+      "rigidX": true,
+      "requiredAlignmentX": "width/2",
+      "rigidY": true,
+      "requiredAlignmentY": "height/2",
+      "thickness": 0.08,
+      "incompatible": []
+    },
+    {
+      "id": "chief",
+      "render": "chief",
+      "rigidX": true,
+      "requiredAlignmentX": "width/2",
+      "rigidY": false,
+      "thickness": 0.3,
+      "incompatible": []
+    },
+    {
+      "id": "base",
+      "render": "base",
+      "rigidX": true,
+      "requiredAlignmentX": "width/2",
+      "rigidY": false,
+      "thickness": 0.3,
+      "incompatible": []
+    },
+    {
+      "id": "canton",
+      "render": "canton",
+      "rigidX": false,
+      "rigidY": false,
+      "defaultPosition": "top_left",
+      "size": 0.35,
+      "thickness": 0.33,
+      "incompatible": []
+    },
+    {
+      "id": "lozenge",
+      "render": "lozenge",
+      "rigidX": false,
+      "rigidY": false,
+      "size": 0.2,
+      "thickness": 0.33,
+      "incompatible": []
+    },
+    {
+      "id": "lozenge_throughout",
+      "render": "lozenge_throughout",
+      "rigidX": true,
+      "requiredAlignmentX": "width/2",
+      "rigidY": true,
+      "requiredAlignmentY": "height/2",
+      "size": 0.5,
+      "thickness": 0.33,
+      "incompatible": []
+    }
+  ],
+  "charges": [
+    {
+      "id": "star_5",
+      "render": "star",
+      "points": 5,
+      "outerRadius": 0.16,
+      "innerRadius": 0.07
+    },
+    {
+      "id": "star_6",
+      "render": "star",
+      "points": 6,
+      "outerRadius": 0.16,
+      "innerRadius": 0.08
+    },
+    {
+      "id": "star_8",
+      "render": "star",
+      "points": 8,
+      "outerRadius": 0.16,
+      "innerRadius": 0.11
+    },
+    {
+      "id": "crescent",
+      "render": "crescent",
+      "outerRadius": 0.22,
+      "innerRadius": 0.17,
+      "offsetX": 0.06
+    },
+    {
+      "id": "sun",
+      "render": "sun",
+      "outerRadius": 0.22
+    },
+    {
+      "id": "annulet",
+      "render": "annulet",
+      "outerRadius": 0.2,
+      "innerRadius": 0.15
+    },
+    {
+      "id": "circle",
+      "render": "circle",
+      "outerRadius": 0.18
+    },
+    {
+      "id": "triangle",
+      "render": "polygon",
+      "points": 3,
+      "outerRadius": 0.2
+    },
+    {
+      "id": "square",
+      "render": "square",
+      "outerRadius": 0.14
+    },
+    {
+      "id": "diamond",
+      "render": "diamond",
+      "outerRadius": 0.2
+    },
+    {
+      "id": "hexagon",
+      "render": "polygon",
+      "points": 6,
+      "outerRadius": 0.2
+    },
+    {
+      "id": "octagon",
+      "render": "polygon",
+      "points": 8,
+      "outerRadius": 0.2
+    },
+    {
+      "id": "cross_patee",
+      "render": "cross_patee",
+      "outerRadius": 0.2
+    },
+    {
+      "id": "fleur_de_lis",
+      "render": "fleur_de_lis",
+      "outerRadius": 0.2
+    },
+    {
+      "id": "trefoil",
+      "render": "trefoil",
+      "outerRadius": 0.2
+    }
+  ]
+}
+
+
+================================================
+FILE: src/color.cpp
+================================================
+#include "color.h"
+
+#include <algorithm>
+#include <cmath>
+#include <cstdio>
+#include <iomanip>
+#include <sstream>
+
+namespace flaggen {
+
+Color hslToRgb(double h, double s, double l) {
+    h = std::fmod(h, 360.0);
+    if (h < 0.0) h += 360.0;
+    s = std::clamp(s, 0.0, 1.0);
+    l = std::clamp(l, 0.0, 1.0);
+
+    double c = (1.0 - std::fabs(2.0 * l - 1.0)) * s;
+    double x = c * (1.0 - std::fabs(std::fmod(h / 60.0, 2.0) - 1.0));
+    double m = l - c / 2.0;
+
+    double r = 0.0, g = 0.0, b = 0.0;
+    if (h < 60.0) { r = c; g = x; }
+    else if (h < 120.0) { r = x; g = c; }
+    else if (h < 180.0) { g = c; b = x; }
+    else if (h < 240.0) { g = x; b = c; }
+    else if (h < 300.0) { r = x; b = c; }
+    else { r = c; b = x; }
+
+    return {r + m, g + m, b + m};
+}
+
+static double gammaChannel(double v) {
+    if (v <= 0.03928) return v / 12.92;
+    return std::pow((v + 0.055) / 1.055, 2.4);
+}
+
+double relativeLuminance(const Color& c) {
+    return 0.2126 * gammaChannel(c.r) +
+           0.7152 * gammaChannel(c.g) +
+           0.0722 * gammaChannel(c.b);
+}
+
+double contrastRatio(const Color& a, const Color& b) {
+    double la = relativeLuminance(a);
+    double lb = relativeLuminance(b);
+    if (la < lb) std::swap(la, lb);
+    return (la + 0.05) / (lb + 0.05);
+}
+
+bool hasGoodContrast(const Color& a, const Color& b, double minRatio) {
+    return contrastRatio(a, b) >= minRatio;
+}
+
+Palette generatePalette(std::mt19937& rng) {
+    struct Col { double h, s, l; };
+    // Classic heraldic tinctures: metals and colours (rule of tincture).
+    static const Col metals[] = {
+        {45.0, 0.85, 0.55},  // or (gold)
+        {0.0, 0.0, 0.93},    // argent (white)
+    };
+    static const Col colours[] = {
+        {0.0, 0.80, 0.42},   // gules (red)
+        {220.0, 0.80, 0.36}, // azure (blue)
+        {125.0, 0.55, 0.32}, // vert (green)
+        {280.0, 0.45, 0.36}, // purpure (purple)
+        {0.0, 0.0, 0.10},    // sable (black)
+    };
+    static const Col modern[] = {
+        {350.0, 0.65, 0.38}, // crimson
+        {160.0, 0.50, 0.35}, // teal
+        {265.0, 0.60, 0.40}, // violet
+    };
+    std::uniform_int_distribution<int> metalPick(0, 1);
+    std::uniform_int_distribution<int> colPick(0, 4);
+    std::uniform_int_distribution<int> modernPick(0, 2);
+    std::uniform_real_distribution<double> pick(0.0, 1.0);
+    std::uniform_real_distribution<double> jit(-0.04, 0.04);
+
+    for (int attempt = 0; attempt < 200; ++attempt) {
+        // Field.
+        const bool aMetal = pick(rng) < 0.4;
+        Color a;
+        if (aMetal) {
+            const Col& t = metals[metalPick(rng)];
+            a = hslToRgb(t.h, t.s, t.l + jit(rng));
+        } else {
+            const Col& t = colours[colPick(rng)];
+            a = hslToRgb(t.h, t.s + jit(rng), t.l + jit(rng));
+        }
+
+        // Division: alternates tincture class with the field; occasionally a
+        // modern colour-on-colour is allowed if luminance contrast is strong.
+        bool bMetal = !aMetal;
+        if (pick(rng) < 0.15) bMetal = aMetal;
+        Color b;
+        if (bMetal) {
+            const Col& t = metals[metalPick(rng)];
+            b = hslToRgb(t.h, t.s, t.l + jit(rng));
+        } else {
+            const Col& t = (pick(rng) < 0.75) ? colours[colPick(rng)]
+                                              : modern[modernPick(rng)];
+            b = hslToRgb(t.h, t.s + jit(rng), t.l + jit(rng));
+        }
+
+        if (!hasGoodContrast(a, b, 1.7)) continue;
+
+        // Ordinary: contrasts with the layer beneath it (division).
+        bool cMetal = !bMetal;
+        if (pick(rng) < 0.2) cMetal = bMetal;
+        Color c;
+        if (cMetal) {
+            const Col& t = metals[metalPick(rng)];
+            c = hslToRgb(t.h, t.s, t.l + jit(rng));
+        } else {
+            const Col& t = (pick(rng) < 0.75) ? colours[colPick(rng)]
+                                              : modern[modernPick(rng)];
+            c = hslToRgb(t.h, t.s + jit(rng), t.l + jit(rng));
+        }
+
+        if (hasGoodContrast(a, b, 1.7) && hasGoodContrast(c, b, 1.6) &&
+            hasGoodContrast(c, a, 1.3)) {
+            return {a, b, c};
+        }
+    }
+
+    // Deterministic fallback palette (blue / gold / white).
+    return {hslToRgb(210, 0.7, 0.35), hslToRgb(45, 0.8, 0.5), hslToRgb(0, 0.0, 0.92)};
+}
+
+std::string colorToHex(const Color& c) {
+    auto byte = [](double v) -> int {
+        return static_cast<int>(std::lround(std::clamp(v, 0.0, 1.0) * 255.0));
+    };
+    std::ostringstream oss;
+    oss << "#" << std::hex << std::uppercase << std::setfill('0')
+        << std::setw(2) << byte(c.r)
+        << std::setw(2) << byte(c.g)
+        << std::setw(2) << byte(c.b);
+    return oss.str();
+}
+
+} // namespace flaggen
+
+
+
+================================================
+FILE: src/color.h
+================================================
+#pragma once
+
+#include <random>
+#include <string>
+
+namespace flaggen {
+
+struct Color {
+    double r = 0.0, g = 0.0, b = 0.0; // components in [0, 1]
+};
+
+// Converts HSL (h in [0,360), s/l in [0,1]) to RGB.
+Color hslToRgb(double h, double s, double l);
+
+// WCAG relative luminance with gamma correction.
+double relativeLuminance(const Color& c);
+
+// WCAG contrast ratio (L1 + 0.05) / (L2 + 0.05), always >= 1.
+double contrastRatio(const Color& a, const Color& b);
+
+// True if contrastRatio(a, b) >= minRatio.
+bool hasGoodContrast(const Color& a, const Color& b, double minRatio = 1.5);
+
+struct Palette {
+    Color a; // field
+    Color b; // division
+    Color c; // ordinary
+};
+
+// Generates a 3-color palette from HSL with contrast checks (WCAG > 1.5).
+Palette generatePalette(std::mt19937& rng);
+
+std::string colorToHex(const Color& c);
+
+} // namespace flaggen
+
+
+
+================================================
+FILE: src/config.cpp
+================================================
+#include "config.h"
+
+#include <fstream>
+#include <stdexcept>
+
+#include <nlohmann/json.hpp>
+
+namespace flaggen {
+
+using json = nlohmann::json;
+
+static std::vector<std::string> parseList(const json& j) {
+    std::vector<std::string> out;
+    if (j.is_array()) {
+        for (const auto& v : j) out.push_back(v.get<std::string>());
+    }
+    return out;
+}
+
+static DivisionConfig parseDivision(const json& j) {
+    DivisionConfig d;
+    d.id = j.value("id", "");
+    d.render = j.value("render", "");
+    d.rigidX = j.value("rigidX", false);
+    d.rigidY = j.value("rigidY", false);
+    d.requiredAlignmentX = j.value("requiredAlignmentX", "");
+    d.requiredAlignmentY = j.value("requiredAlignmentY", "");
+    d.incompatible = parseList(j.value("incompatible", json::array()));
+    d.stripes = j.value("stripes", 0);
+    return d;
+}
+
+static OrdinaryConfig parseOrdinary(const json& j) {
+    OrdinaryConfig o;
+    o.id = j.value("id", "");
+    o.render = j.value("render", "");
+    o.rigidX = j.value("rigidX", false);
+    o.rigidY = j.value("rigidY", false);
+    o.requiredAlignmentX = j.value("requiredAlignmentX", "");
+    o.requiredAlignmentY = j.value("requiredAlignmentY", "");
+    o.incompatible = parseList(j.value("incompatible", json::array()));
+    o.thickness = j.value("thickness", 1.0 / 3.0);
+    o.size = j.value("size", 0.33);
+    o.defaultPosition = j.value("defaultPosition", "");
+    return o;
+}
+
+static ChargeConfig parseCharge(const json& j) {
+    ChargeConfig c;
+    c.id = j.value("id", "");
+    c.render = j.value("render", "");
+    c.points = j.value("points", 0);
+    c.outerRadius = j.value("outerRadius", 0.15);
+    c.innerRadius = j.value("innerRadius", 0.06);
+    c.offsetX = j.value("offsetX", 0.0);
+    return c;
+}
+
+Config loadConfig(const std::string& path) {
+    std::ifstream in(path);
+    if (!in.is_open()) {
+        throw std::runtime_error("cannot open config file: " + path);
+    }
+    json j;
+    in >> j;
+
+    Config cfg;
+    if (j.contains("divisions")) {
+        for (const auto& v : j["divisions"]) cfg.divisions.push_back(parseDivision(v));
+    }
+    if (j.contains("ordinaries")) {
+        for (const auto& v : j["ordinaries"]) cfg.ordinaries.push_back(parseOrdinary(v));
+    }
+    if (j.contains("charges")) {
+        for (const auto& v : j["charges"]) cfg.charges.push_back(parseCharge(v));
+    }
+    return cfg;
+}
+
+} // namespace flaggen
+
+
+
+================================================
+FILE: src/config.h
+================================================
+#pragma once
+
+#include <string>
+#include <vector>
+
+namespace flaggen {
+
+struct DivisionConfig {
+    std::string id;
+    std::string render;
+    bool rigidX = false;
+    bool rigidY = false;
+    std::string requiredAlignmentX;
+    std::string requiredAlignmentY;
+    std::vector<std::string> incompatible;
+    int stripes = 0; // barry/paly/bendy stripe count or gyronny sector count
+};
+
+struct OrdinaryConfig {
+    std::string id;
+    std::string render;
+    bool rigidX = false;
+    bool rigidY = false;
+    std::string requiredAlignmentX;
+    std::string requiredAlignmentY;
+    std::vector<std::string> incompatible;
+    double thickness = 1.0 / 3.0; // fraction of the relevant dimension
+    double size = 0.33;           // for canton/lozenge
+    std::string defaultPosition;
+};
+
+struct ChargeConfig {
+    std::string id;
+    std::string render;
+    int points = 0;
+    double outerRadius = 0.15;
+    double innerRadius = 0.06;
+    double offsetX = 0.0;
+};
+
+struct Config {
+    std::vector<DivisionConfig> divisions;
+    std::vector<OrdinaryConfig> ordinaries;
+    std::vector<ChargeConfig> charges;
+};
+
+Config loadConfig(const std::string& path);
+
+} // namespace flaggen
+
+
+
+================================================
+FILE: src/generator.cpp
+================================================
+#include "generator.h"
+
+#include <algorithm>
+#include <cmath>
+#include <cstring>
+#include <sstream>
+#include <vector>
+
+namespace flaggen {
+
+// Sentinel "no ordinary" layer: flag is just field + division + charge.
+static const OrdinaryConfig kNoOrdinary{"none", "none"};
+
+static bool incompatible(const DivisionConfig& d, const OrdinaryConfig& o) {
+    for (const auto& x : d.incompatible) if (x == o.id) return true;
+    for (const auto& x : o.incompatible) if (x == d.id) return true;
+    return false;
+}
+
+// Evaluates simple expressions like "width/2", "height/5*3" (only * and /).
+static double evalExpr(const std::string& expr, double w, double h) {
+    std::string s;
+    for (size_t i = 0; i < expr.size();) {
+        if (expr.compare(i, 5, "width") == 0) { s += std::to_string(w); i += 5; }
+        else if (expr.compare(i, 6, "height") == 0) { s += std::to_string(h); i += 6; }
+        else { s += expr[i]; ++i; }
+    }
+    std::istringstream iss(s);
+    double val;
+    if (!(iss >> val)) return w / 2;
+    char op;
+    double rhs;
+    while (iss >> op >> rhs) {
+        if (op == '/') val /= rhs;
+        else if (op == '*') val *= rhs;
+    }
+    return val;
+}
+
+static Alignment computeAlignment(const DivisionConfig& d, const OrdinaryConfig& o,
+                                  std::mt19937& rng, double w, double h) {
+    Alignment a;
+    const double opts[3] = {w / 2, w / 3, h / 2};
+    std::uniform_int_distribution<int> pickX(0, 2);
+    a.x = opts[pickX(rng)];
+    a.y = h / 2;
+
+    // Barry alignment: place the anchor on a stripe so a canton sits on it.
+    if (d.render == "barry") {
+        if (d.stripes == 5) a.y = h / 5 * 3;
+        else if (d.stripes == 7) a.y = h / 7 * 2;
+    }
+
+    if (d.rigidX && !d.requiredAlignmentX.empty()) a.x = evalExpr(d.requiredAlignmentX, w, h);
+    if (o.rigidX && !o.requiredAlignmentX.empty()) a.x = evalExpr(o.requiredAlignmentX, w, h);
+    if (d.rigidY && !d.requiredAlignmentY.empty()) a.y = evalExpr(d.requiredAlignmentY, w, h);
+    if (o.rigidY && !o.requiredAlignmentY.empty()) a.y = evalExpr(o.requiredAlignmentY, w, h);
+    return a;
+}
+
+static ChargePosition pickChargePosition(std::mt19937& rng) {
+    std::uniform_real_distribution<double> d(0.0, 1.0);
+    const double r = d(rng);
+    if (r < 0.5) return ChargePosition::Center;
+    if (r < 0.85) return ChargePosition::Canton;
+    return ChargePosition::Corner;
+}
+
+// True when the ordinary is a "band" type that a charge should sit on.
+static bool isBandOrdinary(const OrdinaryConfig& o) {
+    const std::string& r = o.render;
+    return r == "fess" || r == "chief" || r == "base" || r == "pile" ||
+           r == "pale" || r == "pale_dexter" || r == "pale_sinister" ||
+           r == "bend" || r == "bend_sinister" || r == "cross" ||
+           r == "nordic" || r == "saltire" || r == "pall" || r == "canton";
+}
+
+// Computes where a charge should sit on a band ordinary, plus the maximum
+// radius it may have before overflowing the band.
+static void placementForOrdinary(const OrdinaryConfig& o, const Alignment& a,
+                                 double w, double h, double& px, double& py,
+                                 double& maxR) {
+    const double th = o.thickness;
+    const double m = std::min(w, h);
+    const std::string& r = o.render;
+    px = w / 2;
+    py = h / 2;
+    maxR = m * 0.2;
+
+    if (r == "fess") {
+        py = a.y;
+        maxR = h * th / 2;
+    } else if (r == "chief") {
+        py = h * th / 2;
+        maxR = h * th / 2;
+    } else if (r == "base") {
+        py = h - h * th / 2;
+        maxR = h * th / 2;
+    } else if (r == "pile") {
+        py = h * 0.22;
+        maxR = m * 0.2;
+    } else if (r == "pale") {
+        px = a.x;
+        maxR = w * th / 2;
+    } else if (r == "pale_dexter") {
+        const double t = w * th;
+        px = a.x - w * 0.15 - t / 2;
+        maxR = t / 2;
+    } else if (r == "pale_sinister") {
+        const double t = w * th;
+        px = a.x + w * 0.15 + t / 2;
+        maxR = t / 2;
+    } else if (r == "bend" || r == "bend_sinister") {
+        px = a.x;
+        py = a.y;
+        maxR = m * th / 2;
+    } else if (r == "cross" || r == "nordic") {
+        px = a.x;
+        py = a.y;
+        maxR = std::min(h * th, w * th) / 2;
+    } else if (r == "saltire") {
+        px = a.x;
+        py = a.y;
+        maxR = m * th / 2;
+    } else if (r == "pall") {
+        px = a.x;
+        py = a.y;
+        maxR = h * 0.14;
+    } else if (r == "canton") {
+        const double s = m * o.size;
+        px = s / 2;
+        py = a.y - s / 2;
+        maxR = s / 2;
+    }
+}
+
+// Arranges charge anchors along a band ordinary (row of 1..3 charges). Returns
+// the maximum radius that keeps the row inside the band and the charges apart.
+static // Ratio of a charge's largest drawn extent (corner/ray/horn reach) to its
+// base radius. Square corners reach ~1.41x baseR; shrinking maxR by this
+// factor keeps such charges fully inside the flag near the edges.
+double chargeExtentFactor(const ChargeConfig& ch) {
+    if (ch.render == "square") return 1.414;
+    if (ch.render == "cross_patee") return 0.62;
+    if (ch.render == "trefoil") return 0.84;
+    if (ch.render == "fleur_de_lis") return 0.98;
+    return 1.0;
+}
+
+double computeBandAnchors(const OrdinaryConfig& o, const Alignment& a,
+                                 double w, double h, double px, double py,
+                                 double maxR, int row,
+                                 std::vector<std::pair<double, double>>& anchors) {
+    const std::string& r = o.render;
+    anchors.clear();
+
+    if (r == "fess" || r == "chief" || r == "base" || r == "pile") {
+        if (row == 1) anchors.emplace_back(w / 2, py);
+        else for (int i = 0; i < row; ++i) anchors.emplace_back(w * (i + 1) / (row + 1.0), py);
+        maxR = std::min(maxR, w / (row + 1.0) * 0.45);
+    } else if (r == "pale" || r == "pale_dexter" || r == "pale_sinister") {
+        if (row == 1) anchors.emplace_back(px, h / 2);
+        else for (int i = 0; i < row; ++i) anchors.emplace_back(px, h * (i + 1) / (row + 1.0));
+        maxR = std::min(maxR, h / (row + 1.0) * 0.45);
+    } else {
+        anchors.emplace_back(px, py);
+    }
+    return maxR;
+}
+
+// Renders the three lower layers onto a small off-screen surface and samples
+// the background at every charge anchor and around each one.
+static std::vector<Color> sampleBackgroundPoints(const GenerationResult& g,
+                                                 double w, double h,
+                                                 double sampleR,
+                                                 const std::vector<std::pair<double, double>>& anchors) {
+    const double scale = 0.1;
+    const int sw = std::max(1, (int)(w * scale));
+    const int sh = std::max(1, (int)(h * scale));
+    cairo_surface_t* samp = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, sw, sh);
+    cairo_t* s_cr = cairo_create(samp);
+    cairo_scale(s_cr, scale, scale);
+    drawField(s_cr, w, h, g.palette.a);
+    drawDivision(s_cr, g.division, w, h, g.palette.b, g.alignment);
+    drawOrdinary(s_cr, g.ordinary, w, h, g.palette.c, g.alignment,
+                 &g.ordinaryFimbriation);
+
+    unsigned char* data = cairo_image_surface_get_data(samp);
+    const int stride = cairo_image_surface_get_stride(samp);
+
+    const auto read = [&](double wx, double wy) -> Color {
+        const int px = std::clamp((int)(wx * scale), 0, sw - 1);
+        const int py = std::clamp((int)(wy * scale), 0, sh - 1);
+        uint32_t word;
+        std::memcpy(&word, data + py * stride + px * 4, 4);
+        // CAIRO_FORMAT_ARGB32 word layout is 0xAARRGGBB.
+        Color c;
+        c.r = static_cast<double>((word >> 16) & 0xFF) / 255.0;
+        c.g = static_cast<double>((word >> 8) & 0xFF) / 255.0;
+        c.b = static_cast<double>(word & 0xFF) / 255.0;
+        return c;
+    };
+
+    std::vector<Color> points;
+    const double R = std::max(sampleR, 1.0);
+    for (const auto& anchor : anchors) {
+        points.push_back(read(anchor.first, anchor.second));
+        for (int dir = 0; dir < 8; ++dir) {
+            const double ang = dir * 2.0 * M_PI / 8;
+            for (double k : {0.5, 1.0}) {
+                points.push_back(read(anchor.first + std::cos(ang) * R * k,
+                                      anchor.second + std::sin(ang) * R * k));
+            }
+        }
+    }
+
+    cairo_destroy(s_cr);
+    cairo_surface_destroy(samp);
+    return points;
+}
+
+Color pickChargeColorAgainst(const Palette& p, const std::vector<Color>& background) {
+    const Color* options[3] = {&p.a, &p.b, &p.c};
+    const Color* best = &p.c;
+    double bestScore = -1.0;
+    for (const auto* c : options) {
+        double score = 1e18;
+        for (const auto& b : background) {
+            score = std::min(score, contrastRatio(*c, b));
+        }
+        if (score > bestScore) {
+            bestScore = score;
+            best = c;
+        }
+    }
+    return *best;
+}
+
+void resolveCharge(GenerationResult& g, std::mt19937& rng, double w, double h) {
+    const double m = std::min(w, h);
+    double px = w / 2, py = h / 2, maxR = m * 0.3;
+
+    if (isBandOrdinary(g.ordinary)) {
+        placementForOrdinary(g.ordinary, g.alignment, w, h, px, py, maxR);
+        g.chargePosition = ChargePosition::Center;
+
+        // Occasionally arrange several charges in a row along the band.
+        g.chargeRow = 1;
+        const std::string& r = g.ordinary.render;
+        const bool canRow = r == "fess" || r == "chief" || r == "base" ||
+                            r == "pale" || r == "pale_dexter" || r == "pale_sinister";
+        if (canRow) {
+            std::uniform_real_distribution<double> u(0.0, 1.0);
+            const double rr = u(rng);
+            if (rr < 0.2) g.chargeRow = 3;
+            else if (rr < 0.32) g.chargeRow = 2;
+        }
+        maxR = computeBandAnchors(g.ordinary, g.alignment, w, h, px, py,
+                                  maxR, g.chargeRow, g.chargeAnchors);
+    } else {
+        g.chargeAnchors.clear();
+        const bool openField = g.ordinary.render == "none" ||
+                               g.ordinary.render == "canton" ||
+                               g.ordinary.render == "orle" ||
+                               g.ordinary.render == "bordure";
+        bool fieldArranged = false;
+        if (openField && g.chargePosition == ChargePosition::Center) {
+            std::uniform_real_distribution<double> u(0.0, 1.0);
+            if (u(rng) < 0.6) {
+                fieldArranged = true;
+                std::uniform_int_distribution<int> layout(0, 4);
+                switch (layout(rng)) {
+                    case 0:  // three charges in a horizontal row
+                        for (int i = 0; i < 3; ++i)
+                            g.chargeAnchors.emplace_back(w * (i + 1) / 4.0, h / 2);
+                        maxR = std::min({m * 0.2, w / 4.0 * 0.4, h * 0.25});
+                        break;
+                    case 1:  // two charges in a horizontal row
+                        for (int i = 0; i < 2; ++i)
+                            g.chargeAnchors.emplace_back(w * (2 * i + 1) / 4.0, h / 2);
+                        maxR = std::min({m * 0.2, w / 4.0 * 0.45, h * 0.25});
+                        break;
+                    case 2:  // three charges in a vertical column
+                        for (int i = 0; i < 3; ++i)
+                            g.chargeAnchors.emplace_back(w / 2, h * (i + 1) / 4.0);
+                        maxR = std::min({m * 0.2, h / 4.0 * 0.4, w * 0.25});
+                        break;
+                    case 3:  // two charges in a vertical column
+                        for (int i = 0; i < 2; ++i)
+                            g.chargeAnchors.emplace_back(w / 2, h * (2 * i + 1) / 4.0);
+                        maxR = std::min({m * 0.2, h / 4.0 * 0.45, w * 0.25});
+                        break;
+                    case 4:  // 2x2 grid
+                        for (int j = 0; j < 2; ++j)
+                            for (int i = 0; i < 2; ++i)
+                                g.chargeAnchors.emplace_back(w * (2 * i + 1) / 4.0,
+                                                             h * (2 * j + 1) / 4.0);
+                        maxR = std::min({m * 0.16, w / 4.0 * 0.4, h / 4.0 * 0.4});
+                        break;
+                }
+                g.chargePosition = ChargePosition::Center;
+            }
+        }
+        if (!fieldArranged) {
+            if (g.ordinary.render == "chevron") {
+                // A chevron is a V band: the charge reads best in the empty
+                // trough below the apex point, not on the sharp tip.
+                px = w / 2;
+                py = h * 0.62;
+                maxR = m * 0.11;
+                g.chargePosition = ChargePosition::Center;
+            } else {
+                switch (g.chargePosition) {
+                    case ChargePosition::Canton:
+                        px = w * 0.25;
+                        py = h * 0.25;
+                        maxR = m * 0.2;
+                        break;
+                    case ChargePosition::Corner: {
+                        std::uniform_int_distribution<int> sideX(0, 1), sideY(0, 1);
+                        px = sideX(rng) ? w * 0.25 : w * 0.75;
+                        py = sideY(rng) ? h * 0.25 : h * 0.75;
+                        maxR = m * 0.16;
+                        break;
+                    }
+                    default:
+                        break;
+                }
+            }
+            g.chargeAnchors.emplace_back(px, py);
+        }
+    }
+g.chargeX = px;
+    g.chargeY = py;
+
+    // Keep the charge (including its corners) fully inside the flag.
+    double minDist = 1e18;
+    for (const auto& an : g.chargeAnchors) {
+        minDist = std::min({minDist, an.first, w - an.first,
+                            an.second, h - an.second});
+    }
+    if (minDist > 0.0) {
+        maxR = std::min(maxR, minDist / chargeExtentFactor(g.charge));
+    }
+
+    const double baseR = chargeBaseRadius(g.charge, w, h);
+    g.chargeScale = std::clamp(maxR / std::max(baseR, 1.0), 0.05, 1.0);
+
+    const auto bg = sampleBackgroundPoints(g, w, h, baseR * g.chargeScale,
+                                           g.chargeAnchors);
+    g.chargeColor = pickChargeColorAgainst(g.palette, bg);
+
+    g.chargeMinContrast = 1e18;
+    for (const auto& b : bg) {
+        g.chargeMinContrast = std::min(g.chargeMinContrast,
+                                       contrastRatio(g.chargeColor, b));
+    }
+
+    // Fimbriation: heraldic outline when the charge would blend into the
+    // background (fixes colour-on-colour tincture violations).
+    g.fimbriation = Fimbriation();
+    if (g.chargeMinContrast < 1.8) {
+        double lum = 0.0;
+        for (const auto& b : bg) lum += relativeLuminance(b);
+        lum /= static_cast<double>(bg.size());
+        g.fimbriation.enabled = true;
+        if (lum < 0.4) {
+            g.fimbriation.r = 1.0;
+            g.fimbriation.g = 1.0;
+            g.fimbriation.b = 1.0;
+        } else {
+            g.fimbriation.r = 0.07;
+            g.fimbriation.g = 0.07;
+            g.fimbriation.b = 0.07;
+        }
+        g.fimbriation.width = m * 0.018;
+    }
+
+    // Ordinary fimbriation: a heraldic outline around the band layer. It is
+    // used functionally when the band blends with the field/division, and
+    // decoratively otherwise (classic flags like the Union Jack or Brittany).
+    g.ordinaryFimbriation = Fimbriation();
+    {
+        const double ccA = contrastRatio(g.palette.c, g.palette.a);
+        const double ccB = contrastRatio(g.palette.c, g.palette.b);
+        const bool functional = std::min(ccA, ccB) < 2.0;
+        std::uniform_real_distribution<double> u(0.0, 1.0);
+        const bool decorative = !functional && u(rng) < 0.16;
+        if (functional || decorative) {
+            g.ordinaryFimbriation.enabled = true;
+            g.ordinaryFimbriation.width = 0.03;
+            if (relativeLuminance(g.palette.c) < 0.5) {
+                g.ordinaryFimbriation.r = 1.0;
+                g.ordinaryFimbriation.g = 1.0;
+                g.ordinaryFimbriation.b = 1.0;
+            } else {
+                g.ordinaryFimbriation.r = 0.07;
+                g.ordinaryFimbriation.g = 0.07;
+                g.ordinaryFimbriation.b = 0.07;
+            }
+        }
+    }
+}
+
+// Quality score: prefer charges that fit inside the flag, read clearly against
+// the background, and are reasonably large.
+static double scoreFlag(const GenerationResult& g, double w, double h) {
+    double score = 0.0;
+    const double R = chargeBaseRadius(g.charge, w, h) * g.chargeScale;
+    bool inBounds = true;
+    for (const auto& anchor : g.chargeAnchors) {
+        if (anchor.first - R < -2.0 || anchor.first + R > w + 2.0 ||
+            anchor.second - R < -2.0 || anchor.second + R > h + 2.0) {
+            inBounds = false;
+            break;
+        }
+    }
+    score += inBounds ? 2.0 : -10.0;
+    score += std::min(g.chargeMinContrast, 4.0);
+    if (g.chargeScale < 0.3) score -= 2.0;
+    return score;
+}
+
+static GenerationResult generateCandidate(const Config& cfg, std::mt19937& rng,
+                                          double w, double h) {
+    GenerationResult g;
+    if (cfg.divisions.empty() || cfg.ordinaries.empty() || cfg.charges.empty()) {
+        return g;
+    }
+
+    std::uniform_int_distribution<size_t> pick(0, cfg.divisions.size() - 1);
+    g.division = cfg.divisions[pick(rng)];
+
+    std::uniform_real_distribution<double> u01(0.0, 1.0);
+    if (u01(rng) < 0.15) {
+        g.ordinary = kNoOrdinary;
+    } else {
+        pick = std::uniform_int_distribution<size_t>(0, cfg.ordinaries.size() - 1);
+        for (int tries = 0; tries < 200; ++tries) {
+            g.ordinary = cfg.ordinaries[pick(rng)];
+            if (!incompatible(g.division, g.ordinary)) break;
+        }
+        // Never emit a clash: if every draw was incompatible, drop the
+        // ordinary layer rather than combine contradictory elements.
+        if (incompatible(g.division, g.ordinary)) g.ordinary = kNoOrdinary;
+    }
+
+    pick = std::uniform_int_distribution<size_t>(0, cfg.charges.size() - 1);
+    g.charge = cfg.charges[pick(rng)];
+
+    g.palette = generatePalette(rng);
+    g.alignment = computeAlignment(g.division, g.ordinary, rng, w, h);
+    g.chargePosition = pickChargePosition(rng);
+    resolveCharge(g, rng, w, h);
+    return g;
+}
+
+GenerationResult generateFlag(const Config& cfg, std::mt19937& rng,
+                              double w, double h) {
+    GenerationResult best;
+    double bestScore = -1e18;
+    for (int i = 0; i < 12; ++i) {
+        GenerationResult g = generateCandidate(cfg, rng, w, h);
+        if (g.division.id.empty()) return g;
+        const double s = scoreFlag(g, w, h);
+        if (s > bestScore) {
+            bestScore = s;
+            best = std::move(g);
+        }
+    }
+    return best;
+}
+
+void renderFlag(cairo_t* cr, const GenerationResult& g, double w, double h) {
+    drawField(cr, w, h, g.palette.a);
+    drawDivision(cr, g.division, w, h, g.palette.b, g.alignment);
+    drawOrdinary(cr, g.ordinary, w, h, g.palette.c, g.alignment,
+                 &g.ordinaryFimbriation);
+
+    for (const auto& anchor : g.chargeAnchors) {
+        const Alignment chargeAnchor{anchor.first, anchor.second};
+        drawCharge(cr, g.charge, w, h, g.chargeColor, chargeAnchor,
+                   g.chargeScale, g.fimbriation);
+    }
+}
+
+} // namespace flaggen
+
+
+
+================================================
+FILE: src/generator.h
+================================================
+#pragma once
+
+#include <random>
+#include <utility>
+#include <vector>
+
+#include "color.h"
+#include "config.h"
+#include "layers.h"
+
+namespace flaggen {
+
+enum class ChargePosition { Center, Canton, Corner };
+
+struct GenerationResult {
+    DivisionConfig division;
+    OrdinaryConfig ordinary;
+    ChargeConfig charge;
+    Palette palette;
+    Alignment alignment;
+    ChargePosition chargePosition = ChargePosition::Center;
+    double chargeX = 0.0;
+    double chargeY = 0.0;
+    double chargeScale = 1.0;
+    Color chargeColor;
+    double chargeMinContrast = 0.0;
+    Fimbriation fimbriation;
+    Fimbriation ordinaryFimbriation; // outline around the ordinary layer
+    int chargeRow = 1; // charges arranged in a row on a band ordinary
+    std::vector<std::pair<double, double>> chargeAnchors;
+};
+
+// Randomly composes a flag (best of several candidates) respecting
+// incompatibilities, alignment rules, the rule of tincture and readability.
+GenerationResult generateFlag(const Config& cfg, std::mt19937& rng,
+                              double w, double h);
+
+// Recomputes charge placement, scale, color and fimbriation for the current
+// layers (used by the constructor mode after overriding layers).
+void resolveCharge(GenerationResult& g, std::mt19937& rng, double w, double h);
+
+// Picks the charge color from the palette that contrasts best against the
+// sampled background colors (maximizes the worst-case contrast).
+Color pickChargeColorAgainst(const Palette& p, const std::vector<Color>& background);
+
+// Renders all four layers onto the Cairo context.
+void renderFlag(cairo_t* cr, const GenerationResult& g, double w, double h);
+
+} // namespace flaggen
+
+
+
+================================================
+FILE: src/gui.cpp
+================================================
+#include <cairo.h>
+#include <cairo-pdf.h>
+#include <cairo-svg.h>
+#include <gtk/gtk.h>
+
+#include <algorithm>
+#include <chrono>
+#include <cstring>
+#include <filesystem>
+#include <random>
+#include <string>
+#include <vector>
+
+#include "config.h"
+#include "generator.h"
+
+namespace fs = std::filesystem;
+
+struct Stroke {
+    double r = 1.0, g = 1.0, b = 1.0;
+    double width = 6.0;
+    std::vector<std::pair<double, double>> pts;
+};
+
+struct App {
+    flaggen::Config cfg;
+    flaggen::GenerationResult current;
+    int width = 1200;
+    int height = 800;
+
+    GtkWidget* window = nullptr;
+    GtkWidget* drawing = nullptr;
+    GtkWidget* seedCheck = nullptr;
+    GtkWidget* seedSpin = nullptr;
+    GtkWidget* infoLabel = nullptr;
+
+    GtkWidget* divCombo = nullptr;
+    GtkWidget* ordCombo = nullptr;
+    GtkWidget* chargeCombo = nullptr;
+    GtkWidget* posCombo = nullptr;
+
+    GtkWidget* brushToggle = nullptr;
+    GtkWidget* colorButton = nullptr;
+    GtkWidget* widthSpin = nullptr;
+
+    bool hasFlag = false;
+    bool hasTransform = false;
+    double s = 1.0, ox = 0.0, oy = 0.0;
+
+    std::vector<Stroke> strokes;
+    int activeStroke = -1;
+};
+
+static const char* kRandomId = "__random__";
+
+static unsigned randomSeed() {
+    return static_cast<unsigned>(
+        std::chrono::system_clock::now().time_since_epoch().count());
+}
+
+static const char* positionName(flaggen::ChargePosition pos) {
+    switch (pos) {
+        case flaggen::ChargePosition::Center: return "center";
+        case flaggen::ChargePosition::Canton: return "canton";
+        default: return "corner";
+    }
+}
+
+static flaggen::ChargePosition positionFromId(const char* id) {
+    if (std::strcmp(id, "center") == 0) return flaggen::ChargePosition::Center;
+    if (std::strcmp(id, "canton") == 0) return flaggen::ChargePosition::Canton;
+    return flaggen::ChargePosition::Corner;
+}
+
+static const flaggen::DivisionConfig* findDivision(const flaggen::Config& cfg,
+                                                   const char* id) {
+    for (const auto& d : cfg.divisions) if (d.id == id) return &d;
+    return nullptr;
+}
+static const flaggen::OrdinaryConfig* findOrdinary(const flaggen::Config& cfg,
+                                                   const char* id) {
+    for (const auto& o : cfg.ordinaries) if (o.id == id) return &o;
+    return nullptr;
+}
+static const flaggen::ChargeConfig* findCharge(const flaggen::Config& cfg,
+                                               const char* id) {
+    for (const auto& c : cfg.charges) if (c.id == id) return &c;
+    return nullptr;
+}
+
+static void updateInfo(App* app, unsigned seed) {
+    const flaggen::GenerationResult& g = app->current;
+    std::string txt = "seed=" + std::to_string(seed) +
+                      "   division=" + g.division.id +
+                      "   ordinary=" + g.ordinary.id +
+                      "   charge=" + g.charge.id +
+                      " (" + positionName(g.chargePosition) + ")" +
+                      "   palette=" + flaggen::colorToHex(g.palette.a) +
+                      " " + flaggen::colorToHex(g.palette.b) +
+                      " " + flaggen::colorToHex(g.palette.c) +
+                      "   contrast=" + std::to_string(g.chargeMinContrast);
+    gtk_label_set_text(GTK_LABEL(app->infoLabel), txt.c_str());
+}
+
+static void generateRandom(App* app) {
+    const bool useSeed = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(app->seedCheck));
+    const unsigned seed = useSeed
+        ? static_cast<unsigned>(gtk_spin_button_get_value(GTK_SPIN_BUTTON(app->seedSpin)))
+        : randomSeed();
+    gtk_spin_button_set_value(GTK_SPIN_BUTTON(app->seedSpin), static_cast<double>(seed));
+
+    std::mt19937 rng(seed);
+    app->current = flaggen::generateFlag(app->cfg, rng, app->width, app->height);
+    app->hasFlag = true;
+    gtk_combo_box_set_active(GTK_COMBO_BOX(app->divCombo), 0);
+    gtk_combo_box_set_active(GTK_COMBO_BOX(app->ordCombo), 0);
+    gtk_combo_box_set_active(GTK_COMBO_BOX(app->chargeCombo), 0);
+    gtk_combo_box_set_active(GTK_COMBO_BOX(app->posCombo), 0);
+    gtk_widget_queue_draw(app->drawing);
+    updateInfo(app, seed);
+}
+
+static void applyConstructor(App* app) {
+    const bool useSeed = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(app->seedCheck));
+    const unsigned seed = useSeed
+        ? static_cast<unsigned>(gtk_spin_button_get_value(GTK_SPIN_BUTTON(app->seedSpin)))
+        : randomSeed();
+    gtk_spin_button_set_value(GTK_SPIN_BUTTON(app->seedSpin), static_cast<double>(seed));
+
+    std::mt19937 rng(seed);
+    app->current = flaggen::generateFlag(app->cfg, rng, app->width, app->height);
+
+    const char* dsel = gtk_combo_box_get_active_id(GTK_COMBO_BOX(app->divCombo));
+    if (dsel && std::strcmp(dsel, kRandomId) != 0) {
+        if (const auto* d = findDivision(app->cfg, dsel)) app->current.division = *d;
+    }
+    const char* osel = gtk_combo_box_get_active_id(GTK_COMBO_BOX(app->ordCombo));
+    if (osel && std::strcmp(osel, kRandomId) != 0) {
+        if (const auto* o = findOrdinary(app->cfg, osel)) app->current.ordinary = *o;
+    }
+    const char* csel = gtk_combo_box_get_active_id(GTK_COMBO_BOX(app->chargeCombo));
+    if (csel && std::strcmp(csel, kRandomId) != 0) {
+        if (const auto* c = findCharge(app->cfg, csel)) app->current.charge = *c;
+    }
+    const char* psel = gtk_combo_box_get_active_id(GTK_COMBO_BOX(app->posCombo));
+    if (psel && std::strcmp(psel, kRandomId) != 0) {
+        app->current.chargePosition = positionFromId(psel);
+    }
+    flaggen::resolveCharge(app->current, rng, app->width, app->height);
+
+    app->hasFlag = true;
+    gtk_widget_queue_draw(app->drawing);
+    updateInfo(app, seed);
+}
+
+static void renderStrokes(cairo_t* cr, App* app) {
+    cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
+    cairo_set_line_join(cr, CAIRO_LINE_JOIN_ROUND);
+    for (const auto& st : app->strokes) {
+        cairo_set_source_rgb(cr, st.r, st.g, st.b);
+        cairo_set_line_width(cr, st.width);
+        if (st.pts.size() == 1) {
+            cairo_arc(cr, st.pts[0].first, st.pts[0].second, st.width / 2.0, 0, 2 * M_PI);
+            cairo_fill(cr);
+            continue;
+        }
+        if (st.pts.size() < 2) continue;
+        cairo_move_to(cr, st.pts[0].first, st.pts[0].second);
+        for (size_t i = 1; i < st.pts.size(); ++i) {
+            cairo_line_to(cr, st.pts[i].first, st.pts[i].second);
+        }
+        cairo_stroke(cr);
+    }
+}
+
+static gboolean onDraw(GtkWidget* widget, cairo_t* cr, gpointer data) {
+    App* app = static_cast<App*>(data);
+    GtkAllocation alloc;
+    gtk_widget_get_allocation(widget, &alloc);
+
+    cairo_set_source_rgb(cr, 0.14, 0.14, 0.17);
+    cairo_paint(cr);
+
+    if (!app->hasFlag) return FALSE;
+
+    const double sx = static_cast<double>(alloc.width) / app->width;
+    const double sy = static_cast<double>(alloc.height) / app->height;
+    const double s = std::min(sx, sy);
+    const double ox = (alloc.width - app->width * s) / 2.0;
+    const double oy = (alloc.height - app->height * s) / 2.0;
+    app->s = s;
+    app->ox = ox;
+    app->oy = oy;
+    app->hasTransform = true;
+
+    cairo_translate(cr, ox, oy);
+    cairo_scale(cr, s, s);
+    flaggen::renderFlag(cr, app->current, app->width, app->height);
+    renderStrokes(cr, app);
+    return FALSE;
+}
+
+static bool widgetToFlag(App* app, double wx, double wy, double& fx, double& fy) {
+    if (!app->hasFlag || !app->hasTransform) return false;
+    fx = (wx - app->ox) / app->s;
+    fy = (wy - app->oy) / app->s;
+    return true;
+}
+
+static gboolean onPress(GtkWidget*, GdkEventButton* ev, gpointer data) {
+    App* app = static_cast<App*>(data);
+    if (!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(app->brushToggle))) return FALSE;
+    if (ev->button != 1) return FALSE;
+
+    double fx = 0, fy = 0;
+    if (!widgetToFlag(app, ev->x, ev->y, fx, fy)) return FALSE;
+
+    GdkRGBA col;
+    gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(app->colorButton), &col);
+
+    Stroke st;
+    st.r = col.red;
+    st.g = col.green;
+    st.b = col.blue;
+    st.width = gtk_spin_button_get_value(GTK_SPIN_BUTTON(app->widthSpin));
+    st.pts.emplace_back(fx, fy);
+    app->strokes.push_back(std::move(st));
+    app->activeStroke = static_cast<int>(app->strokes.size()) - 1;
+    gtk_widget_queue_draw(app->drawing);
+    return TRUE;
+}
+
+static gboolean onMotion(GtkWidget*, GdkEventMotion* ev, gpointer data) {
+    App* app = static_cast<App*>(data);
+    if (app->activeStroke < 0) return FALSE;
+    if (!(ev->state & GDK_BUTTON1_MASK)) return FALSE;
+
+    double fx = 0, fy = 0;
+    if (!widgetToFlag(app, ev->x, ev->y, fx, fy)) return FALSE;
+    auto& st = app->strokes[static_cast<size_t>(app->activeStroke)];
+    st.pts.emplace_back(fx, fy);
+    gtk_widget_queue_draw(app->drawing);
+    return TRUE;
+}
+
+static gboolean onRelease(GtkWidget*, GdkEventButton*, gpointer data) {
+    App* app = static_cast<App*>(data);
+    app->activeStroke = -1;
+    return FALSE;
+}
+
+static bool exportFlag(App* app, const std::string& path) {
+    const std::string ext = fs::path(path).extension().string();
+    cairo_surface_t* surface = nullptr;
+    if (ext == ".svg") surface = cairo_svg_surface_create(path.c_str(), app->width, app->height);
+    else if (ext == ".pdf") surface = cairo_pdf_surface_create(path.c_str(), app->width, app->height);
+    else surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, app->width, app->height);
+
+    if (!surface || cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS) return false;
+
+    cairo_t* cr = cairo_create(surface);
+    flaggen::renderFlag(cr, app->current, app->width, app->height);
+    renderStrokes(cr, app);
+    cairo_destroy(cr);
+
+    bool ok = true;
+    if (ext == ".svg" || ext == ".pdf") {
+        cairo_surface_finish(surface);
+    } else {
+        ok = cairo_surface_write_to_png(surface, path.c_str()) == CAIRO_STATUS_SUCCESS;
+    }
+    cairo_surface_destroy(surface);
+    return ok;
+}
+
+static void onGenerate(GtkWidget*, gpointer data) { generateRandom(static_cast<App*>(data)); }
+static void onApply(GtkWidget*, gpointer data) { applyConstructor(static_cast<App*>(data)); }
+
+static void onClearStrokes(GtkWidget*, gpointer data) {
+    App* app = static_cast<App*>(data);
+    app->strokes.clear();
+    app->activeStroke = -1;
+    gtk_widget_queue_draw(app->drawing);
+}
+
+static void onBrushToggled(GtkWidget*, gpointer data) {
+    App* app = static_cast<App*>(data);
+    GdkWindow* win = gtk_widget_get_window(app->drawing);
+    if (win) {
+        const bool active = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(app->brushToggle));
+        GdkCursorType type = active ? GDK_CROSSHAIR : GDK_LEFT_PTR;
+        GdkCursor* cur = gdk_cursor_new_for_display(gdk_display_get_default(), type);
+        gdk_window_set_cursor(win, cur);
+        g_object_unref(cur);
+    }
+}
+
+static void onSave(GtkWidget*, gpointer data) {
+    App* app = static_cast<App*>(data);
+    if (!app->hasFlag) return;
+
+    GtkWidget* dialog = gtk_file_chooser_dialog_new(
+        "Сохранить флаг", GTK_WINDOW(app->window),
+        GTK_FILE_CHOOSER_ACTION_SAVE,
+        "_Отмена", GTK_RESPONSE_CANCEL,
+        "_Сохранить", GTK_RESPONSE_ACCEPT, nullptr);
+    gtk_file_chooser_set_current_name(GTK_FILE_CHOOSER(dialog), "flag.png");
+
+    GtkFileFilter* f = gtk_file_filter_new();
+    gtk_file_filter_set_name(f, "Изображения (PNG / SVG / PDF)");
+    gtk_file_filter_add_pattern(f, "*.png");
+    gtk_file_filter_add_pattern(f, "*.svg");
+    gtk_file_filter_add_pattern(f, "*.pdf");
+    gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), f);
+
+    if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
+        gchar* path = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
+        if (path) {
+            gtk_label_set_text(GTK_LABEL(app->infoLabel),
+                               exportFlag(app, path)
+                                   ? ("Сохранено: " + std::string(path)).c_str()
+                                   : ("Ошибка сохранения: " + std::string(path)).c_str());
+            g_free(path);
+        }
+    }
+    gtk_widget_destroy(dialog);
+}
+
+static GtkWidget* headerLabel(const char* text) {
+    GtkWidget* l = gtk_label_new(nullptr);
+    gtk_label_set_markup(GTK_LABEL(l), (std::string("<b>") + text + "</b>").c_str());
+    gtk_label_set_xalign(GTK_LABEL(l), 0.0);
+    return l;
+}
+
+static GtkWidget* comboFromList(App* app) {
+    GtkWidget* cb = gtk_combo_box_text_new();
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(cb), kRandomId, "Случайное");
+    return cb;
+}
+
+int main(int argc, char** argv) {
+    gtk_init(&argc, &argv);
+
+    App app;
+    try {
+        app.cfg = flaggen::loadConfig("config/flags.json");
+    } catch (const std::exception& e) {
+        g_printerr("Failed to load config: %s\n", e.what());
+        return 1;
+    }
+
+    app.window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_window_set_title(GTK_WINDOW(app.window), "Flag Generator — конструктор");
+    gtk_window_set_default_size(GTK_WINDOW(app.window), 1180, 680);
+    g_signal_connect(app.window, "destroy", G_CALLBACK(gtk_main_quit), nullptr);
+
+    GtkWidget* mainBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+    gtk_container_set_border_width(GTK_CONTAINER(mainBox), 8);
+    gtk_container_add(GTK_CONTAINER(app.window), mainBox);
+
+    // ---- Left control panel ----
+    GtkWidget* panel = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
+    gtk_widget_set_size_request(panel, 280, -1);
+    gtk_box_pack_start(GTK_BOX(mainBox), panel, FALSE, FALSE, 0);
+
+    gtk_box_pack_start(GTK_BOX(panel), headerLabel("Генерация"), FALSE, FALSE, 0);
+
+    GtkWidget* genBtn = gtk_button_new_with_label("Случайный флаг");
+    g_signal_connect(genBtn, "clicked", G_CALLBACK(onGenerate), &app);
+    gtk_box_pack_start(GTK_BOX(panel), genBtn, FALSE, FALSE, 0);
+
+    GtkWidget* seedRow = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
+    gtk_box_pack_start(GTK_BOX(panel), seedRow, FALSE, FALSE, 0);
+    app.seedCheck = gtk_check_button_new_with_label("Сид:");
+    gtk_box_pack_start(GTK_BOX(seedRow), app.seedCheck, FALSE, FALSE, 0);
+    app.seedSpin = gtk_spin_button_new_with_range(0, 0x7FFFFFFF, 1);
+    gtk_spin_button_set_value(GTK_SPIN_BUTTON(app.seedSpin), 1);
+    gtk_box_pack_start(GTK_BOX(seedRow), app.seedSpin, TRUE, TRUE, 0);
+
+    gtk_box_pack_start(GTK_BOX(panel), headerLabel("Конструктор"), FALSE, FALSE, 0);
+
+    app.divCombo = comboFromList(&app);
+    for (const auto& d : app.cfg.divisions)
+        gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(app.divCombo), d.id.c_str(), d.id.c_str());
+    gtk_combo_box_set_active(GTK_COMBO_BOX(app.divCombo), 0);
+    gtk_box_pack_start(GTK_BOX(panel), app.divCombo, FALSE, FALSE, 0);
+
+    app.ordCombo = comboFromList(&app);
+    for (const auto& o : app.cfg.ordinaries)
+        gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(app.ordCombo), o.id.c_str(), o.id.c_str());
+    gtk_combo_box_set_active(GTK_COMBO_BOX(app.ordCombo), 0);
+    gtk_box_pack_start(GTK_BOX(panel), app.ordCombo, FALSE, FALSE, 0);
+
+    app.chargeCombo = comboFromList(&app);
+    for (const auto& c : app.cfg.charges)
+        gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(app.chargeCombo), c.id.c_str(), c.id.c_str());
+    gtk_combo_box_set_active(GTK_COMBO_BOX(app.chargeCombo), 0);
+    gtk_box_pack_start(GTK_BOX(panel), app.chargeCombo, FALSE, FALSE, 0);
+
+    app.posCombo = comboFromList(&app);
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(app.posCombo), "center", "Центр");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(app.posCombo), "canton", "Кантон");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(app.posCombo), "corner", "Угол");
+    gtk_combo_box_set_active(GTK_COMBO_BOX(app.posCombo), 0);
+    gtk_box_pack_start(GTK_BOX(panel), app.posCombo, FALSE, FALSE, 0);
+
+    GtkWidget* applyBtn = gtk_button_new_with_label("Применить");
+    g_signal_connect(applyBtn, "clicked", G_CALLBACK(onApply), &app);
+    gtk_box_pack_start(GTK_BOX(panel), applyBtn, FALSE, FALSE, 0);
+
+    gtk_box_pack_start(GTK_BOX(panel), headerLabel("Рисование"), FALSE, FALSE, 0);
+
+    app.brushToggle = gtk_toggle_button_new_with_label("Кисть (рисовать мышью)");
+    g_signal_connect(app.brushToggle, "toggled", G_CALLBACK(onBrushToggled), &app);
+    gtk_box_pack_start(GTK_BOX(panel), app.brushToggle, FALSE, FALSE, 0);
+
+    GtkWidget* penRow = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
+    gtk_box_pack_start(GTK_BOX(panel), penRow, FALSE, FALSE, 0);
+    app.colorButton = gtk_color_button_new();
+    GdkRGBA white = {1, 1, 1, 1};
+    gtk_color_button_set_rgba(GTK_COLOR_BUTTON(app.colorButton), &white);
+    gtk_box_pack_start(GTK_BOX(penRow), app.colorButton, FALSE, FALSE, 0);
+    app.widthSpin = gtk_spin_button_new_with_range(1, 60, 1);
+    gtk_spin_button_set_value(GTK_SPIN_BUTTON(app.widthSpin), 8);
+    gtk_box_pack_start(GTK_BOX(penRow), app.widthSpin, TRUE, TRUE, 0);
+
+    GtkWidget* clearBtn = gtk_button_new_with_label("Стереть рисунок");
+    g_signal_connect(clearBtn, "clicked", G_CALLBACK(onClearStrokes), &app);
+    gtk_box_pack_start(GTK_BOX(panel), clearBtn, FALSE, FALSE, 0);
+
+    GtkWidget* saveBtn = gtk_button_new_with_label("Сохранить…");
+    g_signal_connect(saveBtn, "clicked", G_CALLBACK(onSave), &app);
+    gtk_box_pack_start(GTK_BOX(panel), saveBtn, FALSE, FALSE, 0);
+
+    app.infoLabel = gtk_label_new("");
+    gtk_label_set_ellipsize(GTK_LABEL(app.infoLabel), PANGO_ELLIPSIZE_END);
+    gtk_label_set_line_wrap(GTK_LABEL(app.infoLabel), TRUE);
+    gtk_label_set_xalign(GTK_LABEL(app.infoLabel), 0.0);
+    gtk_box_pack_start(GTK_BOX(panel), app.infoLabel, FALSE, FALSE, 0);
+
+    // ---- Drawing area ----
+    app.drawing = gtk_drawing_area_new();
+    gtk_widget_set_size_request(app.drawing, 720, 480);
+    g_signal_connect(app.drawing, "draw", G_CALLBACK(onDraw), &app);
+    gtk_widget_add_events(app.drawing,
+                          GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK |
+                              GDK_POINTER_MOTION_MASK);
+    g_signal_connect(app.drawing, "button-press-event", G_CALLBACK(onPress), &app);
+    g_signal_connect(app.drawing, "motion-notify-event", G_CALLBACK(onMotion), &app);
+    g_signal_connect(app.drawing, "button-release-event", G_CALLBACK(onRelease), &app);
+    gtk_box_pack_start(GTK_BOX(mainBox), app.drawing, TRUE, TRUE, 0);
+
+    gtk_widget_show_all(app.window);
+    generateRandom(&app);
+
+    gtk_main();
+    return 0;
+}
+
+
+
+================================================
+FILE: src/layers.cpp
+================================================
+#include "layers.h"
+
+#include <algorithm>
+#include <cmath>
+
+namespace flaggen {
+
+static void setColor(cairo_t* cr, const Color& c) {
+    cairo_set_source_rgb(cr, c.r, c.g, c.b);
+}
+
+// Fills the current path; if fimbriation is requested, first strokes the path
+// with a thick outline in the fimbriation color, then fills with the fill color.
+static void finishFill(cairo_t* cr, const Color& col, const Fimbriation* f,
+                       double scale) {
+    if (f && f->enabled) {
+        cairo_set_source_rgb(cr, f->r, f->g, f->b);
+        cairo_set_line_width(cr, std::max(0.5, f->width * scale));
+        cairo_stroke_preserve(cr);
+    }
+    cairo_set_source_rgb(cr, col.r, col.g, col.b);
+    cairo_fill(cr);
+}
+
+// Same as finishFill but for ordinary bands (thicker outline, square joins).
+static void fillFimb(cairo_t* cr, const Color& col, const Fimbriation* f,
+                     double m) {
+    if (f && f->enabled) {
+        cairo_set_source_rgb(cr, f->r, f->g, f->b);
+        cairo_set_line_width(cr, std::max(1.0, m * f->width));
+        cairo_set_line_join(cr, CAIRO_LINE_JOIN_MITER);
+        cairo_stroke_preserve(cr);
+    }
+    cairo_set_source_rgb(cr, col.r, col.g, col.b);
+    cairo_fill(cr);
+}
+
+// Fills a band of width `bandWidth` between two points (thick diagonal line).
+static void fillBand(cairo_t* cr, double x1, double y1, double x2, double y2,
+                     double bandWidth, const Color& col, const Fimbriation* f,
+                     double m) {
+    double dx = x2 - x1, dy = y2 - y1;
+    double len = std::hypot(dx, dy);
+    if (len <= 0.0) return;
+    double nx = -dy / len * bandWidth;
+    double ny = dx / len * bandWidth;
+    cairo_move_to(cr, x1 + nx, y1 + ny);
+    cairo_line_to(cr, x1 - nx, y1 - ny);
+    cairo_line_to(cr, x2 - nx, y2 - ny);
+    cairo_line_to(cr, x2 + nx, y2 + ny);
+    cairo_close_path(cr);
+    fillFimb(cr, col, f, m);
+}
+
+void drawField(cairo_t* cr, double w, double h, const Color& c) {
+    setColor(cr, c);
+    cairo_rectangle(cr, 0, 0, w, h);
+    cairo_fill(cr);
+}
+
+void drawDivision(cairo_t* cr, const DivisionConfig& d,
+                  double w, double h, const Color& c, const Alignment& a) {
+    (void)a;
+    setColor(cr, c);
+    const std::string& r = d.render;
+
+    if (r == "horizontal_split") {
+        cairo_rectangle(cr, 0, h / 2, w, h / 2);
+        cairo_fill(cr);
+    } else if (r == "vertical_split") {
+        cairo_rectangle(cr, w / 2, 0, w / 2, h);
+        cairo_fill(cr);
+    } else if (r == "diagonal_bend") {
+        cairo_move_to(cr, 0, 0);
+        cairo_line_to(cr, w, h);
+        cairo_line_to(cr, w, 0);
+        cairo_close_path(cr);
+        cairo_fill(cr);
+    } else if (r == "diagonal_bend_sinister") {
+        cairo_move_to(cr, 0, 0);
+        cairo_line_to(cr, w, 0);
+        cairo_line_to(cr, 0, h);
+        cairo_close_path(cr);
+        cairo_fill(cr);
+    } else if (r == "diagonal_cross") {
+        cairo_move_to(cr, 0, 0);
+        cairo_line_to(cr, w, 0);
+        cairo_line_to(cr, w / 2, h / 2);
+        cairo_close_path(cr);
+        cairo_fill(cr);
+        cairo_move_to(cr, 0, h);
+        cairo_line_to(cr, w, h);
+        cairo_line_to(cr, w / 2, h / 2);
+        cairo_close_path(cr);
+        cairo_fill(cr);
+    } else if (r == "quarterly") {
+        cairo_rectangle(cr, 0, 0, w / 2, h / 2);
+        cairo_fill(cr);
+        cairo_rectangle(cr, w / 2, h / 2, w / 2, h / 2);
+        cairo_fill(cr);
+    } else if (r == "chevron_division") {
+        cairo_move_to(cr, 0, h);
+        cairo_line_to(cr, 0, h * 0.25);
+        cairo_line_to(cr, w / 2, h / 2);
+        cairo_line_to(cr, w, h * 0.25);
+        cairo_line_to(cr, w, h);
+        cairo_close_path(cr);
+        cairo_fill(cr);
+    } else if (r == "chevron_division_inverted") {
+        cairo_move_to(cr, 0, 0);
+        cairo_line_to(cr, 0, h * 0.75);
+        cairo_line_to(cr, w / 2, h / 2);
+        cairo_line_to(cr, w, h * 0.75);
+        cairo_line_to(cr, w, 0);
+        cairo_close_path(cr);
+        cairo_fill(cr);
+    } else if (r == "barry") {
+        const int n = std::max(1, d.stripes);
+        const double bh = h / n;
+        for (int i = 0; i < n; ++i) {
+            if (i % 2 == 0) {
+                cairo_rectangle(cr, 0, i * bh, w, bh);
+                cairo_fill(cr);
+            }
+        }
+    } else if (r == "paly") {
+        const int n = std::max(1, d.stripes);
+        const double bw = w / n;
+        for (int i = 0; i < n; ++i) {
+            if (i % 2 == 0) {
+                cairo_rectangle(cr, i * bw, 0, bw, h);
+                cairo_fill(cr);
+            }
+        }
+    } else if (r == "bendy") {
+        const int n = std::max(1, d.stripes);
+        const double step = 2.0 * h / n;
+        for (int k = 0; k < n; ++k) {
+            if (k % 2 == 0) {
+                const double c0 = -h + k * step;
+                const double c1 = c0 + step;
+                cairo_move_to(cr, 0, c0);
+                cairo_line_to(cr, 0, c1);
+                cairo_line_to(cr, w, c1 + h);
+                cairo_line_to(cr, w, c0 + h);
+                cairo_close_path(cr);
+                cairo_fill(cr);
+            }
+        }
+    } else if (r == "gyronny") {
+        const int n = std::max(4, d.stripes);
+        const double R = std::hypot(w, h);
+        for (int i = 0; i < n; ++i) {
+            if (i % 2 == 0) {
+                const double a0 = i * 2.0 * M_PI / n;
+                const double a1 = (i + 1) * 2.0 * M_PI / n;
+                cairo_move_to(cr, w / 2, h / 2);
+                cairo_arc(cr, w / 2, h / 2, R, a0, a1);
+                cairo_close_path(cr);
+                cairo_fill(cr);
+            }
+        }
+    }
+}
+
+void drawOrdinary(cairo_t* cr, const OrdinaryConfig& o,
+                  double w, double h, const Color& c, const Alignment& a,
+                  const Fimbriation* fimb) {
+    setColor(cr, c);
+    const std::string& r = o.render;
+    if (r == "none") return;
+    const double th = o.thickness;
+    const double m = std::min(w, h);
+    const double fw = (fimb && fimb->enabled) ? m * fimb->width : 0.0;
+
+    if (r == "fess") {
+        const double t = h * th;
+        cairo_rectangle(cr, 0, a.y - t / 2, w, t);
+        fillFimb(cr, c, fimb, m);
+    } else if (r == "chief") {
+        cairo_rectangle(cr, 0, 0, w, h * th);
+        fillFimb(cr, c, fimb, m);
+    } else if (r == "base") {
+        cairo_rectangle(cr, 0, h - h * th, w, h * th);
+        fillFimb(cr, c, fimb, m);
+    } else if (r == "pile") {
+        cairo_move_to(cr, 0, 0);
+        cairo_line_to(cr, w, 0);
+        cairo_line_to(cr, w / 2, h * 0.55);
+        cairo_close_path(cr);
+        fillFimb(cr, c, fimb, m);
+    } else if (r == "pale") {
+        const double t = w * th;
+        cairo_rectangle(cr, a.x - t / 2, 0, t, h);
+        fillFimb(cr, c, fimb, m);
+    } else if (r == "pale_dexter") {
+        const double t = w * th;
+        cairo_rectangle(cr, a.x - t - w * 0.15, 0, t, h);
+        fillFimb(cr, c, fimb, m);
+    } else if (r == "pale_sinister") {
+        const double t = w * th;
+        cairo_rectangle(cr, a.x + w * 0.15, 0, t, h);
+        fillFimb(cr, c, fimb, m);
+    } else if (r == "bend") {
+        fillBand(cr, a.x - w, a.y - h, a.x + w, a.y + h, m * th, c, fimb, m);
+    } else if (r == "bend_sinister") {
+        fillBand(cr, a.x - w, a.y + h, a.x + w, a.y - h, m * th, c, fimb, m);
+    } else if (r == "cross") {
+        const double thh = h * th, thw = w * th;
+        cairo_rectangle(cr, 0, a.y - thh / 2, w, thh);
+        fillFimb(cr, c, fimb, m);
+        cairo_rectangle(cr, a.x - thw / 2, 0, thw, h);
+        fillFimb(cr, c, fimb, m);
+    } else if (r == "nordic") {
+        const double thh = h * th, thw = w * th;
+        cairo_rectangle(cr, 0, a.y - thh / 2, w, thh);
+        fillFimb(cr, c, fimb, m);
+        cairo_rectangle(cr, a.x - thw / 2, 0, thw, h);
+        fillFimb(cr, c, fimb, m);
+    } else if (r == "saltire") {
+        const double bw = m * th;
+        fillBand(cr, a.x - w, a.y - h, a.x + w, a.y + h, bw, c, fimb, m);
+        fillBand(cr, a.x - w, a.y + h, a.x + w, a.y - h, bw, c, fimb, m);
+    } else if (r == "chevron") {
+        // True chevron band: two arm quads of perpendicular width `bw`
+        // rising from the base corners to the apex point. The trough
+        // between the arms stays empty.
+        const double bw = h * th;
+        const double axp = a.x, ayp = a.y;
+        // Left arm: from the bottom-left corner to the apex.
+        {
+            double ux = axp, uy = ayp - h;
+            const double len = std::hypot(ux, uy);
+            ux /= len;
+            uy /= len;
+            const double nx = uy, ny = -ux; // up-left normal
+            const double bx = nx * bw, by = ny * bw;
+            cairo_move_to(cr, bx, h + by);
+            cairo_line_to(cr, axp + bx, ayp + by);
+            cairo_line_to(cr, axp - bx, ayp - by);
+            cairo_line_to(cr, -bx, h - by);
+            cairo_close_path(cr);
+            fillFimb(cr, c, fimb, m);
+        }
+        // Right arm: from the bottom-right corner to the apex.
+        {
+            double ux = axp - w, uy = ayp - h;
+            const double len = std::hypot(ux, uy);
+            ux /= len;
+            uy /= len;
+            const double nx = -uy, ny = ux; // up-right normal
+            const double bx = nx * bw, by = ny * bw;
+            cairo_move_to(cr, w + bx, h + by);
+            cairo_line_to(cr, axp + bx, ayp + by);
+            cairo_line_to(cr, axp - bx, ayp - by);
+            cairo_line_to(cr, w - bx, h - by);
+            cairo_close_path(cr);
+            fillFimb(cr, c, fimb, m);
+        }
+        // Cap the apex: the two arm quads meet exactly at the apex point,
+        // which leaves a sub-pixel notch on the tip. A circle of the band
+        // half-width rounds the point and keeps it solid.
+        cairo_arc(cr, axp, ayp, bw / 2, 0.0, 2.0 * 3.14159265358979323846);
+        cairo_fill(cr);
+    } else if (r == "pall") {
+        const double t = m * th;
+        cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
+        cairo_set_line_join(cr, CAIRO_LINE_JOIN_MITER);
+        cairo_move_to(cr, a.x, a.y);
+        cairo_line_to(cr, a.x, h);
+        cairo_move_to(cr, a.x, a.y);
+        cairo_line_to(cr, 0, h * 0.45);
+        cairo_move_to(cr, a.x, a.y);
+        cairo_line_to(cr, w, h * 0.45);
+        if (fw > 0.0) {
+            setColor(cr, {fimb->r, fimb->g, fimb->b});
+            cairo_set_line_width(cr, t + 2 * fw);
+            cairo_stroke_preserve(cr);
+        }
+        setColor(cr, c);
+        cairo_set_line_width(cr, t);
+        cairo_stroke(cr);
+    } else if (r == "bordure") {
+        const double in = m * th;
+        cairo_set_fill_rule(cr, CAIRO_FILL_RULE_EVEN_ODD);
+        cairo_rectangle(cr, 0, 0, w, h);
+        cairo_rectangle(cr, in, in, w - 2 * in, h - 2 * in);
+        fillFimb(cr, c, fimb, m);
+    } else if (r == "orle") {
+        const double in = m * 0.2;
+        const double t = m * th;
+        cairo_set_fill_rule(cr, CAIRO_FILL_RULE_EVEN_ODD);
+        cairo_rectangle(cr, in, in, w - 2 * in, h - 2 * in);
+        cairo_rectangle(cr, in + t, in + t, w - 2 * in - 2 * t, h - 2 * in - 2 * t);
+        fillFimb(cr, c, fimb, m);
+    } else if (r == "canton") {
+        const double s = m * o.size;
+        cairo_rectangle(cr, 0, a.y - s, s, s);
+        fillFimb(cr, c, fimb, m);
+    } else if (r == "lozenge") {
+        const double d = m * o.size;
+        cairo_move_to(cr, a.x, a.y - d);
+        cairo_line_to(cr, a.x + d, a.y);
+        cairo_line_to(cr, a.x, a.y + d);
+        cairo_line_to(cr, a.x - d, a.y);
+        cairo_close_path(cr);
+        fillFimb(cr, c, fimb, m);
+    } else if (r == "lozenge_throughout") {
+        cairo_move_to(cr, w / 2, 0);
+        cairo_line_to(cr, w, h / 2);
+        cairo_line_to(cr, w / 2, h);
+        cairo_line_to(cr, 0, h / 2);
+        cairo_close_path(cr);
+        fillFimb(cr, c, fimb, m);
+    }
+}
+
+double chargeBaseRadius(const ChargeConfig& ch, double w, double h) {
+    const double m = std::min(w, h);
+    if (ch.render == "cross_patee") return 0.42 * m;
+    return m * ch.outerRadius;
+}
+
+void drawCharge(cairo_t* cr, const ChargeConfig& ch,
+                double w, double h, const Color& c, const Alignment& a,
+                double scale, const Fimbriation& fimb) {
+    const std::string& r = ch.render;
+    const double m = std::min(w, h);
+    // Hollow shapes already read well on busy grounds; skip fimbriation.
+    const bool canFimb = r != "crescent" && r != "annulet";
+    const Fimbriation* f = canFimb ? &fimb : nullptr;
+
+    if (r == "star") {
+        const int n = std::max(3, ch.points);
+        const double R = m * ch.outerRadius * scale;
+        const double ri = m * ch.innerRadius * scale;
+        for (int i = 0; i < 2 * n; ++i) {
+            const double ang = i * M_PI / n;
+            const double rad = (i % 2 == 0) ? R : ri;
+            const double x = a.x + rad * std::cos(ang);
+            const double y = a.y + rad * std::sin(ang);
+            if (i == 0) cairo_move_to(cr, x, y);
+            else cairo_line_to(cr, x, y);
+        }
+        cairo_close_path(cr);
+        finishFill(cr, c, f, scale);
+    } else if (r == "crescent") {
+        const double R = m * ch.outerRadius * scale;
+        const double ri = m * ch.innerRadius * scale;
+        const double off = m * ch.offsetX * scale;
+        cairo_new_path(cr);
+        cairo_arc(cr, a.x, a.y, R, 0, 2 * M_PI);
+        cairo_close_path(cr);
+        cairo_arc(cr, a.x + off, a.y, ri, 0, 2 * M_PI);
+        cairo_close_path(cr);
+        cairo_set_fill_rule(cr, CAIRO_FILL_RULE_EVEN_ODD);
+        finishFill(cr, c, nullptr, scale);
+    } else if (r == "annulet") {
+        const double R = m * ch.outerRadius * scale;
+        const double ri = m * ch.innerRadius * scale;
+        cairo_new_path(cr);
+        cairo_arc(cr, a.x, a.y, R, 0, 2 * M_PI);
+        cairo_close_path(cr);
+        cairo_arc(cr, a.x, a.y, ri, 0, 2 * M_PI);
+        cairo_close_path(cr);
+        cairo_set_fill_rule(cr, CAIRO_FILL_RULE_EVEN_ODD);
+        finishFill(cr, c, nullptr, scale);
+    } else if (r == "circle") {
+        cairo_arc(cr, a.x, a.y, m * ch.outerRadius * scale, 0, 2 * M_PI);
+        finishFill(cr, c, f, scale);
+    } else if (r == "sun") {
+        const double R = m * ch.outerRadius * scale;
+        const double rd = R * 0.72;
+        const int n = 16;
+        cairo_new_path(cr);
+        for (int i = 0; i < n; ++i) {
+            const double a0 = i * 2.0 * M_PI / n;
+            const double a1 = (i + 1) * 2.0 * M_PI / n;
+            const double mid = (a0 + a1) / 2.0;
+            cairo_move_to(cr, a.x + rd * std::cos(a0), a.y + rd * std::sin(a0));
+            cairo_line_to(cr, a.x + R * std::cos(mid), a.y + R * std::sin(mid));
+            cairo_line_to(cr, a.x + rd * std::cos(a1), a.y + rd * std::sin(a1));
+            cairo_close_path(cr);
+        }
+        cairo_arc(cr, a.x, a.y, rd, 0, 2 * M_PI);
+        finishFill(cr, c, f, scale);
+    } else if (r == "polygon") {
+        const int n = std::max(3, ch.points);
+        const double R = m * ch.outerRadius * scale;
+        for (int i = 0; i < n; ++i) {
+            const double ang = -M_PI / 2 + i * 2.0 * M_PI / n;
+            const double x = a.x + R * std::cos(ang);
+            const double y = a.y + R * std::sin(ang);
+            if (i == 0) cairo_move_to(cr, x, y);
+            else cairo_line_to(cr, x, y);
+        }
+        cairo_close_path(cr);
+        finishFill(cr, c, f, scale);
+    } else if (r == "square") {
+        const double s = m * ch.outerRadius * scale;
+        cairo_rectangle(cr, a.x - s, a.y - s, 2 * s, 2 * s);
+        finishFill(cr, c, f, scale);
+    } else if (r == "diamond") {
+        const double d = m * ch.outerRadius * scale;
+        cairo_move_to(cr, a.x, a.y - d);
+        cairo_line_to(cr, a.x + d, a.y);
+        cairo_line_to(cr, a.x, a.y + d);
+        cairo_line_to(cr, a.x - d, a.y);
+        cairo_close_path(cr);
+        finishFill(cr, c, f, scale);
+    } else if (r == "cross_patee") {
+        const double s = m * 0.42 * scale;
+        const double n = m * 0.14 * scale;
+        const double e = m * 0.52 * scale;
+        cairo_move_to(cr, a.x - e / 2, a.y - s);
+        cairo_line_to(cr, a.x + e / 2, a.y - s);
+        cairo_line_to(cr, a.x + e / 2, a.y - n);
+        cairo_line_to(cr, a.x + s, a.y - n);
+        cairo_line_to(cr, a.x + s, a.y + e / 2);
+        cairo_line_to(cr, a.x + n, a.y + e / 2);
+        cairo_line_to(cr, a.x + n, a.y + s);
+        cairo_line_to(cr, a.x - n, a.y + s);
+        cairo_line_to(cr, a.x - n, a.y + e / 2);
+        cairo_line_to(cr, a.x - s, a.y + e / 2);
+        cairo_line_to(cr, a.x - s, a.y - n);
+        cairo_line_to(cr, a.x - e / 2, a.y - n);
+        cairo_close_path(cr);
+        finishFill(cr, c, f, scale);
+    } else if (r == "trefoil") {
+        const double R = m * ch.outerRadius * scale;
+        // Three lobes meeting at the centre (heraldic clover).
+        const double lobe = R * 0.42;
+        cairo_new_path(cr);
+        for (int i = 0; i < 3; ++i) {
+            const double ang = i * 2.0 * 3.14159265358979323846 / 3.0 - 3.14159265358979323846 / 2.0;
+            cairo_arc(cr, a.x + R * 0.42 * std::cos(ang),
+                      a.y + R * 0.42 * std::sin(ang), lobe, 0, 2.0 * 3.14159265358979323846);
+            cairo_close_path(cr);
+        }
+        cairo_rectangle(cr, a.x - R * 0.05, a.y + R * 0.40, R * 0.10, R * 0.50);
+        finishFill(cr, c, f, scale);
+    } else if (r == "fleur_de_lis") {
+        const double R = m * ch.outerRadius * scale;
+        cairo_new_path(cr);
+        // Central pointed petal.
+        cairo_move_to(cr, a.x, a.y + R * 0.46);
+        cairo_curve_to(cr, a.x + R * 0.26, a.y + R * 0.18,
+                       a.x + R * 0.24, a.y - R * 0.42,
+                       a.x, a.y - R * 0.98);
+        cairo_curve_to(cr, a.x - R * 0.24, a.y - R * 0.42,
+                       a.x - R * 0.26, a.y + R * 0.18,
+                       a.x, a.y + R * 0.46);
+        cairo_close_path(cr);
+        // Two curling side petals.
+        for (int side = -1; side <= 1; side += 2) {
+            cairo_move_to(cr, a.x + side * R * 0.20, a.y + R * 0.30);
+            cairo_curve_to(cr, a.x + side * R * 0.55, a.y + R * 0.42,
+                           a.x + side * R * 0.82, a.y + R * 0.02,
+                           a.x + side * R * 0.60, a.y - R * 0.34);
+            cairo_curve_to(cr, a.x + side * R * 0.50, a.y - R * 0.56,
+                           a.x + side * R * 0.32, a.y - R * 0.50,
+                           a.x + side * R * 0.30, a.y - R * 0.30);
+            cairo_close_path(cr);
+        }
+        // Base bar with a central drop.
+        cairo_rectangle(cr, a.x - R * 0.52, a.y + R * 0.50, R * 1.04, R * 0.24);
+        cairo_rectangle(cr, a.x - R * 0.12, a.y + R * 0.74, R * 0.24, R * 0.24);
+        finishFill(cr, c, f, scale);
+    }
+}
+
+} // namespace flaggen
+
+
+
+================================================
+FILE: src/layers.h
+================================================
+#pragma once
+
+#include <cairo.h>
+
+#include "color.h"
+#include "config.h"
+
+namespace flaggen {
+
+// Anchor point (in pixels) used by flexible layers. Rigid layers force it.
+struct Alignment {
+    double x = 0.0;
+    double y = 0.0;
+};
+
+// Thin outline (heraldic fimbriation) drawn around a charge to guarantee
+// contrast when its color is too close to the background.
+struct Fimbriation {
+    bool enabled = false;
+    double width = 0.0; // in flag pixels
+    double r = 1.0, g = 1.0, b = 1.0;
+};
+
+// Approximate rendered radius (in pixels) of a charge at scale 1.0.
+double chargeBaseRadius(const ChargeConfig& ch, double w, double h);
+
+void drawField(cairo_t* cr, double w, double h, const Color& c);
+
+void drawDivision(cairo_t* cr, const DivisionConfig& d,
+                  double w, double h, const Color& c, const Alignment& a);
+
+void drawOrdinary(cairo_t* cr, const OrdinaryConfig& o,
+                  double w, double h, const Color& c, const Alignment& a,
+                  const Fimbriation* fimb = nullptr);
+
+void drawCharge(cairo_t* cr, const ChargeConfig& ch,
+                double w, double h, const Color& c, const Alignment& a,
+                double scale = 1.0, const Fimbriation& fimb = Fimbriation());
+
+} // namespace flaggen
+
+
+
+================================================
+FILE: src/main.cpp
+================================================
+#include <cairo.h>
+#include <cairo-pdf.h>
+#include <cairo-svg.h>
+
+#include <chrono>
+#include <filesystem>
+#include <iostream>
+#include <random>
+#include <string>
+
+#include "config.h"
+#include "generator.h"
+
+namespace fs = std::filesystem;
+
+static void printUsage(const char* prog) {
+    std::cout << "Usage: " << prog
+              << " [--seed N] [--width W] [--height H] --output <file.png|file.svg|file.pdf>\n";
+}
+
+static std::string findConfig() {
+    const std::string candidates[] = {
+        "config/flags.json",
+        "flags.json",
+    };
+    for (const auto& path : candidates) {
+        if (fs::exists(path)) return path;
+    }
+    return candidates[0];
+}
+
+int main(int argc, char** argv) {
+    using clock = std::chrono::system_clock;
+    unsigned seed = static_cast<unsigned>(clock::now().time_since_epoch().count());
+    int width = 1200;
+    int height = 800;
+    std::string output = "flag.png";
+
+    for (int i = 1; i < argc; ++i) {
+        const std::string arg = argv[i];
+        const auto next = [&](const char* name) -> std::string {
+            if (i + 1 >= argc) {
+                std::cerr << "Missing value for " << name << "\n";
+                std::exit(1);
+            }
+            return argv[++i];
+        };
+
+        if (arg == "--seed") seed = static_cast<unsigned>(std::stoul(next("--seed")));
+        else if (arg == "--width") width = std::stoi(next("--width"));
+        else if (arg == "--height") height = std::stoi(next("--height"));
+        else if (arg == "--output") output = next("--output");
+        else if (arg == "--help" || arg == "-h") { printUsage(argv[0]); return 0; }
+        else {
+            std::cerr << "Unknown argument: " << arg << "\n";
+            printUsage(argv[0]);
+            return 1;
+        }
+    }
+
+    if (width <= 0 || height <= 0) {
+        std::cerr << "Invalid dimensions\n";
+        return 1;
+    }
+
+    flaggen::Config cfg;
+    try {
+        cfg = flaggen::loadConfig(findConfig());
+    } catch (const std::exception& e) {
+        std::cerr << "Failed to load config: " << e.what() << "\n";
+        return 1;
+    }
+
+    std::mt19937 rng(seed);
+    const flaggen::GenerationResult g = flaggen::generateFlag(cfg, rng, width, height);
+
+    const std::string ext = fs::path(output).extension().string();
+    cairo_surface_t* surface = nullptr;
+    if (ext == ".svg") surface = cairo_svg_surface_create(output.c_str(), width, height);
+    else if (ext == ".pdf") surface = cairo_pdf_surface_create(output.c_str(), width, height);
+    else surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width, height);
+
+    if (!surface || cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS) {
+        std::cerr << "Failed to create surface for " << output << "\n";
+        return 1;
+    }
+
+    cairo_t* cr = cairo_create(surface);
+    flaggen::renderFlag(cr, g, width, height);
+    cairo_destroy(cr);
+
+    if (ext == ".svg" || ext == ".pdf") {
+        cairo_surface_finish(surface);
+    } else {
+        if (cairo_surface_write_to_png(surface, output.c_str()) != CAIRO_STATUS_SUCCESS) {
+            std::cerr << "Failed to write PNG: " << output << "\n";
+            cairo_surface_destroy(surface);
+            return 1;
+        }
+    }
+    cairo_surface_destroy(surface);
+
+    const char* pos = g.chargePosition == flaggen::ChargePosition::Center ? "center"
+                      : g.chargePosition == flaggen::ChargePosition::Canton ? "canton"
+                                                                             : "corner";
+    std::cout << "seed=" << seed
+              << " division=" << g.division.id
+              << " ordinary=" << g.ordinary.id
+              << " charge=" << g.charge.id
+              << " (" << pos << ")"
+              << " row=" << g.chargeRow
+              << " palette=(" << flaggen::colorToHex(g.palette.a)
+              << " " << flaggen::colorToHex(g.palette.b)
+              << " " << flaggen::colorToHex(g.palette.c) << ")"
+              << " charge=" << flaggen::colorToHex(g.chargeColor)
+              << " scale=" << g.chargeScale
+              << " contrast=" << g.chargeMinContrast
+              << (g.fimbriation.enabled ? " fimbriation" : "")
+              << (g.ordinaryFimbriation.enabled ? " ofimb" : "")
+              << " anchors=";
+    for (size_t i = 0; i < g.chargeAnchors.size(); ++i) {
+        if (i) std::cout << ";";
+        std::cout << "(" << g.chargeAnchors[i].first << "," << g.chargeAnchors[i].second << ")";
+    }
+    std::cout << " -> " << output << "\n";
+    return 0;
+}
+
+
+
+================================================
+FILE: tools/verify.py
+================================================
+#!/usr/bin/env python3
+"""Batch verifier for flaggen.
+
+Usage:
+    flaggen --seed S --width 1200 --height 800 --output /tmp/f_S.png >> /tmp/run.txt
+    python3 tools/verify.py /tmp/run.txt
+
+Checks every flag in the run file:
+  * the charge color is drawn at its anchor (solid core; ring/horn points for
+    hollow shapes: annulet, crescent; top lobe for trefoil),
+  * hollow interiors are actually empty,
+  * the charge (including square corners) stays inside the flag,
+and reports row/multi-anchor distributions plus scale/contrast metrics.
+
+Requires Pillow.
+"""
+import re
+import sys
+import pathlib
+from PIL import Image
+
+# Geometric outer extent of each charge (fraction of min(w,h) at scale 1.0).
+EXT = {
+    "star_5": 0.16, "star_6": 0.16, "star_8": 0.16,
+    "crescent": 0.22, "sun": 0.22, "annulet": 0.20, "circle": 0.18,
+    "triangle": 0.20, "square": 0.198, "diamond": 0.20,
+    "hexagon": 0.20, "octagon": 0.20, "cross_patee": 0.26,
+    "fleur_de_lis": 0.20, "trefoil": 0.20,
+}
+
+
+def hx(s):
+    s = s.lstrip("#")
+    return tuple(int(s[i:i + 2], 16) for i in (0, 2, 4))
+
+
+def near(a, b, tol=2):
+    return all(abs(x - y) <= tol for x, y in zip(a, b))
+
+
+def get(img, px, py, w, h):
+    ix, iy = int(px), int(py)
+    if 0 <= ix < w and 0 <= iy < h:
+        return img.getpixel((ix, iy))
+    return None
+
+
+def main(batch_file):
+    lines = pathlib.Path(batch_file).read_text().splitlines()
+    rows, multi = {}, {}
+    n_ofimb = n_fimb = 0
+    scales, contrasts = [], []
+    data = []
+
+    for ln in lines:
+        f = {}
+        for k in ("seed", "division", "ordinary", "charge", "row", "scale", "contrast"):
+            m = re.search(k + r"=(\S+)", ln)
+            f[k] = m.group(1) if m else None
+        f["scale"] = float(f["scale"])
+        f["contrast"] = float(f["contrast"])
+        f["chargecol"] = hx(re.search(r" charge=#([0-9A-Fa-f]{6})", ln).group(1))
+        f["ofimb"] = " ofimb" in ln
+        f["fimb"] = " fimbriation" in ln
+        f["anchors"] = [tuple(map(float, p.split(","))) for p in re.findall(
+            r"\(([\d.,-]+)\)", re.search(r"anchors=(.*?)( -> |$)", ln).group(1))]
+        f["out"] = re.search(r"-> (\S+)", ln).group(1)
+        rows[f["row"]] = rows.get(f["row"], 0) + 1
+        multi[len(f["anchors"])] = multi.get(len(f["anchors"]), 0) + 1
+        n_ofimb += f["ofimb"]
+        n_fimb += f["fimb"]
+        scales.append(f["scale"])
+        contrasts.append(f["contrast"])
+        data.append(f)
+
+    print(f"flags: {len(data)}  row: {dict(sorted(rows.items()))}  "
+          f"multi: {dict(sorted(multi.items()))}")
+    print(f"ofimb: {n_ofimb} ({round(100 * n_ofimb / len(data))}%)  "
+          f"charge-fimb: {n_fimb}")
+    print(f"scale: {min(scales):.3f}/{sum(scales) / len(scales):.3f}/{max(scales):.3f}  "
+          f"contrast: {min(contrasts):.3f}/{sum(contrasts) / len(contrasts):.3f}/{max(contrasts):.3f}")
+    print(f"scale<0.3: {sum(1 for s in scales if s < 0.3)}  "
+          f"contrast<3: {sum(1 for c in contrasts if c < 3)}")
+
+    solid = hollow = oob = 0
+    pts = 0
+    for f in data:
+        img = Image.open(f["out"]).convert("RGB")
+        w, h = img.size
+        ch = f["charge"]
+        m = min(w, h)
+        R = EXT[ch] * m * f["scale"]
+        for (ax, ay) in f["anchors"]:
+            if ch == "annulet":
+                cores = [(ax + 0.85 * R, ay), (ax - 0.85 * R, ay)]
+            elif ch == "crescent":
+                cores = [(ax - 0.9 * R, ay), (ax, ay - 0.9 * R)]
+            elif ch == "trefoil":
+                cores = [(ax, ay - 0.42 * R)]
+            else:
+                cores = [(ax, ay)]
+            for (cx, cy) in cores:
+                g = get(img, cx, cy, w, h)
+                if g is None or not near(g, f["chargecol"]):
+                    solid += 1
+            if ch == "annulet":
+                g = get(img, ax, ay, w, h)
+                if g is not None and near(g, f["chargecol"]):
+                    hollow += 1
+            elif ch == "crescent":
+                g = get(img, ax + 0.06 * m * f["scale"], ay, w, h)
+                if g is not None and near(g, f["chargecol"]):
+                    hollow += 1
+            for px, py in ((ax - R, ay), (ax + R, ay), (ax, ay - R), (ax, ay + R)):
+                if px < -2 or px > w + 2 or py < -2 or py > h + 2:
+                    oob += 1
+            pts += 1
+
+    print(f"pixels: {pts}  solid_fail: {solid}  hollow_fail: {hollow}  oob_fail: {oob}")
+
+
+if __name__ == "__main__":
+    main(sys.argv[1] if len(sys.argv) > 1 else "/tmp/opencode/batch9.txt")
+
+

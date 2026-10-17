@@ -1,0 +1,24 @@
+# Build
+build/
+
+# Generated outputs (keep tracked examples/)
+out/
+/*.png
+/*.svg
+/*.pdf
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+compile_commands.json
+CTestTestfile.cmake
+Testing/
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store

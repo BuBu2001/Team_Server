@@ -1,0 +1,441 @@
+{
+  "divisions": [
+    {
+      "id": "per_fess",
+      "render": "horizontal_split",
+      "rigidX": false,
+      "rigidY": false,
+      "incompatible": []
+    },
+    {
+      "id": "per_pale",
+      "render": "vertical_split",
+      "rigidX": false,
+      "rigidY": false,
+      "incompatible": []
+    },
+    {
+      "id": "per_bend",
+      "render": "diagonal_bend",
+      "rigidX": false,
+      "rigidY": false,
+      "incompatible": []
+    },
+    {
+      "id": "per_bend_sinister",
+      "render": "diagonal_bend_sinister",
+      "rigidX": false,
+      "rigidY": false,
+      "incompatible": []
+    },
+    {
+      "id": "per_saltire",
+      "render": "diagonal_cross",
+      "rigidX": true,
+      "rigidY": true,
+      "requiredAlignmentX": "width/2",
+      "requiredAlignmentY": "height/2",
+      "incompatible": [
+        "pale_dexter",
+        "pale_sinister",
+        "nordic"
+      ]
+    },
+    {
+      "id": "per_quarterly",
+      "render": "quarterly",
+      "rigidX": false,
+      "rigidY": false,
+      "incompatible": []
+    },
+    {
+      "id": "per_chevron",
+      "render": "chevron_division",
+      "rigidX": false,
+      "rigidY": false,
+      "incompatible": []
+    },
+    {
+      "id": "per_chevron_inverted",
+      "render": "chevron_division_inverted",
+      "rigidX": false,
+      "rigidY": false,
+      "incompatible": []
+    },
+    {
+      "id": "barry_5",
+      "render": "barry",
+      "stripes": 5,
+      "rigidX": false,
+      "rigidY": false,
+      "incompatible": []
+    },
+    {
+      "id": "barry_7",
+      "render": "barry",
+      "stripes": 7,
+      "rigidX": false,
+      "rigidY": false,
+      "incompatible": []
+    },
+    {
+      "id": "barry_9",
+      "render": "barry",
+      "stripes": 9,
+      "rigidX": false,
+      "rigidY": false,
+      "incompatible": []
+    },
+    {
+      "id": "paly_5",
+      "render": "paly",
+      "stripes": 5,
+      "rigidX": false,
+      "rigidY": false,
+      "incompatible": []
+    },
+    {
+      "id": "paly_7",
+      "render": "paly",
+      "stripes": 7,
+      "rigidX": false,
+      "rigidY": false,
+      "incompatible": []
+    },
+    {
+      "id": "bendy_5",
+      "render": "bendy",
+      "stripes": 5,
+      "rigidX": false,
+      "rigidY": false,
+      "incompatible": []
+    },
+    {
+      "id": "bendy_7",
+      "render": "bendy",
+      "stripes": 7,
+      "rigidX": false,
+      "rigidY": false,
+      "incompatible": []
+    },
+    {
+      "id": "gyronny_8",
+      "render": "gyronny",
+      "stripes": 8,
+      "rigidX": false,
+      "rigidY": false,
+      "incompatible": []
+    }
+  ],
+  "ordinaries": [
+    {
+      "id": "none",
+      "render": "none",
+      "rigidX": false,
+      "rigidY": false,
+      "thickness": 0.0,
+      "incompatible": []
+    },
+    {
+      "id": "fess",
+      "render": "fess",
+      "rigidX": true,
+      "requiredAlignmentX": "width/2",
+      "rigidY": false,
+      "thickness": 0.33,
+      "incompatible": [
+        "barry_5",
+        "barry_7",
+        "barry_9"
+      ]
+    },
+    {
+      "id": "pale",
+      "render": "pale",
+      "rigidX": false,
+      "rigidY": true,
+      "requiredAlignmentY": "height/2",
+      "thickness": 0.33,
+      "incompatible": [
+        "paly_5",
+        "paly_7"
+      ]
+    },
+    {
+      "id": "pale_dexter",
+      "render": "pale_dexter",
+      "rigidX": false,
+      "rigidY": false,
+      "thickness": 0.15,
+      "incompatible": []
+    },
+    {
+      "id": "pale_sinister",
+      "render": "pale_sinister",
+      "rigidX": false,
+      "rigidY": false,
+      "thickness": 0.18,
+      "incompatible": []
+    },
+    {
+      "id": "bend",
+      "render": "bend",
+      "rigidX": false,
+      "rigidY": false,
+      "thickness": 0.24,
+      "incompatible": [
+        "bendy_5",
+        "bendy_7"
+      ]
+    },
+    {
+      "id": "bend_sinister",
+      "render": "bend_sinister",
+      "rigidX": false,
+      "rigidY": false,
+      "thickness": 0.24,
+      "incompatible": [
+        "bendy_5",
+        "bendy_7"
+      ]
+    },
+    {
+      "id": "cross",
+      "render": "cross",
+      "rigidX": true,
+      "requiredAlignmentX": "width/2",
+      "rigidY": true,
+      "requiredAlignmentY": "height/2",
+      "thickness": 0.28,
+      "incompatible": [
+        "barry_5",
+        "barry_7",
+        "barry_9"
+      ]
+    },
+    {
+      "id": "nordic",
+      "render": "nordic",
+      "rigidX": true,
+      "requiredAlignmentX": "width/4",
+      "rigidY": true,
+      "requiredAlignmentY": "height/2",
+      "thickness": 0.18,
+      "incompatible": [
+        "paly_5",
+        "paly_7",
+        "per_pale"
+      ]
+    },
+    {
+      "id": "saltire",
+      "render": "saltire",
+      "rigidX": true,
+      "requiredAlignmentX": "width/2",
+      "rigidY": true,
+      "requiredAlignmentY": "height/2",
+      "thickness": 0.22,
+      "incompatible": [
+        "barry_5",
+        "barry_7",
+        "barry_9",
+        "per_saltire",
+        "gyronny_8"
+      ]
+    },
+    {
+      "id": "chevron",
+      "render": "chevron",
+      "rigidX": true,
+      "requiredAlignmentX": "width/2",
+      "rigidY": true,
+      "requiredAlignmentY": "height/2",
+      "thickness": 0.15,
+      "incompatible": [
+        "per_chevron",
+        "per_chevron_inverted"
+      ]
+    },
+    {
+      "id": "pile",
+      "render": "pile",
+      "rigidX": true,
+      "requiredAlignmentX": "width/2",
+      "rigidY": false,
+      "thickness": 0.3,
+      "incompatible": [
+        "per_chevron",
+        "per_chevron_inverted"
+      ]
+    },
+    {
+      "id": "pall",
+      "render": "pall",
+      "rigidX": true,
+      "requiredAlignmentX": "width/2",
+      "rigidY": false,
+      "thickness": 0.15,
+      "incompatible": [
+        "per_chevron",
+        "per_chevron_inverted"
+      ]
+    },
+    {
+      "id": "bordure",
+      "render": "bordure",
+      "rigidX": true,
+      "requiredAlignmentX": "width/2",
+      "rigidY": true,
+      "requiredAlignmentY": "height/2",
+      "thickness": 0.1,
+      "incompatible": []
+    },
+    {
+      "id": "orle",
+      "render": "orle",
+      "rigidX": true,
+      "requiredAlignmentX": "width/2",
+      "rigidY": true,
+      "requiredAlignmentY": "height/2",
+      "thickness": 0.08,
+      "incompatible": []
+    },
+    {
+      "id": "chief",
+      "render": "chief",
+      "rigidX": true,
+      "requiredAlignmentX": "width/2",
+      "rigidY": false,
+      "thickness": 0.3,
+      "incompatible": []
+    },
+    {
+      "id": "base",
+      "render": "base",
+      "rigidX": true,
+      "requiredAlignmentX": "width/2",
+      "rigidY": false,
+      "thickness": 0.3,
+      "incompatible": []
+    },
+    {
+      "id": "canton",
+      "render": "canton",
+      "rigidX": false,
+      "rigidY": false,
+      "defaultPosition": "top_left",
+      "size": 0.35,
+      "thickness": 0.33,
+      "incompatible": []
+    },
+    {
+      "id": "lozenge",
+      "render": "lozenge",
+      "rigidX": false,
+      "rigidY": false,
+      "size": 0.2,
+      "thickness": 0.33,
+      "incompatible": []
+    },
+    {
+      "id": "lozenge_throughout",
+      "render": "lozenge_throughout",
+      "rigidX": true,
+      "requiredAlignmentX": "width/2",
+      "rigidY": true,
+      "requiredAlignmentY": "height/2",
+      "size": 0.5,
+      "thickness": 0.33,
+      "incompatible": []
+    }
+  ],
+  "charges": [
+    {
+      "id": "star_5",
+      "render": "star",
+      "points": 5,
+      "outerRadius": 0.16,
+      "innerRadius": 0.07
+    },
+    {
+      "id": "star_6",
+      "render": "star",
+      "points": 6,
+      "outerRadius": 0.16,
+      "innerRadius": 0.08
+    },
+    {
+      "id": "star_8",
+      "render": "star",
+      "points": 8,
+      "outerRadius": 0.16,
+      "innerRadius": 0.11
+    },
+    {
+      "id": "crescent",
+      "render": "crescent",
+      "outerRadius": 0.22,
+      "innerRadius": 0.17,
+      "offsetX": 0.06
+    },
+    {
+      "id": "sun",
+      "render": "sun",
+      "outerRadius": 0.22
+    },
+    {
+      "id": "annulet",
+      "render": "annulet",
+      "outerRadius": 0.2,
+      "innerRadius": 0.15
+    },
+    {
+      "id": "circle",
+      "render": "circle",
+      "outerRadius": 0.18
+    },
+    {
+      "id": "triangle",
+      "render": "polygon",
+      "points": 3,
+      "outerRadius": 0.2
+    },
+    {
+      "id": "square",
+      "render": "square",
+      "outerRadius": 0.14
+    },
+    {
+      "id": "diamond",
+      "render": "diamond",
+      "outerRadius": 0.2
+    },
+    {
+      "id": "hexagon",
+      "render": "polygon",
+      "points": 6,
+      "outerRadius": 0.2
+    },
+    {
+      "id": "octagon",
+      "render": "polygon",
+      "points": 8,
+      "outerRadius": 0.2
+    },
+    {
+      "id": "cross_patee",
+      "render": "cross_patee",
+      "outerRadius": 0.2
+    },
+    {
+      "id": "fleur_de_lis",
+      "render": "fleur_de_lis",
+      "outerRadius": 0.2
+    },
+    {
+      "id": "trefoil",
+      "render": "trefoil",
+      "outerRadius": 0.2
+    }
+  ]
+}

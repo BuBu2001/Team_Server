@@ -1,0 +1,18 @@
+# cryless: что НЕ отправлять на сервер (синтаксис как в .gitignore)
+.cryless/
+.git/
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.log
+.env
+.idea/
+.vscode/
+node_modules/
+dist/
+build/
+*.zip
+*.tar.gz

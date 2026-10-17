@@ -135,6 +135,13 @@ def get_project(project_id: int) -> dict | None:
     return dict(row) if row else None
 
 
+def delete_project(project_id: int) -> None:
+    """Удаляет проект и связанные с ним токены cryless (данные на диске — вызывающий)."""
+    with get_conn() as conn:
+        conn.execute("DELETE FROM cryless_tokens WHERE repo_id = ?", (project_id,))
+        conn.execute("DELETE FROM projects WHERE id = ?", (project_id,))
+
+
 # ---------- Журнал работы (получает данные из консоли GettingStarted) ----------
 def register_project(username: str, name: str, source: str) -> dict:
     """Добавляет проект; пользователь создаётся автоматически, если новый."""
@@ -182,6 +189,23 @@ def list_actions(user: str | None = None, limit: int = 50) -> list[dict]:
     with get_conn() as conn:
         rows = conn.execute(q, args).fetchall()
     return [dict(r) for r in rows]
+
+
+def count_actions(user: str | None = None, today: bool = False) -> int:
+    """Число действий (для статистики): всего или только за сегодня."""
+    q = "SELECT COUNT(*) AS c FROM actions"
+    clauses: list[str] = []
+    args: tuple = ()
+    if user is not None:
+        clauses.append("user = ?")
+        args += (user,)
+    if today:
+        clauses.append("date(ts) = date('now')")
+    if clauses:
+        q += " WHERE " + " AND ".join(clauses)
+    with get_conn() as conn:
+        row = conn.execute(q, args).fetchone()
+    return int(row["c"])
 
 
 # ---------- Репозитории cryless (CLI-библиотека команд) ----------

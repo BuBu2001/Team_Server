@@ -6,16 +6,19 @@
 # при нехватке python3/venv/pip/git предлагает установить недостающие пакеты
 # (с вашего подтверждения), затем создаёт .venv и ставит зависимости.
 #
-# Использование:  ./setup.sh          — рабочие зависимости
+# Использование:  ./setup.sh          — рабочие зависимости + сборка сайта
 #                 ./setup.sh --dev    — + pytest и инструменты тестов
+#                 ./setup.sh --no-web — не собирать фронтенд (использовать web/dist)
 set -euo pipefail
 cd "$(dirname "$(readlink -f "$0")")"
 
 DEV=0
+WEB=1
 for a in "$@"; do
   case "$a" in
     --dev) DEV=1 ;;
-    --help|-h) sed -n '2,12p' "$0"; exit 0 ;;
+    --no-web) WEB=0 ;;
+    --help|-h) sed -n '2,11p' "$0"; exit 0 ;;
   esac
 done
 
@@ -56,6 +59,16 @@ sys_pkgs() {  # набор пакетов для текущего менедже
   esac
 }
 
+node_pkgs() {  # пакеты Node.js/npm для текущего менеджера
+  case "$PM" in
+    apt-get|dnf|yum|pacman|zypper|apk|xbps-install) echo "nodejs npm" ;;
+    emerge)  echo "net-libs/nodejs" ;;
+    eopkg)   echo "nodejs" ;;
+    pkg)     echo "nodejs" ;;
+    *)       echo "" ;;
+  esac
+}
+
 install_cmd() {  # команда установки для текущего менеджера
   case "$PM" in
     apt-get)      echo "$SUDO apt-get update && $SUDO apt-get install -y" ;;
@@ -74,7 +87,7 @@ install_cmd() {  # команда установки для текущего м�
 
 ask_system() {  # предложить установку недостающих системных пакетов
   local pkgs cmd ans
-  pkgs=$(sys_pkgs)
+  pkgs="${1:-$(sys_pkgs)}"
   if [ -z "$pkgs" ] || [ -z "$(install_cmd)" ]; then
     warn "Пакетный менеджер не распознан (дистрибутив: $OS_ID)."
     warn "Установите вручную: python3 >= ${MIN_MAJ}.${MIN_MIN}, python3-venv/pip, git — и повторите ./setup.sh"
@@ -103,6 +116,38 @@ pick_python() {  # первый доступный python нужной верс�
     have "$c" && py_ok "$c" && { echo "$c"; return 0; }
   done
   return 1
+}
+
+# --- основной сайт (React + Vite) --------------------------------------------
+build_web() {  # собирает фронтенд; без npm предлагает поставить Node.js
+  [ -f web/package.json ] || return 0
+  if ! have npm; then
+    if [ -f web/dist/index.html ]; then
+      warn "Node.js/npm не найдены — будет использована готовая сборка web/dist"
+    else
+      warn "Node.js/npm не найдены, а web/dist отсутствует"
+    fi
+    ask_system "$(node_pkgs)" || {
+      warn "Сборку пропускаю. Если web/dist есть — сайт заработает и без неё."
+      return 0
+    }
+  fi
+  have npm || { warn "npm так и не появился — оставляю готовую web/dist"; return 0; }
+  log "Сборка основного сайта (React + Vite)"
+  if ( cd web && { [ -f package-lock.json ] && npm ci --no-audit --no-fund || npm install --no-audit --no-fund; } ); then
+    ok "Зависимости фронтенда установлены"
+  else
+    warn "npm install не удался — оставляю готовую сборку web/dist"
+    return 0
+  fi
+  # Собираем в dist.new: неудачная сборка не затрёт закоммиченный web/dist.
+  if ( cd web && npm run build -- --outDir dist.new ); then
+    rm -rf web/dist && mv web/dist.new web/dist
+    ok "Сайт собран: web/dist"
+  else
+    rm -rf web/dist.new
+    warn "Сборка фронтенда не удалась — использую готовую web/dist (если есть)"
+  fi
 }
 
 # --- проверки и установка ----------------------------------------------------
@@ -152,8 +197,14 @@ if ! "$PYV" -m pip install -r "$REQ"; then
 fi
 ok "Установлено из $REQ"
 
+if [ "$WEB" = 1 ]; then
+  build_web
+else
+  warn "Сборка фронтенда пропущена (--no-web): используется готовая web/dist"
+fi
+
 log "Готово ✔"
-printf '  Сервер (Host):   ./run.sh\n'
+printf '  Основной сайт:   http://localhost:8000   (./run.sh)\n'
 printf '  Консоль (Pi):    ./run.sh console --host <IP-хоста>\n'
 printf '  cryless (Pi):    ./run.sh cryless help\n'
 printf '  Тесты:           ./run.sh test\n'

@@ -1,0 +1,59 @@
+================================================
+FILE: README.md
+================================================
+# test_project
+
+Образец для тестового режима (Host + Pi).
+
+
+
+================================================
+FILE: apps/main.py
+================================================
+from test_project import report
+
+
+if __name__ == "__main__":
+    print(report.summary())
+
+
+
+================================================
+FILE: src/test_project/__init__.py
+================================================
+from . import orders, report
+
+__all__ = ["orders", "report"]
+
+
+
+================================================
+FILE: src/test_project/orders.py
+================================================
+from . import storage
+
+
+def total(items=None):
+    items = storage.load() if items is None else items
+    return sum(i["price"] for i in items)
+
+
+
+================================================
+FILE: src/test_project/report.py
+================================================
+from . import orders
+
+
+def summary():
+    return f"Итого: {orders.total()}"
+
+
+
+================================================
+FILE: src/test_project/storage.py
+================================================
+def load():
+    return [{"price": 10}, {"price": 32}]
+
+

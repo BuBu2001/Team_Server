@@ -159,3 +159,19 @@ a {
   color: var(--color-ink-200);
   white-space: pre;
 }
+
+/* Диаграмма mermaid: контейнер задаёт физический размер (это и есть масштаб),
+   поэтому SVG обязан растягиваться ровно в него, без max-width от mermaid.
+   shape-rendering: geometricPrecision гасит «ступеньки» на линиях. */
+.diagram-canvas svg {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  display: block;
+  shape-rendering: geometricPrecision;
+  text-rendering: geometricPrecision;
+}
+.diagram-canvas .edgePath .path,
+.diagram-canvas .flowchart-link {
+  shape-rendering: geometricPrecision;
+}

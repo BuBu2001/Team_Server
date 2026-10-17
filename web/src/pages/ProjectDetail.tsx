@@ -19,6 +19,7 @@ import { useAuth } from "../auth";
 import { useAsync } from "../hooks";
 import { Badge, Button, Card, ErrorNote, Spinner, formatDate } from "../components/ui";
 import { Mermaid } from "../components/Mermaid";
+import { useDiagramSettings } from "../components/DiagramSettings";
 import { FilesBrowser } from "../components/FilesBrowser";
 import { GitingestView } from "../components/GitingestView";
 import { Pulse } from "../components/Pulse";
@@ -48,6 +49,10 @@ export function ProjectDetail() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [digestError, setDigestError] = useState("");
+
+  // Настройки отрисовки диаграммы (тема, цвета, линии, узлы) — общие для всех проектов.
+  const { settings: diagramSettings, patch: patchDiagramSettings, reset: resetDiagramSettings } =
+    useDiagramSettings();
 
   const project = detail.data?.project ?? null;
 
@@ -272,7 +277,12 @@ export function ProjectDetail() {
               )}
               {diagram?.code ? (
                 <>
-                  <Mermaid code={diagram.code} />
+                  <Mermaid
+                    code={diagram.code}
+                    settings={diagramSettings}
+                    onPatchSettings={patchDiagramSettings}
+                    onResetSettings={resetDiagramSettings}
+                  />
                   <details className="mt-4">
                     <summary className="cursor-pointer text-xs text-ink-400">
                       исходный mermaid-код

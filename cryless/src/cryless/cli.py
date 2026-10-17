@@ -8,8 +8,8 @@
     cryless help                       справка
     cryless version                    версия
 
-Все команды запускаются в КОРНЕ проекта; имя репозитория — без пробелов и
-без кириллицы (только латиница, цифры, точка, дефис, подчёркивание).
+Все команды запускаются в КОРНЕ проекта; имя репозитория приводится к
+допустимому виду автоматически (латиница, цифры, точка, дефис, подчёркивание).
 """
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ from .localrepo import (
     save_config,
     write_default_ignore,
 )
-from .naming import validate_repo_name, validate_username
+from .naming import normalize_repo_name, validate_username
 
 HELP = """\
 cryless — библиотека команд для Team Server (работает как git).
@@ -51,10 +51,10 @@ cryless — библиотека команд для Team Server (работае
 
 Условия:
   * команду запускают в КОРНЕ проекта — там, где лежат его файлы;
-  * в имени проекта (репозитория) нет пробелов и нет кириллицы:
-    только латиница, цифры, точка, дефис, подчёркивание (my_project, api-v2);
-  * если имя не указано, берётся имя текущей папки — оно тоже должно быть
-    допустимым.
+  * имя проекта (репозитория) приводится к допустимому виду автоматически:
+    пробелы и «+» заменяются на дефис, кириллица — на латиницу
+    («C++ flag generator» → «cpp-flag-generator», «мой проект» → «moy-proekt»);
+  * если имя не указано, берётся имя текущей папки.
 
 Примеры:
   cd ~/my_project
@@ -163,7 +163,10 @@ def cmd_create_repository(args) -> int:
             "  Пересоздать (новый токен): cryless create repository <имя> --force"
         )
 
-    name = validate_repo_name(args.name or root.name)
+    name, renamed_from = normalize_repo_name(args.name or root.name)
+    if renamed_from:
+        warn(f"имя «{renamed_from}» приведено к «{name}» "
+             "(допустимы только латиница, цифры, . _ -)")
     server = resolve_server(args.server, existing.server if existing else None)
     user = resolve_user(args.user, existing.user if existing else None)
     if not user:
@@ -224,8 +227,8 @@ def cmd_load_data(args) -> int:
         )
     ensure_project_root(root)
 
-    name = validate_repo_name(args.name or config.name)
-    if args.name and args.name != config.name:
+    name, _ = normalize_repo_name(args.name or config.name)
+    if args.name and name != config.name:
         raise CrylessError(
             f"Локальный репозиторий называется «{config.name}», а данные грузятся "
             f"в «{args.name}».\n"

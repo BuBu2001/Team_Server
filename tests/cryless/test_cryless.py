@@ -2,7 +2,7 @@
 
 Две группы:
 
-* **юнит-тесты** — правила имён (без пробелов и кириллицы), сборка архива с
+* **юнит-тесты** — нормализация имён (пробелы/кириллица/«+»), сборка архива с
   соблюдением ``.crylessignore``;
 * **интеграционные** — настоящий сервер Team Server (uvicorn в подпроцессе) и
   настоящие вызовы CLI (``python -m cryless``): create repository → load data →
@@ -244,7 +244,7 @@ def test_help_and_version(tmp_path, server):
     env = {**server.env, "CRYLESS_HOME": str(tmp_path / "home")}
     help_proc = run_cli(["help"], tmp_path, env)
     assert help_proc.returncode == 0
-    for text in ("create repository", "load data", "connection check", "нет пробелов"):
+    for text in ("create repository", "load data", "connection check", "латиницу"):
         assert text in help_proc.stdout
 
     version_proc = run_cli(["version"], tmp_path, env)
@@ -258,15 +258,23 @@ def test_no_command_is_usage_error(tmp_path, server):
     assert "Не указана команда" in proc.stderr
 
 
-def test_create_repository_rejects_bad_names(cli_env, tmp_path, server):
+def test_create_repository_normalizes_bad_names(cli_env, tmp_path, server):
+    """Плохие имена больше не ошибка — они приводятся к допустимому виду."""
+    from cryless.naming import normalize_repo_name, slugify_repo_name
+
+    assert slugify_repo_name("C++ flag generator") == "cpp-flag-generator"
+    assert slugify_repo_name("my project") == "my-project"
+    assert slugify_repo_name("мой_проект") == "moy_proekt"
+    assert normalize_repo_name("my_project") == ("my_project", None)
+    assert normalize_repo_name("my project") == ("my-project", "my project")
+
     project = make_project(tmp_path / "проект со пробелом", {"a.txt": "1\n"})
-    for bad in ["мой_проект", "my project"]:
-        proc = run_cli(["create", "repository", bad], project, cli_env)
-        assert proc.returncode == 1
-        assert "Недопустимое имя" in proc.stderr
-    # ничего не создалось ни локально, ни на сервере
-    assert not (project / ".cryless").exists()
-    assert db_rows(server, "SELECT COUNT(*) FROM projects")[0][0] == 0
+    proc = run_cli(["create", "repository", "my project"], project, cli_env)
+    assert proc.returncode == 0, proc.stderr
+    assert "приведено" in proc.stdout  # предупреждение о переименовании
+    config = json.loads((project / ".cryless" / "config.json").read_text())
+    assert config["name"] == "my-project"
+    assert db_rows(server, "SELECT name FROM projects WHERE name='my-project'")
 
 
 def test_create_repository_requires_project_root(cli_env, tmp_path):
@@ -306,7 +314,7 @@ def test_full_flow_create_and_load(cli_env, tmp_path, server):
     assert oct((project / ".cryless" / "config.json").stat().st_mode)[-3:] == "600"
 
     # проект сразу виден серверу
-    assert db_rows(server, "SELECT name, source FROM projects")[0][0] == "my_project"
+    assert db_rows(server, "SELECT source FROM projects WHERE name='my_project'")
 
     # 2) загрузить данные
     proc = run_cli(["load", "data", "my_project"], project, cli_env)

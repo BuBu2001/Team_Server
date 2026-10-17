@@ -677,7 +677,9 @@ def run_pi_client(conn: socket.socket, notify: Callable[[str], None],
                 c = commands.pop(0)
                 print(f">>> {c}")
                 return c
-            return input(MENU_PROMPT).strip().lower()
+            # ВАЖНО: не приводим всю строку к нижнему регистру — иначе ломаются
+            # пути и имена с заглавными буквами. Регистр гасим только у команды.
+            return input(MENU_PROMPT).strip()
 
         MENU_PROMPT = ("Команда (up-file/up-dir/dl/list/analyz/tree/png/hist/"
                        "note/demo/quit) > ")
@@ -701,13 +703,13 @@ def run_pi_client(conn: socket.socket, notify: Callable[[str], None],
                 cmd = next_cmd()
             except (EOFError, KeyboardInterrupt):
                 cmd = "quit"
-            if cmd in ("", "quit", "exit", "q"):
+            if cmd.strip().lower() in ("", "quit", "exit", "q"):
                 proto.send_msg(conn, {"type": "quit", "user": _PI_USER})
                 proto.recv_msg(conn)
                 notify("Отключение от хоста. Пока!")
                 return
             parts = cmd.split(maxsplit=2)
-            head = parts[0] if parts else ""
+            head = parts[0].lower() if parts else ""
             try:
                 if head == "up-file":
                     pi_send_file(conn, parts[1] if len(parts) > 1 else "", False, notify)
@@ -749,11 +751,11 @@ def run_pi_client(conn: socket.socket, notify: Callable[[str], None],
                     if len(parts) < 3:
                         notify("Использование: dl <files|projects> <имя> <куда>")
                     else:
-                        sub, name, dest = parts[1], parts[2], ""
+                        sub, name, dest = parts[1].lower(), parts[2], ""
                         # имя и путь могут быть склеены пробелом — разбиваем максимально
                         tokens = cmd.split(maxsplit=3)
                         if len(tokens) == 4:
-                            sub, name, dest = tokens[1], tokens[2], tokens[3]
+                            sub, name, dest = tokens[1].lower(), tokens[2], tokens[3]
                         else:
                             dest = "-"
                         if dest == "-":

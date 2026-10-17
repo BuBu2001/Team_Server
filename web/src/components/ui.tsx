@@ -165,3 +165,16 @@ export function formatDate(ts: string): string {
     minute: "2-digit",
   });
 }
+
+/** Человекочитаемый размер файла (как в списке файлов на GitHub). */
+export function formatBytes(n: number): string {
+  if (!n) return "0 Б";
+  const units = ["Б", "КБ", "МБ", "ГБ", "ТБ"];
+  let i = 0;
+  let v = n;
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i += 1;
+  }
+  return `${v.toFixed(v < 10 && i > 0 ? 1 : 0)} ${units[i]}`;
+}

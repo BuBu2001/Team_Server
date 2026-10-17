@@ -64,6 +64,37 @@ export interface IngestResult {
   digest: string;
 }
 
+export interface FileEntry {
+  name: string;
+  path: string;
+  type: "dir" | "file";
+  size: number;
+}
+
+export interface FileContent {
+  path: string;
+  size: number;
+  binary: boolean;
+  truncated: boolean;
+  content: string;
+}
+
+export interface PulseAction {
+  ts: string;
+  user: string;
+  action: string;
+  details: string;
+  project: string;
+}
+
+export interface PulseData {
+  actions: PulseAction[];
+  files: number;
+  dirs: number;
+  bytes: number;
+  analyzed: boolean;
+}
+
 export class ApiError extends Error {
   status: number;
   constructor(status: number, message: string) {
@@ -123,6 +154,14 @@ export const api = {
     request<Analysis>(`/api/projects/${id}/analyze`, { method: "POST" }),
   diagram: (id: number) => request<Diagram>(`/api/projects/${id}/diagram`),
   digest: (id: number) => request<string>(`/api/projects/${id}/digest`),
+  // --- браузер кода и «пульс» проекта ---
+  files: (id: number, path = "") =>
+    request<{ path: string; entries: FileEntry[] }>(
+      `/api/projects/${id}/files?path=${encodeURIComponent(path)}`,
+    ),
+  file: (id: number, path: string) =>
+    request<FileContent>(`/api/projects/${id}/file?path=${encodeURIComponent(path)}`),
+  pulse: (id: number) => request<PulseData>(`/api/projects/${id}/pulse`),
   removeProject: (id: number) =>
     request<{ ok: boolean }>(`/api/projects/${id}`, { method: "DELETE" }),
 

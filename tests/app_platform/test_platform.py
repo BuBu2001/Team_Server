@@ -207,6 +207,59 @@ def test_permissions_pi_cannot_download_others(platform):
         assert resp.status_code == 200 and resp.text == "secret"
 
 
+# ---------- браузер кода и «пульс» проекта ----------
+
+def test_project_files_browser(platform):
+    """Список файлов/папок и содержимое файла (вкладка «Код»)."""
+    client, _main, _db, _tmp = platform
+    _login(client, "vanya_pi", "pi")
+    project = _upload(
+        client,
+        "files",
+        {"README.md": "# hi\n", "src/app.py": "print(1)\n", "src/util.py": "x=2\n"},
+    )
+    pid = project["id"]
+
+    root = client.get(f"/api/projects/{pid}/files").json()
+    by_name = {e["name"]: e for e in root["entries"]}
+    assert by_name["src"]["type"] == "dir"
+    assert by_name["README.md"]["type"] == "file"
+
+    sub = client.get(f"/api/projects/{pid}/files", params={"path": "src"}).json()
+    assert {e["name"] for e in sub["entries"]} == {"app.py", "util.py"}
+
+    file = client.get(
+        f"/api/projects/{pid}/file", params={"path": "README.md"}
+    ).json()
+    assert file["content"] == "# hi\n" and file["binary"] is False
+
+    # обход пути и выход за пределы проекта запрещены
+    assert client.get(
+        f"/api/projects/{pid}/file", params={"path": "../../secret"}
+    ).status_code == 404
+    assert client.get(
+        f"/api/projects/{pid}/files", params={"path": "../.."}
+    ).status_code == 404
+
+
+def test_project_pulse_and_file_permissions(platform):
+    """«Пульс» считает активность и файлы; чужие файлы Pi не видит."""
+    client, _main, _db, _tmp = platform
+    _login(client, "vanya_pi", "pi")
+    project = _upload(client, "pulse-demo", {"a.py": "1\n", "b/c.py": "2\n"})
+    pid = project["id"]
+
+    pulse = client.get(f"/api/projects/{pid}/pulse").json()
+    assert pulse["files"] == 2 and pulse["dirs"] == 1
+    assert any(a["action"] == "upload" for a in pulse["actions"])
+
+    # другой Pi не получает ни файлы, ни пульс чужого проекта
+    client.post("/api/auth/logout")
+    _login(client, "other_pi", "pi")
+    assert client.get(f"/api/projects/{pid}/files").status_code == 403
+    assert client.get(f"/api/projects/{pid}/pulse").status_code == 403
+
+
 # ---------- раздача основного сайта ----------
 
 @pytest.mark.skipif(not WEB_INDEX.exists(), reason="фронтенд не собран (web/dist)")

@@ -7,6 +7,8 @@
 """
 from __future__ import annotations
 
+import re
+
 from .errors import CrylessError
 
 #: Разрешённые символы имени репозитория (без пробелов и кириллицы).
@@ -79,3 +81,50 @@ def validate_username(nick: str) -> str:
 def looks_ascii_clean(value: str) -> bool:
     """True, если строка без пробелов и без кириллицы (для предупреждений)."""
     return not _has_bad_chars(value)
+
+
+#: Простая транслитерация кириллицы (для авто-нормализации имён).
+_TRANSLIT = {
+    "а": "a", "б": "b", "в": "v", "г": "g", "д": "d", "е": "e", "ё": "e",
+    "ж": "zh", "з": "z", "и": "i", "й": "y", "к": "k", "л": "l", "м": "m",
+    "н": "n", "о": "o", "п": "p", "р": "r", "с": "s", "т": "t", "у": "u",
+    "ф": "f", "х": "h", "ц": "c", "ч": "ch", "ш": "sh", "щ": "sch",
+    "ъ": "", "ы": "y", "ь": "", "э": "e", "ю": "yu", "я": "ya",
+}
+
+
+def slugify_repo_name(name: str) -> str:
+    """Приводит произвольную строку к допустимому имени репозитория.
+
+    Примеры:
+        "C++ flag generator" -> "cpp-flag-generator"
+        "my project"         -> "my-project"
+        "мой_проект"         -> "moy_proekt"
+    """
+    s = (name or "").strip().lower()
+    s = "".join(_TRANSLIT.get(ch, ch) for ch in s)
+    # "++" -> "pp" (чтобы «c++» превратилось в «cpp»), одиночный "+" -> "-"
+    s = s.replace("++", "pp").replace("+", "-")
+    # всё недопустимое превращаем в дефис
+    s = re.sub(r"[^a-z0-9._-]+", "-", s)
+    # схлопываем повторы и чистим края
+    s = re.sub(r"-{2,}", "-", s)
+    s = re.sub(r"\.{2,}", ".", s)
+    s = s[:MAX_REPO_LEN].strip("-._")
+    return s or "project"
+
+
+def normalize_repo_name(
+    name: str, *, what: str = "репозитория"
+) -> tuple[str, str | None]:
+    """Возвращает ``(валидное_имя, исходное_имя_если_оно_было_изменено)``.
+
+    Если имя уже допустимо — возвращается оно же без изменений (и ``None``).
+    Если нет — оно приводится к допустимому виду через :func:`slugify_repo_name`.
+    """
+    raw = (name or "").strip()
+    try:
+        return validate_repo_name(raw, what=what), None
+    except CrylessError:
+        slug = slugify_repo_name(raw)
+        return validate_repo_name(slug, what=what), raw

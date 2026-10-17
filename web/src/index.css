@@ -129,3 +129,33 @@ a {
   border-radius: var(--radius-xl);
   padding: 0.9rem 1rem;
 }
+
+/* Просмотр файла с нумерацией строк (вкладка «Код») */
+.code-view {
+  font-family: var(--font-mono);
+  font-size: 0.79rem;
+  line-height: 1.55;
+  overflow: auto;
+  max-height: 34rem;
+  background: var(--color-ink-950);
+  border: 1px solid var(--color-ink-700);
+  border-radius: var(--radius-xl);
+}
+.code-view .gutter {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  margin: 0;
+  padding: 0.85rem 0.85rem 0.85rem 1rem;
+  text-align: right;
+  color: var(--color-ink-500);
+  background: var(--color-ink-950);
+  border-right: 1px solid var(--color-ink-800);
+  user-select: none;
+}
+.code-view .code {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  color: var(--color-ink-200);
+  white-space: pre;
+}

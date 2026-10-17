@@ -505,6 +505,168 @@ def api_project_export(project_id: int, request: Request):
 
 
 # =====================================================================
+#  Файлы проекта: браузер кода и «пульс» (вкладки «Код» и «Пульс»)
+# =====================================================================
+
+#: Служебные каталоги, которые не показываем в браузере файлов.
+_BROWSE_SKIP = {
+    ".git", "__pycache__", ".pytest_cache", "node_modules",
+    ".mypy_cache", ".ruff_cache", ".venv", "venv", ".idea", ".vscode",
+}
+#: Сколько байт файла отдаём для просмотра в браузере.
+MAX_VIEW_BYTES = 512 * 1024
+
+
+def _browse_root(project: dict) -> Path:
+    """Корень файлов проекта для браузера кода (папка или распакованный zip)."""
+    src = Path(project["source"])
+    if src.is_dir():
+        return src.resolve()
+    if src.is_file() and src.suffix.lower() == ".zip":
+        unpacked = src.with_suffix("")
+        if not unpacked.is_dir():
+            with zipfile.ZipFile(src) as zf:
+                _safe_extract_zip(src.read_bytes(), unpacked)
+        return unpacked.resolve()
+    raise ValueError("Файлы проекта недоступны: источник не найден на сервере")
+
+
+def _safe_child(root: Path, rel: str) -> Path:
+    """Разрешает ``rel`` внутри ``root``, отсекая ``../`` и абсолютные пути."""
+    rel = (rel or "").strip().lstrip("/")
+    target = (root / rel).resolve()
+    if target != root and root not in target.parents:
+        raise ValueError("Недопустимый путь")
+    return target
+
+
+def _require_project(project_id: int, request: Request):
+    """Общий пролог: сессия + проект + доступ. Возвращает (user, project) либо JSONResponse."""
+    user = current_user(request)
+    if not user:
+        return _unauthorized()
+    project = db.get_project(project_id)
+    if not project:
+        return JSONResponse({"detail": "Проект не найден"}, status_code=404)
+    if not can_access_project(user, project):
+        return JSONResponse(
+            {"detail": "Недостаточно прав: материалы проекта доступны владельцу и Host"},
+            status_code=403,
+        )
+    return user, project
+
+
+@app.get("/api/projects/{project_id}/files")
+def api_project_files(project_id: int, path: str = "", request: Request = None):
+    """Список файлов и папок проекта (браузер кода, как на GitHub)."""
+    ctx = _require_project(project_id, request)
+    if isinstance(ctx, JSONResponse):
+        return ctx
+    _user, project = ctx
+    try:
+        root = _browse_root(project)
+        target = _safe_child(root, path)
+    except (OSError, ValueError, zipfile.BadZipFile) as e:
+        return JSONResponse({"detail": str(e)}, status_code=404)
+    if not target.is_dir():
+        return JSONResponse({"detail": "Это не папка"}, status_code=400)
+
+    entries: list[dict] = []
+    try:
+        children = sorted(
+            target.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())
+        )
+    except OSError as e:
+        return JSONResponse({"detail": f"Не удалось прочитать папку: {e}"}, status_code=500)
+    for child in children:
+        if child.name in _BROWSE_SKIP:
+            continue
+        is_dir = child.is_dir()
+        try:
+            size = 0 if is_dir else child.stat().st_size
+        except OSError:
+            size = 0
+        entries.append(
+            {
+                "name": child.name,
+                "path": child.relative_to(root).as_posix(),
+                "type": "dir" if is_dir else "file",
+                "size": size,
+            }
+        )
+    rel_path = "" if target == root else target.relative_to(root).as_posix()
+    return {"path": rel_path, "entries": entries}
+
+
+@app.get("/api/projects/{project_id}/file")
+def api_project_file(project_id: int, path: str, request: Request):
+    """Содержимое одного файла проекта (для просмотра в браузере кода)."""
+    ctx = _require_project(project_id, request)
+    if isinstance(ctx, JSONResponse):
+        return ctx
+    _user, project = ctx
+    try:
+        root = _browse_root(project)
+        target = _safe_child(root, path)
+    except (OSError, ValueError, zipfile.BadZipFile) as e:
+        return JSONResponse({"detail": str(e)}, status_code=404)
+    if not target.is_file():
+        return JSONResponse({"detail": "Файл не найден"}, status_code=404)
+
+    size = target.stat().st_size
+    try:
+        data = target.read_bytes()[:MAX_VIEW_BYTES]
+    except OSError as e:
+        return JSONResponse({"detail": f"Не удалось прочитать файл: {e}"}, status_code=500)
+    truncated = size > MAX_VIEW_BYTES
+    binary = b"\x00" in data
+    content = "" if binary else data.decode("utf-8", errors="replace")
+    return {
+        "path": target.relative_to(root).as_posix(),
+        "size": size,
+        "binary": binary,
+        "truncated": truncated,
+        "content": content,
+    }
+
+
+@app.get("/api/projects/{project_id}/pulse")
+def api_project_pulse(project_id: int, request: Request):
+    """«Пульс» проекта: активность из журнала + статистика файлов (вкладка Insights)."""
+    ctx = _require_project(project_id, request)
+    if isinstance(ctx, JSONResponse):
+        return ctx
+    _user, project = ctx
+
+    actions = [a for a in db.list_actions(limit=1000) if a.get("project") == project["name"]]
+
+    files = dirs = total_bytes = 0
+    try:
+        root = _browse_root(project)
+        for p in root.rglob("*"):
+            if any(part in _BROWSE_SKIP for part in p.parts):
+                continue
+            if p.is_dir():
+                dirs += 1
+            elif p.is_file():
+                files += 1
+                try:
+                    total_bytes += p.stat().st_size
+                except OSError:
+                    pass
+    except (OSError, ValueError, zipfile.BadZipFile):
+        pass
+
+    return {
+        "actions": actions,
+        "files": files,
+        "dirs": dirs,
+        "bytes": total_bytes,
+        "analyzed": _analysis_path(project_id).exists(),
+    }
+
+
+# =====================================================================
 #  Произвольный репозиторий (gitingest) — раздел «Анализ репозитория»
 # =====================================================================
 

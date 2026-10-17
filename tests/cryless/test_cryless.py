@@ -335,11 +335,19 @@ def test_full_flow_create_and_load(cli_env, tmp_path, server):
     actions = {row[0] for row in db_rows(server, "SELECT action FROM actions")}
     assert {"repo_create", "repo_load"} <= actions
 
-    # 6) репозиторий доступен в веб-панели (единая система)
-    page = _http_get(server, f"/project/{project_id}", cookies={"nick": "vanya_pi"})
-    assert page.status_code == 200 and "my_project" in page.text
-    diagram_page = _http_get(server, f"/project/{project_id}/diagram", cookies={"nick": "vanya_pi"})
-    assert diagram_page.status_code == 200 and "mermaid" in diagram_page.text
+    # 6) репозиторий доступен на основном сайте через JSON-API (единая система)
+    api_project = _http_get(server, f"/api/projects/{project_id}", cookies={"nick": "vanya_pi"})
+    assert api_project.status_code == 200
+    body = api_project.json()
+    assert body["project"]["name"] == "my_project" and body["project"]["analyzed"]
+    assert body["analysis"]["diagram_code"]
+
+    diagram = _http_get(server, f"/api/projects/{project_id}/diagram", cookies={"nick": "vanya_pi"})
+    assert diagram.status_code == 200 and "flowchart" in diagram.json()["code"]
+
+    # сам сайт (SPA) раздаётся по клиентскому маршруту проекта
+    page = _http_get(server, f"/projects/{project_id}", cookies={"nick": "vanya_pi"})
+    assert page.status_code == 200 and "<div id=\"root\">" in page.text
 
 
 def test_load_data_replaces_content_like_push(cli_env, tmp_path, server):

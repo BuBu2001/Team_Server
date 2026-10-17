@@ -141,7 +141,7 @@ def create_repository(payload: RepositoryCreate, x_cryless_user: str | None = He
         "owner": username,
         "token": token,
         "recreated": bool(existing),
-        "url": f"/project/{project['id']}",
+        "url": f"/projects/{project['id']}",
         "storage": f"{username}__{name}",
     }
 
@@ -242,7 +242,7 @@ async def load_data(
         "owner": resolved["username"],
         "files": files,
         "size": len(data),
-        "url": f"/project/{project['id']}",
+        "url": f"/projects/{project['id']}",
         "analyzed": False,
         "diagram_kind": None,
         "diagram_url": None,
@@ -260,7 +260,7 @@ async def load_data(
         else:
             result["analyzed"] = True
             result["diagram_kind"] = analysis["diagram_kind"]
-            result["diagram_url"] = f"/project/{project['id']}/diagram"
+            result["diagram_url"] = f"/projects/{project['id']}"
             db.log_action(
                 resolved["username"],
                 "analyze",

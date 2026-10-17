@@ -171,7 +171,7 @@ async def custom_swagger_ui(request: Request) -> HTMLResponse:
     """
     context = {"request": request}
     context.update(get_version_info())
-    return templates.TemplateResponse("swagger_ui.jinja", context)
+    return templates.TemplateResponse(request, "swagger_ui.jinja", context)
 
 
 @app.get("/api", include_in_schema=True)

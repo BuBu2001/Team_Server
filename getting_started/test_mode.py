@@ -192,20 +192,20 @@ def _web_checks(base_url: str, user: str, project_name: str) -> list[Check]:
             return checks
 
         try:
-            dash = client.get("/dashboard")
-            seen = dash.status_code == 200 and project_name in dash.text
-            checks.append(Check("Проект виден в панели (единая БД)", seen,
-                                f"HTTP {dash.status_code}"))
+            projects = client.get("/api/projects")
+            seen = projects.status_code == 200 and project_name in projects.text
+            checks.append(Check("Проект виден на сайте (единая БД)", seen,
+                                f"HTTP {projects.status_code}"))
         except Exception as exc:  # noqa: BLE001
-            checks.append(Check("Проект виден в панели (единая БД)", False, str(exc)))
+            checks.append(Check("Проект виден на сайте (единая БД)", False, str(exc)))
 
         try:
-            journal = client.get("/journal")
+            journal = client.get("/api/journal")
             has_row = journal.status_code == 200 and project_name in journal.text
-            checks.append(Check("Работа консоли видна в журнале панели", has_row,
+            checks.append(Check("Работа консоли видна в журнале сайта", has_row,
                                 f"HTTP {journal.status_code}"))
         except Exception as exc:  # noqa: BLE001
-            checks.append(Check("Работа консоли видна в журнале панели", False, str(exc)))
+            checks.append(Check("Работа консоли видна в журнале сайта", False, str(exc)))
     return checks
 
 

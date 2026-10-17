@@ -1,0 +1,2270 @@
+================================================
+FILE: SpaceGraphGraphics/CMakeLists.txt
+================================================
+cmake_minimum_required(VERSION 3.16)
+project(SpaceGraphGraphics CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
+
+# ---- Graphics engine dependencies -------------------------------------------
+find_package(OpenGL REQUIRED)
+find_package(PNG REQUIRED)
+find_package(JPEG REQUIRED)
+
+# FreeType
+find_path(FREETYPE_INCLUDE_DIR freetype/freetype.h
+          PATHS /usr/include /usr/include/freetype2 /usr/local/include)
+if(NOT FREETYPE_INCLUDE_DIR)
+  find_path(FREETYPE_INCLUDE_DIR ft2build.h
+            PATHS /usr/include/freetype2 /usr/local/include/freetype2)
+endif()
+find_library(FREETYPE_LIBRARY NAMES freetype)
+if(NOT FREETYPE_INCLUDE_DIR OR NOT FREETYPE_LIBRARY)
+  message(FATAL_ERROR "FreeType headers/library not found")
+endif()
+
+# ---- Graphics engine --------------------------------------------------------
+# Standalone graphics engine extracted from the SpaceGraph (space orbital
+# debris) game: immediate-mode OpenGL 2D renderer + FreeType text + procedural
+# planet/star textures + true-3D sphere rendering. No game logic, no SDL
+# dependency (the caller owns the GL context / window).
+add_library(sggraphics
+  src/renderer/Renderer.cpp
+  src/renderer/ImageLoader.cpp
+  src/renderer/Sphere3D.cpp
+  src/renderer/FontRenderer.cpp
+  src/texturegen/PlanetTextureGen.cpp
+  src/texturegen/TextureCache.cpp
+)
+target_include_directories(sggraphics PUBLIC
+  include
+  ${FREETYPE_INCLUDE_DIR}
+)
+target_link_libraries(sggraphics PUBLIC
+  OpenGL::GL
+  ${FREETYPE_LIBRARY}
+  ${PNG_LIBRARIES}
+  ${JPEG_LIBRARIES}
+)
+
+# ---- Example: SDL2 window demo ----------------------------------------------
+# The engine itself is SDL-agnostic; the demo supplies an SDL2 window + GL 2.1
+# context (the same setup the game uses) and exercises the renderer.
+option(SG_BUILD_DEMO "Build the SDL2 demo application" ON)
+if(SG_BUILD_DEMO)
+  find_package(SDL2 REQUIRED)
+  add_executable(sg_demo examples/demo.cpp)
+  target_include_directories(sg_demo PRIVATE include)
+  target_link_libraries(sg_demo PRIVATE sggraphics SDL2::SDL2)
+endif()
+
+
+================================================
+FILE: SpaceGraphGraphics/examples/demo.cpp
+================================================
+// SpaceGraphGraphics demo: SDL2 window + GL 2.1 context (the same setup the
+// game uses) exercising the standalone graphics engine:
+//   1. galaxy map view  - Renderer primitives, text, convoys
+//   2. system view      - TextureCache + true-3D sphere rendering
+//
+// Controls: [Space] toggle view, [ESC] / [Q] quit, [wheel] zoom in system view.
+
+#include "renderer/Renderer.h"
+#include "texturegen/TextureCache.h"
+
+#include <SDL2/SDL.h>
+#include <GL/gl.h>
+
+#include <cmath>
+#include <cstdio>
+#include <vector>
+
+namespace {
+
+struct Vec3 { float x = 0.f, y = 0.f, z = 0.f; };
+
+Vec3 svRotX(const Vec3& v, float a) {
+    float c = std::cos(a), s = std::sin(a);
+    return { v.x, v.y * c - v.z * s, v.y * s + v.z * c };
+}
+Vec3 svRotY(const Vec3& v, float a) {
+    float c = std::cos(a), s = std::sin(a);
+    return { v.x * c + v.z * s, v.y, -v.x * s + v.z * c };
+}
+sg::Vec2 svProject(Vec3 p, float dist, float focal, float ww, float wh) {
+    float z = dist - p.z;
+    if (z < 1.f) z = 1.f;
+    return { ww / 2.f + p.x * focal / z, wh / 2.f - p.y * focal / z };
+}
+
+sg::GameMap makeMap() {
+    sg::GameMap m;
+    auto sys = [&](sg::Id id, const char* name, float x, float y, sg::PlanetType t) {
+        sg::System s;
+        s.id = id;
+        s.name = name;
+        s.pos = { x, y };
+        s.primary = t;
+        s.radius = 22.f;
+        return s;
+    };
+    m.nodes.push_back(sys(0, "Земля", 400.f, 300.f, sg::PlanetType::Continental));
+    m.nodes.push_back(sys(1, "Кентавр", 700.f, 220.f, sg::PlanetType::Desert));
+    m.nodes.push_back(sys(2, "Мира", 980.f, 500.f, sg::PlanetType::Ice));
+    m.nodes.push_back(sys(3, "Гелиос", 600.f, 620.f, sg::PlanetType::GasGiant));
+
+    // planets: one per system (varying types -> varied procedurally generated art)
+    auto addPlanet = [&](sg::System& s, sg::PlanetType t, const char* nm) {
+        sg::Planet p;
+        p.type = t;
+        p.name = nm;
+        p.textureSeed = 0xC0FFEEu + s.id * 31u;
+        s.planets.push_back(p);
+    };
+    addPlanet(m.nodes[0], sg::PlanetType::Continental, "Терра");
+    addPlanet(m.nodes[1], sg::PlanetType::Desert, "Арид");
+    addPlanet(m.nodes[2], sg::PlanetType::Ice, "Крион");
+    addPlanet(m.nodes[3], sg::PlanetType::GasGiant, "Юпитер-X");
+
+    m.nodes[0].isCapital = true;
+    m.nodes[0].hasBeacon = true;
+    m.nodes[1].isConnected = true;
+    return m;
+}
+
+} // namespace
+
+int main(int argc, char** argv) {
+    (void)argc; (void)argv;
+    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+        std::fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
+        return 1;
+    }
+
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+
+    SDL_Window* win = SDL_CreateWindow("SpaceGraphGraphics demo",
+        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+        1280, 800, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+    if (!win) {
+        std::fprintf(stderr, "SDL_CreateWindow failed: %s\n", SDL_GetError());
+        SDL_Quit();
+        return 1;
+    }
+    SDL_GLContext glc = SDL_GL_CreateContext(win);
+    if (!glc) {
+        std::fprintf(stderr, "SDL_GL_CreateContext failed: %s\n", SDL_GetError());
+        SDL_DestroyWindow(win);
+        SDL_Quit();
+        return 1;
+    }
+    int winW = 1280, winH = 800;
+    SDL_GetWindowSize(win, &winW, &winH);
+    glViewport(0, 0, winW, winH);
+
+    sg::GameMap map = makeMap();
+    std::vector<sg::Convoy> convoys;
+    sg::Convoy c;
+    c.id = 1; c.duty = sg::FleetDuty::Explore; c.awaitingOrder = true;
+    c.path = { 0 }; c.target = 1; c.pos = { 460.f, 300.f };
+    convoys.push_back(c);
+
+    sg::Renderer rnd;
+    rnd.font().load("/usr/share/fonts/liberation/LiberationSans-Regular.ttf", 16);
+    rnd.mono().load("/usr/share/fonts/liberation/LiberationMono-Regular.ttf", 12);
+
+    sg::TextureCache texCache;
+    sg::Camera cam;
+
+    enum class View { Galaxy, System } view =
+        (argc > 1 && std::string(argv[1]) == "system") ? View::System : View::Galaxy;
+    float yaw = 0.f, pitch = 0.4f, dist = 300.f, anim = 0.f;
+    bool running = true;
+
+    while (running) {
+        SDL_Event ev;
+        while (SDL_PollEvent(&ev)) {
+            if (ev.type == SDL_QUIT) running = false;
+            else if (ev.type == SDL_KEYDOWN) {
+                if (ev.key.keysym.sym == SDLK_ESCAPE || ev.key.keysym.sym == SDLK_q) running = false;
+                else if (ev.key.keysym.sym == SDLK_SPACE)
+                    view = (view == View::Galaxy) ? View::System : View::Galaxy;
+            } else if (ev.type == SDL_MOUSEWHEEL) {
+                if (view == View::System) {
+                    dist *= (ev.wheel.y > 0) ? 0.9f : 1.1f;
+                    if (dist < 80.f) dist = 80.f;
+                    if (dist > 800.f) dist = 800.f;
+                }
+            }
+        }
+        anim += 0.016f;
+
+        glClearColor(0.03f, 0.03f, 0.06f, 1.f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        if (view == View::Galaxy) {
+            rnd.beginWorld(cam, (float)winW, (float)winH);
+            rnd.drawBackground();
+
+            // edges between systems
+            for (size_t i = 0; i + 1 < map.nodes.size(); ++i)
+                rnd.drawEdge(map.nodes[i].pos, map.nodes[i + 1].pos,
+                             map.nodes[i].isConnected && map.nodes[i + 1].isConnected);
+
+            // docked convoy list (uses the Renderer's dockConvoys helper)
+            auto docked = sg::dockConvoys(map, convoys, cam, (float)winW, (float)winH);
+            for (auto& kv : docked)
+                rnd.drawConvoy(convoys[0], kv.second, cam.zoom);
+
+            for (auto& s : map.nodes) rnd.drawSystem(s);
+            rnd.endWorld();
+
+            rnd.beginScreen((float)winW, (float)winH);
+            rnd.drawText(u8"SpaceGraphGraphics — демо", 16.f, 12.f, 28,
+                         sg::Color::from255(120, 200, 255));
+            rnd.drawText(u8"Пробел — вид системы   Q/Esc — выход", 16.f, 56.f, 16,
+                         sg::Color(0.8f, 0.8f, 0.8f));
+            rnd.endScreen();
+        } else {
+            const sg::System& sys = map.nodes[0];
+            const float focal = 600.f;
+            texCache.ensureSystemTextures(rnd, sys);
+
+            rnd.beginScreen((float)winW, (float)winH);
+            rnd.drawRect(0, 0, (float)winW, (float)winH,
+                         sg::Color(0.03f, 0.03f, 0.06f, 1.f));
+
+            // star at origin (warm corona, front-lit)
+            if (sg::ImageTex* st = texCache.getStarTexture())
+                rnd.drawSphere3D(*st, 0.f, 0.f, 0.f, 22.f,
+                                 0.f, 0.f, 1.f, anim * 0.004f,
+                                 0.f, 0.f, 1.f,
+                                 1.0f, 0.7f, 0.35f,
+                                 dist, focal, (float)winW, (float)winH);
+
+            // orbit rings
+            Vec3 orbitAxis = svRotX(svRotY({0.f, 1.f, 0.f}, yaw), pitch);
+            for (size_t i = 0; i < sys.planets.size(); ++i) {
+                const float orbitR = 50.f + (float)i * 40.f;
+                std::vector<sg::Vec2> ring;
+                ring.reserve(64);
+                for (int j = 0; j < 64; ++j) {
+                    float a = (float)j * 2.f * 3.14159265f / 64.f;
+                    Vec3 rp = svRotX(svRotY({orbitR * std::cos(a), 0.f,
+                                             orbitR * std::sin(a)}, yaw), pitch);
+                    ring.push_back(svProject(rp, dist, focal, (float)winW, (float)winH));
+                }
+                rnd.drawPolyline(ring, sg::Color(0.3f, 0.35f, 0.4f, 0.4f), 1.f, true);
+            }
+
+            // planets: procedural textures + true-3D lit spheres
+            for (size_t i = 0; i < sys.planets.size(); ++i) {
+                const sg::Planet& pl = sys.planets[i];
+                const float orbitR = 50.f + (float)i * 40.f;
+                Vec3 rp = svRotX(svRotY({orbitR, 0.f, 0.f}, yaw), pitch);
+                float baseR = (pl.type == sg::PlanetType::GasGiant) ? 16.f : 9.f;
+                float nl = 1.f / (std::sqrt(rp.x*rp.x + rp.y*rp.y + rp.z*rp.z) + 1e-5f);
+
+                if (sg::ImageTex* tex = texCache.getPlanetTexture((int)i)) {
+                    float ar = 0.45f, ag = 0.65f, ab = 1.0f;
+                    if (pl.type == sg::PlanetType::Desert) { ar = 0.95f; ag = 0.70f; ab = 0.45f; }
+                    else if (pl.type == sg::PlanetType::Ice) { ar = 0.65f; ag = 0.80f; ab = 1.00f; }
+                    else if (pl.type == sg::PlanetType::GasGiant) { ar = 0.75f; ag = 0.65f; ab = 1.00f; }
+                    rnd.drawSphere3D(*tex, rp.x, rp.y, rp.z, baseR,
+                                     orbitAxis.x, orbitAxis.y, orbitAxis.z,
+                                     (float)i * 1.3f + anim * 0.004f,
+                                     -rp.x * nl, -rp.y * nl, -rp.z * nl,
+                                     ar, ag, ab,
+                                     dist, focal, (float)winW, (float)winH);
+                }
+            }
+
+            rnd.drawText(u8"Система: " + sys.name, 16.f, 12.f, 26,
+                         sg::Color::from255(120, 200, 255));
+            rnd.endScreen();
+        }
+
+        SDL_GL_SwapWindow(win);
+    }
+
+    texCache.clear(rnd);
+    SDL_GL_DeleteContext(glc);
+    SDL_DestroyWindow(win);
+    SDL_Quit();
+    return 0;
+}
+
+
+================================================
+FILE: SpaceGraphGraphics/include/core/Types.h
+================================================
+#pragma once
+
+#include <cstdint>
+#include <cmath>
+
+namespace sg {
+
+using Id = uint32_t;
+
+struct Vec2 {
+    float x = 0.f;
+    float y = 0.f;
+};
+
+inline Vec2 operator+(const Vec2& a, const Vec2& b) { return {a.x+b.x, a.y+b.y}; }
+inline Vec2 operator-(const Vec2& a, const Vec2& b) { return {a.x-b.x, a.y-b.y}; }
+inline Vec2 operator*(const Vec2& a, float s) { return {a.x*s, a.y*s}; }
+inline Vec2 operator*(float s, const Vec2& a) { return {a.x*s, a.y*s}; }
+inline float dot(const Vec2& a, const Vec2& b) { return a.x*b.x + a.y*b.y; }
+inline float cross(const Vec2& a, const Vec2& b) { return a.x*b.y - a.y*b.x; }
+inline float len(const Vec2& a) { return std::sqrt(dot(a,a)); }
+
+} // namespace sg
+
+
+
+================================================
+FILE: SpaceGraphGraphics/include/fleet/Fleet.h
+================================================
+#pragma once
+
+#include "mapgen/MapModel.h"
+#include <vector>
+#include <cstdint>
+
+namespace sg {
+
+// ---------------------------------------------------------------------------
+// Trimmed standalone copy of the original game's fleet/Fleet.h. Only the
+// types the graphics engine draws (FleetDuty + Convoy) are kept so the engine
+// compiles on its own. The full fleet logic lives in the game repository.
+// ---------------------------------------------------------------------------
+
+// Fleet members that can be spawned for various tasks.
+enum class FleetDuty : int { None, Build, BuildAuto, Explore, Colonize };
+
+struct Convoy {
+    Id id = 0;
+    FleetDuty duty = FleetDuty::None;
+    Vec2 pos;
+    std::vector<Id> path;   // node sequence
+    Id target = 0;          // final node
+    bool awaitingOrder = false; // parked; click to choose destination
+    // -- colonial region convoys: owner != 0 means the convoy belongs to a
+    //    region (governor-driven); drawn in the region's colour --
+    Id owner = 0;                 // 0 = empire convoy, else Region::id
+    uint32_t ownerColor = 0;      // RGB24 outline colour when owner != 0
+};
+
+} // namespace sg
+
+
+================================================
+FILE: SpaceGraphGraphics/include/mapgen/MapModel.h
+================================================
+#pragma once
+
+#include "core/Types.h"
+#include <vector>
+#include <string>
+#include <cstdint>
+
+namespace sg {
+
+// ---------------------------------------------------------------------------
+// Trimmed standalone copy of the original game's mapgen/MapModel.h.
+// Only the types the graphics engine actually touches are kept so the engine
+// compiles on its own. The full game model lives in the game repository.
+// ---------------------------------------------------------------------------
+
+// --- Planets --------------------------------------------------------
+enum class PlanetType : int {
+    Continental, Desert, Ice, AsteroidBelt, GasGiant,
+    COUNT
+};
+
+struct Planet {
+    std::string name;            // proper name (e.g. "Земля"); empty if generic
+    PlanetType type = PlanetType::Desert;
+    uint32_t textureSeed = 0;    // deterministic seed for procedural texture generation
+};
+
+// --- Systems (nodes) ------------------------------------------------
+struct System {
+    Id id = 0;
+    std::string name;
+    Vec2 pos;
+    float radius = 20.f;
+    PlanetType primary = PlanetType::Desert;
+
+    std::vector<Planet> planets;
+
+    bool isCapital = false;
+    bool hasBeacon = false;     // manually built beacon
+    bool isConnected = false;   // connected to capital network via beacons
+};
+
+// --- GameMap --------------------------------------------------------
+struct GameMap {
+    std::vector<System> nodes;
+};
+
+} // namespace sg
+
+
+================================================
+FILE: SpaceGraphGraphics/include/renderer/FontRenderer.h
+================================================
+#pragma once
+
+#include "core/Types.h"
+#include <ft2build.h>
+#include <string>
+#include <map>
+#include <cstdint>
+#include <vector>
+
+#include FT_FREETYPE_H
+#include <GL/gl.h>
+
+namespace sg {
+
+struct Color {
+    float r = 1.f, g = 1.f, b = 1.f, a = 1.f;
+    Color() {}
+    Color(float r, float g, float b, float a = 1.f) : r(r), g(g), b(b), a(a) {}
+    static Color from255(int r, int g, int b, int a = 255) {
+        return Color(r/255.f, g/255.f, b/255.f, a/255.f);
+    }
+};
+
+// Renders UTF-8 text using FreeType into GL textures.
+// Draws in the currently active (screen-space) GL projection with
+// y DOWN being positive rows (top-left origin) unless flipY requested.
+class FontRenderer {
+public:
+    FontRenderer();
+    ~FontRenderer();
+    bool load(const char* path, unsigned sizePx);
+
+    // Measure the advance width of a UTF-8 string (in px).
+    float measure(const std::string& utf8, unsigned sizePx);
+
+    // Draw text; x,y is top-left in current projection (y-down if yDown=true).
+    // Returns total width.
+    float draw(const std::string& utf8, float x, float y, unsigned sizePx,
+               const Color& c = Color(1,1,1), bool yDown = true);
+
+    unsigned size() const { return size_; }
+    float lineHeight() const { return lineHeight_; }
+    bool loaded() const { return loaded_; }
+
+private:
+    struct Glyph {
+        GLuint tex = 0;
+        int width = 0, height = 0;
+        int bearingX = 0, bearingY = 0;
+        unsigned advance = 0;
+    };
+    FT_Library lib_ = nullptr;
+    FT_Face face_ = nullptr;
+    bool loaded_ = false;
+    unsigned size_ = 16;
+    float lineHeight_ = 16.f;
+    // per-size glyph cache
+    std::map<uint64_t, Glyph> cache_;
+
+    Glyph& glyph(unsigned charCode, unsigned sizePx);
+    void buildGlyph(Glyph& g, unsigned charCode, unsigned sizePx);
+};
+
+// Decodes one UTF-8 codepoint from s[pos]; returns 0 if invalid.
+uint32_t utf8Decode(const std::string& s, size_t& pos, size_t& numBytes);
+
+} // namespace sg
+
+
+
+================================================
+FILE: SpaceGraphGraphics/include/renderer/Renderer.h
+================================================
+#pragma once
+
+#include "mapgen/MapModel.h"
+#include "fleet/Fleet.h"
+#include "core/Types.h"
+#include "renderer/FontRenderer.h"
+
+#include <map>
+#include <vector>
+
+namespace sg {
+
+// Camera: world-space centre + zoom. Rendering sets up an orthographic
+// projection accordingly; UI drawing resets to screen space.
+class Camera {
+public:
+    Vec2 centre{800, 500};
+    float zoom = 1.f;
+    void reset() { centre = {800, 500}; zoom = 1.f; }
+    Vec2 screenToWorld(float sx, float sy, float winW, float winH) const {
+        // OpenGL world: y grows upward. SDL mouse: y grows downward.
+        // Flip sy before converting.
+        float wy = winH - sy;
+        return { centre.x + (sx - winW / 2.f) / zoom,
+                 centre.y + (wy - winH / 2.f) / zoom };
+    }
+};
+
+// A GPU texture holding a loaded image (PNG background etc.).
+struct ImageTex {
+    unsigned tex = 0;   // OpenGL texture id (0 = invalid)
+    int w = 0, h = 0;   // pixel dimensions
+    bool ok = false;
+};
+
+// Draws world primitives (map, convoys). Camera projectable.
+class Renderer {
+public:
+    // Must be called inside an active GL context.
+    void beginWorld(const Camera& cam, float winW, float winH);
+    void endWorld();
+    void beginScreen(float winW, float winH);
+    void endScreen();
+
+    void drawBackground();
+    void drawEdge(const Vec2& a, const Vec2& b, bool highlighted);
+    // Dashed line between a and b.
+    void drawEdgeDashed(const Vec2& a, const Vec2& b, bool highlighted);
+    void drawSystem(const System& s);
+    void drawConvoy(const Convoy& c, const Vec2& pos, float zoom, bool selected = false);
+    void drawCircle(const Vec2& c, float r, const Color& fill);
+    void drawCircle(const Vec2& c, float r, const Color& fill, const Color& outline, float outlineW = 1.f);
+    // Batched points in one GL pass (for large dot clouds, e.g. 100k systems).
+    void drawPoints(const std::vector<Vec2>& pts, const Color& col, float size = 2.f);
+    // Batched line segments in one GL pass (pts is a flat a0,b0,a1,b1 list).
+    void drawLines(const std::vector<Vec2>& pts, const Color& col, float width = 1.f);
+    void drawRect(float x, float y, float w, float h, const Color& fill);
+    void drawRect(float x, float y, float w, float h, const Color& fill, const Color& outline, float outlineW = 1.f);
+    void drawLine(const Vec2& a, const Vec2& b, const Color& col, float width = 1.f);
+    void drawTriangle(const Vec2& a, const Vec2& b, const Vec2& c, const Color& fill);
+    void drawPolygon(const std::vector<Vec2>& pts, const Color& fill);
+    void drawPolyline(const std::vector<Vec2>& pts, const Color& col, float width = 1.f, bool closed = true);
+
+    // Texture-backed image (e.g. the main menu background). Loaded via libpng
+    // into an OpenGL RGBA texture; freed on destroyImage().
+    ImageTex loadImage(const char* path);
+    void destroyImage(const ImageTex& t);
+    // Draw the whole texture stretched into (x,y,w,h) in screen coords.
+    void drawImage(const ImageTex& t, float x, float y, float w, float h);
+    // Draw a sub-region of the texture (uv in 0..1) onto (x,y,w,h). Used for
+    // cover-cropping so the background keeps its aspect ratio (no stretching).
+    void drawImageUV(const ImageTex& t, float x, float y, float w, float h,
+                     float u0, float v0, float u1, float v1);
+
+    // True 3D sphere mesh renderer (system-view planets).
+    // px,py,pz = planet centre in view space, baseR = world radius.
+    // axis (view space) is the planet's rotation pole; the sphere is aligned
+    // so +Y maps onto it, then spun by `spin`. lightDir = unit vector toward
+    // the star (view space). Atmosphere rim colour atmoR/G/B fades on the limb.
+    // Projected with the system-view projection (dist/focal/winW/winH).
+    void drawSphere3D(const ImageTex& t, float px, float py, float pz, float baseR,
+                      float axisX, float axisY, float axisZ, float spin,
+                      float lightDirX, float lightDirY, float lightDirZ,
+                      float atmoR, float atmoG, float atmoB,
+                      float dist, float focal, float winW, float winH);
+
+    // Text helpers (rely on FontRenderer in current projection). World vs
+    // screen y-orientation is tracked automatically (see beginWorld/beginScreen).
+    float drawText(const std::string& s, float x, float y, unsigned size, const Color& c = Color(1,1,1)) {
+        return font().draw(s, x, y, size, c, !worldText_);
+    }
+    float measureText(const std::string& s, unsigned size) { return font().measure(s, size); }
+
+    // Expose fonts: Loads LiberationSans + JetBrainsMono fallback.
+    FontRenderer& font() { return sans_; }
+    FontRenderer& mono() { return mono_; }
+    bool fontsLoaded() const { return sans_.loaded() && mono_.loaded(); }
+
+private:
+    FontRenderer sans_;
+    FontRenderer mono_;
+    bool worldText_ = false; // true inside world projection (y grows up)
+};
+
+// World<->screen conversion helpers (screen: y grows down, world: y grows up).
+Vec2 worldToScreen(const Vec2& w, const Camera& cam, float winW, float winH);
+
+// Upload raw RGBA pixels (tightly packed, row 0 = image top) into an OpenGL
+// texture. Used for procedural art (e.g. Cairo-rendered flags).
+ImageTex textureFromRGBA(int w, int h, const std::vector<unsigned char>& rgba);
+
+// Write RGBA image to a PNG file (disk cache).
+bool savePNG(const char* path, int w, int h, const unsigned char* rgba);
+
+// Dock awaiting convoys as a vertical square list beside their parked system,
+// avoiding the system circle and screen edges. Returns convoyId -> docked pos (world).
+std::map<Id, Vec2> dockConvoys(const GameMap& map, const std::vector<Convoy>& convoys,
+                               const Camera& cam, float winW, float winH);
+
+} // namespace sg
+
+
+================================================
+FILE: SpaceGraphGraphics/include/texturegen/PlanetTextureGen.h
+================================================
+#pragma once
+
+#include "mapgen/MapModel.h"
+#include <cstdint>
+#include <vector>
+
+namespace sg {
+
+// Procedural texture generator for planets and stars.
+// Uses deterministic noise seeded by planet.textureSeed to produce unique
+// textures per planet type.  Generates CPU RGBA buffers (no GL dependency)
+// which the caller may persist to a PNG disk cache and/or upload via
+// textureFromRGBA().  The caller owns the resulting ImageTex.
+class PlanetTextureGen {
+public:
+    // Default resolution of generated textures (square, power of two).
+    static constexpr int kTexSize = 512;
+
+    // Bump whenever the generator changes so stale PNG disk caches are
+    // invalidated (cache filenames embed this version).
+    static constexpr int kGenVersion = 5;
+
+    // Fill `rgba` (w*h*4 bytes) with a sphere albedo map (row 0 = north pole).
+    // The sphere fills the square with transparent corners and limbs not baked
+    // (lighting is applied by the renderer, not the generator).
+    static void generateRGBA(const Planet& pl, int w, int h,
+                             std::vector<unsigned char>& rgba);
+    static void generateStarRGBA(uint32_t seed, int w, int h,
+                                 std::vector<unsigned char>& rgba);
+
+    // --- noise primitives (exposed for persistence/verify) ---
+    // Hash-based 2D value noise in [0,1].
+    static float hashNoise(uint32_t seed, float x, float y);
+    // Fractional Brownian motion (octaves).
+    static float fbm(uint32_t seed, float x, float y, int octaves = 4);
+    // Horizontally tileable variants: wrap the X lattice so u=0 matches u=1.
+    static float hashNoiseP(uint32_t seed, float x, float y, int px, int py);
+    static float fbmP(uint32_t seed, float x, float y, int octaves, int period);
+};
+
+} // namespace sg
+
+
+================================================
+FILE: SpaceGraphGraphics/include/texturegen/TextureCache.h
+================================================
+#pragma once
+
+#include "mapgen/MapModel.h"
+#include "renderer/Renderer.h"
+#include <map>
+#include <vector>
+
+namespace sg {
+
+// Manages generated planet textures for the current system view.
+// Textures are generated on first access and cached in memory.
+// Only one system's textures are held at a time (the viewed system).
+class TextureCache {
+public:
+    // Ensure textures exist for the given system.  Generates missing ones.
+    // Caller must pass the Renderer to create GL textures.
+    void ensureSystemTextures(Renderer& renderer, const System& sys);
+
+    // Get the texture for a planet index in the current cached system.
+    // Returns nullptr if not yet generated.
+    ImageTex* getPlanetTexture(int planetIndex);
+
+    // Get the star texture for the current cached system.
+    ImageTex* getStarTexture();
+
+    // Clear all cached textures (free GL resources).
+    void clear(Renderer& renderer);
+
+    // True if textures are cached for the given system id.
+    bool hasSystem(Id sysId) const;
+
+private:
+    Id cachedSystemId_ = static_cast<Id>(-1);
+    ImageTex starTex_;
+    std::vector<ImageTex> planetTex_;
+};
+
+} // namespace sg
+
+
+
+================================================
+FILE: SpaceGraphGraphics/src/renderer/FontRenderer.cpp
+================================================
+#include "renderer/FontRenderer.h"
+
+namespace sg {
+
+uint32_t utf8Decode(const std::string& s, size_t& pos, size_t& numBytes) {
+    unsigned char c = static_cast<unsigned char>(s[pos]);
+    uint32_t cp = 0;
+    if (c < 0x80) { cp = c; numBytes = 1; }
+    else if ((c >> 5) == 0x6) {              // 110xxxxx
+        if (pos + 1 >= s.size()) { numBytes=1; return 0; }
+        cp = ((c & 0x1F) << 6) | (s[pos+1] & 0x3F);
+        numBytes = 2;
+    }
+    else if ((c >> 4) == 0xE) {              // 1110xxxx
+        if (pos + 2 >= s.size()) { numBytes=1; return 0; }
+        cp = ((c & 0x0F) << 12) | ((s[pos+1] & 0x3F) << 6) | (s[pos+2] & 0x3F);
+        numBytes = 3;
+    }
+    else if ((c >> 3) == 0x1E) {             // 11110xxx
+        if (pos + 3 >= s.size()) { numBytes=1; return 0; }
+        cp = ((c & 0x07) << 18) | ((s[pos+1] & 0x3F) << 12) |
+             ((s[pos+2] & 0x3F) << 6) | (s[pos+3] & 0x3F);
+        numBytes = 4;
+    }
+    else { numBytes = 1; return 0; }
+    return cp;
+}
+
+FontRenderer::FontRenderer() {
+    if (FT_Init_FreeType(&lib_) != 0) lib_ = nullptr;
+}
+
+FontRenderer::~FontRenderer() {
+    for (auto& kv : cache_) {
+        if (kv.second.tex) glDeleteTextures(1, &kv.second.tex);
+    }
+    if (face_) FT_Done_Face(face_);
+    if (lib_) FT_Done_FreeType(lib_);
+}
+
+bool FontRenderer::load(const char* path, unsigned sizePx) {
+    if (!lib_) return false;
+    // release the previous face and glyph textures before reloading
+    for (auto& kv : cache_) {
+        if (kv.second.tex) glDeleteTextures(1, &kv.second.tex);
+    }
+    cache_.clear();
+    if (face_) {
+        FT_Done_Face(face_);
+        face_ = nullptr;
+    }
+    if (FT_New_Face(lib_, path, 0, &face_) != 0) { face_ = nullptr; return false; }
+    size_ = sizePx;
+    FT_Set_Pixel_Sizes(face_, 0, sizePx);
+    lineHeight_ = static_cast<float>(face_->size->metrics.height) / 64.f;
+    loaded_ = true;
+    return true;
+}
+
+void FontRenderer::buildGlyph(Glyph& g, unsigned charCode, unsigned sizePx) {
+    if (FT_Load_Glyph(face_, FT_Get_Char_Index(face_, charCode),
+                      FT_LOAD_RENDER) != 0) return;
+    FT_GlyphSlot slot = face_->glyph;
+    g.width = slot->bitmap.width;
+    g.height = slot->bitmap.rows;
+    g.bearingX = slot->bitmap_left;
+    g.bearingY = slot->bitmap_top;
+    g.advance = static_cast<unsigned>(slot->advance.x >> 6);
+
+    if (g.width <= 0 || g.height <= 0) return;
+    if (static_cast<int>(g.width) > 1024) return; // safety
+
+    // upload as GL_LUMINANCE (ALPHA fallback)
+    GLuint tex;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, g.width, g.height, 0,
+                 GL_ALPHA, GL_UNSIGNED_BYTE, slot->bitmap.buffer);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    g.tex = tex;
+}
+
+FontRenderer::Glyph& FontRenderer::glyph(unsigned charCode, unsigned sizePx) {
+    uint64_t key = (static_cast<uint64_t>(sizePx) << 32) | charCode;
+    auto it = cache_.find(key);
+    if (it != cache_.end()) return it->second;
+    Glyph g;
+    if (sizePx != size_) { // switch pixel size on-demand
+        FT_Set_Pixel_Sizes(face_, 0, sizePx);
+        size_ = sizePx;
+    }
+    buildGlyph(g, charCode, sizePx);
+    return cache_.emplace(key, g).first->second;
+}
+
+float FontRenderer::measure(const std::string& utf8, unsigned sizePx) {
+    if (!loaded_) return 0;
+    size_t pos = 0;
+    float w = 0.f;
+    while (pos < utf8.size()) {
+        size_t n;
+        uint32_t cp = utf8Decode(utf8, pos, n);
+        pos += n;
+        if (cp == 0) continue;
+        Glyph& g = glyph(cp, sizePx);
+        w += static_cast<float>(g.advance);
+    }
+    return w;
+}
+
+float FontRenderer::draw(const std::string& utf8, float x, float y, unsigned sizePx,
+                         const Color& c, bool yDown) {
+    if (!loaded_) return 0;
+    float penX = x;
+    size_t pos = 0;
+    glEnable(GL_TEXTURE_2D);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glColor4f(c.r, c.g, c.b, c.a);
+    while (pos < utf8.size()) {
+        size_t n;
+        uint32_t cp = utf8Decode(utf8, pos, n);
+        pos += n;
+        if (cp == 0) continue;
+        Glyph& g = glyph(cp, sizePx);
+        if (!g.tex) { penX += static_cast<float>(g.advance); continue; }
+
+        float x0 = penX + static_cast<float>(g.bearingX);
+        float yTop, yBot;
+        if (yDown) {
+            // screen convention: y grows down, text top at y
+            yTop = y + static_cast<float>(sizePx) - static_cast<float>(g.bearingY);
+            yBot = yTop + static_cast<float>(g.height);
+        } else {
+            // world convention: y grows up, text top at y, glyph below it
+            yTop = y;
+            yBot = yTop - static_cast<float>(g.height);
+        }
+
+        float x1 = x0 + static_cast<float>(g.width);
+
+        glBindTexture(GL_TEXTURE_2D, g.tex);
+        glBegin(GL_QUADS);
+        // v=0 samples the first bitmap row (the glyph's top) at yTop.
+        glTexCoord2f(0, 0); glVertex2f(x0, yTop);
+        glTexCoord2f(1, 0); glVertex2f(x1, yTop);
+        glTexCoord2f(1, 1); glVertex2f(x1, yBot);
+        glTexCoord2f(0, 1); glVertex2f(x0, yBot);
+        glEnd();
+        penX += static_cast<float>(g.advance);
+    }
+    glDisable(GL_TEXTURE_2D);
+    return penX - x;
+}
+
+} // namespace sg
+
+
+
+================================================
+FILE: SpaceGraphGraphics/src/renderer/ImageLoader.cpp
+================================================
+#include "renderer/Renderer.h"
+
+#include <png.h>
+#include <jpeglib.h>
+#include <GL/gl.h>
+
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <csetjmp>
+#include <vector>
+
+namespace sg {
+
+// libjpeg's default error handler calls exit() on corrupt data; install a
+// longjmp-based one instead so a bad image never kills the game.
+struct JpegFail {
+    jpeg_error_mgr pub;
+    jmp_buf jb;
+};
+
+static void jpegFailExit(j_common_ptr cinfo) {
+    JpegFail* e = reinterpret_cast<JpegFail*>(cinfo->err);
+    std::longjmp(e->jb, 1);
+}
+
+// Upload RGBA rows (top-to-bottom) into an OpenGL texture. row 0 = image top.
+// Tightly packed 4-byte RGBA pixels.
+static ImageTex uploadRGBA(int w, int h, const std::vector<unsigned char>& rgb) {
+    ImageTex out;
+    if (w <= 0 || h <= 0 || w > 16384 || h > 16384) return out;
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    // Build mipmaps automatically (GL 1.4 GL_SGIS_generate_mipmap). This works
+    // on GL 2.1 without requiring glGenerateMipmap (GL 3.0). Only define the
+    // constant if the GL_RENDERER_ header did not already.
+#ifndef GL_GENERATE_MIPMAP
+#define GL_GENERATE_MIPMAP 0x8191
+#endif
+    glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0,
+                 GL_RGBA, GL_UNSIGNED_BYTE, rgb.data());
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    out.tex = tex;
+    out.w = w;
+    out.h = h;
+    out.ok = true;
+    return out;
+}
+
+// Public wrapper: upload raw RGBA pixels produced by procedural renderers.
+ImageTex textureFromRGBA(int w, int h, const std::vector<unsigned char>& rgba) {
+    return uploadRGBA(w, h, rgba);
+}
+
+static ImageTex loadPNG(FILE* f) {
+    png_structp png = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
+    if (!png) return ImageTex{};
+    png_infop info = png_create_info_struct(png);
+    if (!info) { png_destroy_read_struct(&png, nullptr, nullptr); return ImageTex{}; }
+
+    if (setjmp(png_jmpbuf(png))) {
+        png_destroy_read_struct(&png, &info, nullptr);
+        return ImageTex{};
+    }
+
+    png_init_io(png, f);
+    png_read_info(png, info);
+
+    png_uint_32 w = 0, h = 0;
+    int bitDepth = 0, colorType = 0;
+    png_get_IHDR(png, info, &w, &h, &bitDepth, &colorType, nullptr, nullptr, nullptr);
+
+    // will the decoded image already carry an alpha channel? (RGBA / gray+alpha
+    // pixel formats and any palette with a tRNS chunk). If so, png_set_filler
+    // below must NOT be called — it would append a fifth byte per pixel.
+    const bool hasAlpha = (colorType == PNG_COLOR_TYPE_RGBA ||
+                           colorType == PNG_COLOR_TYPE_GRAY_ALPHA) ||
+                          png_get_valid(png, info, PNG_INFO_tRNS);
+
+    if (colorType == PNG_COLOR_TYPE_PALETTE) png_set_palette_to_rgb(png);
+    if (colorType == PNG_COLOR_TYPE_GRAY && bitDepth < 8)
+        png_set_expand_gray_1_2_4_to_8(png);
+    if (png_get_valid(png, info, PNG_INFO_tRNS)) png_set_tRNS_to_alpha(png);
+    if (bitDepth == 16) png_set_strip_16(png);
+    if (colorType == PNG_COLOR_TYPE_GRAY || colorType == PNG_COLOR_TYPE_GRAY_ALPHA)
+        png_set_gray_to_rgb(png);
+    if (!hasAlpha)
+        png_set_filler(png, 0xFF, PNG_FILLER_AFTER); // ensure RGBA
+
+    png_read_update_info(png, info);
+    png_get_IHDR(png, info, &w, &h, &bitDepth, &colorType, nullptr, nullptr, nullptr);
+    if (w == 0 || h == 0 || w > 16384 || h > 16384) {
+        png_destroy_read_struct(&png, &info, nullptr);
+        return ImageTex{};
+    }
+
+    std::vector<png_bytep> rows(h);
+    std::vector<std::vector<png_byte>> data(h);
+    for (png_uint_32 y = 0; y < h; ++y) data[y].resize(png_get_rowbytes(png, info));
+    for (png_uint_32 y = 0; y < h; ++y) rows[y] = data[y].data();
+    png_read_image(png, rows.data());
+
+    std::vector<unsigned char> flat((size_t)w * h * 4);
+    for (png_uint_32 y = 0; y < h; ++y)
+        std::memcpy(&flat[(size_t)y * w * 4], data[y].data(), (size_t)w * 4);
+
+    png_destroy_read_struct(&png, &info, nullptr);
+    return uploadRGBA((int)w, (int)h, flat);
+}
+
+static ImageTex loadJPEG(FILE* f) {
+    struct jpeg_decompress_struct cinfo;
+    JpegFail jerr;
+    cinfo.err = jpeg_std_error(&jerr.pub);
+    jerr.pub.error_exit = jpegFailExit;
+    jpeg_create_decompress(&cinfo);
+    if (setjmp(jerr.jb)) {            // on decode error: clean up and bail out
+        jpeg_destroy_decompress(&cinfo);
+        return ImageTex{};
+    }
+    jpeg_stdio_src(&cinfo, f);
+    jpeg_read_header(&cinfo, TRUE);
+    cinfo.out_color_space = JCS_RGB;
+    jpeg_start_decompress(&cinfo);
+
+    const int w = cinfo.output_width, h = cinfo.output_height;
+    if (w <= 0 || h <= 0 || w > 16384 || h > 16384) {
+        jpeg_destroy_decompress(&cinfo);
+        return ImageTex{};
+    }
+    std::vector<unsigned char> flat((size_t)w * h * 3);
+    std::vector<unsigned char> row((size_t)w * 3);
+    int y = 0;
+    while (cinfo.output_scanline < cinfo.output_height) {
+        JSAMPROW rp = row.data();
+        jpeg_read_scanlines(&cinfo, &rp, 1);
+        std::memcpy(&flat[(size_t)y * w * 3], row.data(), (size_t)w * 3);
+        ++y;
+    }
+    jpeg_finish_decompress(&cinfo);
+    jpeg_destroy_decompress(&cinfo);
+
+    // convert RGB (row 0 = image top) -> RGBA
+    std::vector<unsigned char> rgba((size_t)w * h * 4);
+    for (size_t i = 0, j = 0; j < flat.size(); i += 4, j += 3) {
+        rgba[i] = flat[j];
+        rgba[i + 1] = flat[j + 1];
+        rgba[i + 2] = flat[j + 2];
+        rgba[i + 3] = 255;
+    }
+    return uploadRGBA(w, h, rgba);
+}
+
+ImageTex Renderer::loadImage(const char* path) {
+    FILE* f = std::fopen(path, "rb");
+    if (!f) return ImageTex{};
+
+    // sniff the format from the magic bytes (some assets are JPEG despite a
+    // ".png" extension)
+    unsigned char magic[8] = {0};
+    size_t got = std::fread(magic, 1, 8, f);
+    std::rewind(f);
+
+    ImageTex out;
+    if (got >= 8 && std::memcmp(magic, "\x89PNG\r\n\x1a\n", 8) == 0) {
+        out = loadPNG(f);
+    } else if (got >= 3 && magic[0] == 0xFF && magic[1] == 0xD8 && magic[2] == 0xFF) {
+        out = loadJPEG(f);
+    }
+    std::fclose(f);
+    return out;
+}
+
+void Renderer::destroyImage(const ImageTex& t) {
+    if (t.tex) glDeleteTextures(1, &t.tex);
+}
+
+void Renderer::drawImage(const ImageTex& t, float x, float y, float w, float h) {
+    drawImageUV(t, x, y, w, h, 0.f, 0.f, 1.f, 1.f);
+}
+
+// Draw a sub-region (uv 0..1) of the texture onto (x,y,w,h). Coordinates
+// follow the screen convention of drawRect (y grows down; x,y = top-left).
+void Renderer::drawImageUV(const ImageTex& t, float x, float y, float w, float h,
+                           float u0, float v0, float u1, float v1) {
+    if (!t.ok || !t.tex || h <= 0.f || w <= 0.f) return;
+    glEnable(GL_TEXTURE_2D);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glColor4f(1.f, 1.f, 1.f, 1.f);
+    glBindTexture(GL_TEXTURE_2D, t.tex);
+    glBegin(GL_QUADS);
+    glTexCoord2f(u0, v0); glVertex2f(x,     y);
+    glTexCoord2f(u1, v0); glVertex2f(x + w, y);
+    glTexCoord2f(u1, v1); glVertex2f(x + w, y + h);
+    glTexCoord2f(u0, v1); glVertex2f(x,     y + h);
+    glEnd();
+    glDisable(GL_TEXTURE_2D);
+}
+
+// -----------------------------------------------------------------------
+// PNG writer for disk cache
+// -----------------------------------------------------------------------
+
+bool savePNG(const char* path, int w, int h, const unsigned char* rgba) {
+    FILE* f = std::fopen(path, "wb");
+    if (!f) return false;
+
+    png_structp png = png_create_write_struct(PNG_LIBPNG_VER_STRING,
+                                              nullptr, nullptr, nullptr);
+    if (!png) { std::fclose(f); return false; }
+    png_infop info = png_create_info_struct(png);
+    if (!info) { png_destroy_write_struct(&png, nullptr); std::fclose(f); return false; }
+
+    if (setjmp(png_jmpbuf(png))) {
+        png_destroy_write_struct(&png, &info);
+        std::fclose(f);
+        return false;
+    }
+
+    png_init_io(png, f);
+    png_set_IHDR(png, info, w, h, 8, PNG_COLOR_TYPE_RGBA,
+                 PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT,
+                 PNG_FILTER_TYPE_DEFAULT);
+    png_write_info(png, info);
+
+    // libpng expects writable row pointers (png_bytep)
+    std::vector<png_bytep> rows(h);
+    for (int y = 0; y < h; ++y)
+        rows[y] = const_cast<png_bytep>(&rgba[(size_t)y * w * 4]);
+    png_write_image(png, rows.data());
+    png_write_end(png, info);
+
+    png_destroy_write_struct(&png, &info);
+    std::fclose(f);
+    return true;
+}
+
+} // namespace sg
+
+
+
+================================================
+FILE: SpaceGraphGraphics/src/renderer/Renderer.cpp
+================================================
+#include "renderer/Renderer.h"
+
+#include <cmath>
+#include <GL/gl.h>
+
+namespace sg {
+
+static void glColor(const Color& c) { glColor4f(c.r, c.g, c.b, c.a); }
+
+Vec2 worldToScreen(const Vec2& w, const Camera& cam, float winW, float winH) {
+    // screen y grows down, world y grows up
+    return { (w.x - cam.centre.x) * cam.zoom + winW/2.f,
+             winH/2.f - (w.y - cam.centre.y) * cam.zoom };
+}
+
+// Dock awaiting convoys as a vertical square list beside their parked system,
+// avoiding the system circle and screen edges. Returns convoyId -> docked pos.
+std::map<Id, Vec2> dockConvoys(const GameMap& map, const std::vector<Convoy>& convoys,
+                               const Camera& cam, float winW, float winH) {
+    std::map<Id, Vec2> docked;
+    const float icon = 20.f;     // px square size
+    const float gap = 35.f;      // px from system circle to first convoy
+    const float step = 28.f;     // px vertical spacing between convoys
+    const float marginR = 8.f;
+    const float marginB = 120.f; // bottom UI (log) area
+    const float topB = 40.f;     // top UI area
+
+    std::map<Id, std::vector<Id>> byNode;
+    for (auto& c : convoys) {
+        if (!c.awaitingOrder) continue;
+        Id node = c.path.empty() ? c.target : c.path[0];
+        if (node >= map.nodes.size()) continue;
+        byNode[node].push_back(c.id);
+    }
+    for (auto& kv : byNode) {
+        Id node = kv.first;
+        if (node >= map.nodes.size()) continue;
+        Vec2 sysS = worldToScreen(map.nodes[node].pos, cam, winW, winH);
+        float rPx = map.nodes[node].radius * cam.zoom;
+
+        // start list to the right of the system, vertically centered
+        float x = sysS.x + rPx + gap;
+        float n = static_cast<float>(kv.second.size());
+        float listH = (n - 1.f) * step + icon;
+        float yTop = sysS.y - listH / 2.f;
+
+        // right edge overflow -> move list to the left of the system
+        if (x + icon > winW - marginR) x = sysS.x - rPx - gap - icon;
+        if (x < marginR) x = marginR;
+        // bottom overflow -> shift list up
+        if (yTop + listH > winH - marginB) yTop = winH - marginB - listH;
+        if (yTop < topB) yTop = topB;
+
+        for (size_t i = 0; i < kv.second.size(); ++i) {
+            Vec2 sc = { x + icon/2.f, yTop + (float)i * step + icon/2.f };
+            Vec2 w;
+            w.x = cam.centre.x + (sc.x - winW/2.f) / cam.zoom;
+            w.y = cam.centre.y + (winH/2.f - sc.y) / cam.zoom;
+            docked[kv.second[i]] = w;
+        }
+    }
+    return docked;
+}
+
+static void ortho2d(float left, float right, float bottom, float top) {
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glOrtho(left, right, bottom, top, -1.0, 1.0);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+}
+
+void Renderer::beginWorld(const Camera& cam, float winW, float winH) {
+    glDisable(GL_TEXTURE_2D);
+    worldText_ = true;
+    float hw = winW / (2.f * cam.zoom);
+    float hh = winH / (2.f * cam.zoom);
+    ortho2d(cam.centre.x - hw, cam.centre.x + hw,   // left, right
+            cam.centre.y - hh, cam.centre.y + hh);  // bottom, top
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+}
+
+void Renderer::endWorld() {
+    glDisable(GL_BLEND);
+}
+
+void Renderer::beginScreen(float winW, float winH) {
+    glDisable(GL_TEXTURE_2D);
+    worldText_ = false;
+    // screen pixels: origin top-left, y down
+    ortho2d(0, winW, winH, 0);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+}
+
+void Renderer::endScreen() {
+    glDisable(GL_BLEND);
+}
+
+void Renderer::drawBackground() {
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_BLEND);
+    glColor4f(0.03f, 0.03f, 0.06f, 1.f);
+    glBegin(GL_QUADS);
+    glVertex2f(-100000.f, -100000.f);
+    glVertex2f( 100000.f, -100000.f);
+    glVertex2f( 100000.f,  100000.f);
+    glVertex2f(-100000.f,  100000.f);
+    glEnd();
+}
+
+void Renderer::drawLine(const Vec2& a, const Vec2& b, const Color& col, float width) {
+    glDisable(GL_TEXTURE_2D);
+    glColor(col);
+    glLineWidth(width);
+    glBegin(GL_LINES);
+    glVertex2f(a.x, a.y);
+    glVertex2f(b.x, b.y);
+    glEnd();
+    glLineWidth(1.f);
+}
+
+void Renderer::drawTriangle(const Vec2& a, const Vec2& b, const Vec2& c, const Color& fill) {
+    glDisable(GL_TEXTURE_2D);
+    if (fill.a <= 0.f) return;
+    glColor(fill);
+    glBegin(GL_TRIANGLES);
+    glVertex2f(a.x, a.y);
+    glVertex2f(b.x, b.y);
+    glVertex2f(c.x, c.y);
+    glEnd();
+}
+
+// Filled convex polygon (triangle fan from the first vertex).
+void Renderer::drawPolygon(const std::vector<Vec2>& pts, const Color& fill) {
+    if (pts.size() < 3 || fill.a <= 0.f) return;
+    glDisable(GL_TEXTURE_2D);
+    glColor(fill);
+    glBegin(GL_TRIANGLE_FAN);
+    glVertex2f(pts[0].x, pts[0].y);
+    for (size_t i = 1; i < pts.size(); ++i) {
+        glVertex2f(pts[i].x, pts[i].y);
+    }
+    glEnd();
+}
+
+void Renderer::drawPolyline(const std::vector<Vec2>& pts, const Color& col, float width, bool closed) {
+    if (pts.size() < 2 || col.a <= 0.f) return;
+    glDisable(GL_TEXTURE_2D);
+    glColor(col);
+    glLineWidth(width);
+    glBegin(closed ? GL_LINE_LOOP : GL_LINE_STRIP);
+    for (const auto& p : pts) glVertex2f(p.x, p.y);
+    glEnd();
+    glLineWidth(1.f);
+}
+
+void Renderer::drawPoints(const std::vector<Vec2>& pts, const Color& col, float size) {
+    if (pts.empty() || col.a <= 0.f) return;
+    glDisable(GL_TEXTURE_2D);
+    glColor(col);
+    glPointSize(size);
+    glBegin(GL_POINTS);
+    for (const auto& p : pts) glVertex2f(p.x, p.y);
+    glEnd();
+    glPointSize(1.f);
+}
+
+void Renderer::drawLines(const std::vector<Vec2>& pts, const Color& col, float width) {
+    if (pts.size() < 2 || col.a <= 0.f) return;
+    glDisable(GL_TEXTURE_2D);
+    glColor(col);
+    glLineWidth(width);
+    glBegin(GL_LINES);
+    for (const auto& p : pts) glVertex2f(p.x, p.y);
+    glEnd();
+    glLineWidth(1.f);
+}
+
+void Renderer::drawCircle(const Vec2& c, float r, const Color& fill) {
+    drawCircle(c, r, fill, Color(0,0,0,0), 0.f);
+}
+
+void Renderer::drawCircle(const Vec2& c, float r, const Color& fill, const Color& outline, float outlineW) {
+    glDisable(GL_TEXTURE_2D);
+    const int SEG = 40;
+    if (fill.a > 0.f) {
+        glColor(fill);
+        glBegin(GL_TRIANGLE_FAN);
+        glVertex2f(c.x, c.y);
+        for (int i = 0; i <= SEG; ++i) {
+            float a = 2.f * 3.14159265f * i / SEG;
+            glVertex2f(c.x + r * std::cos(a), c.y + r * std::sin(a));
+        }
+        glEnd();
+    }
+    if (outlineW > 0.f && outline.a > 0.f) {
+        glColor(outline);
+        glLineWidth(outlineW);
+        glBegin(GL_LINE_LOOP);
+        for (int i = 0; i < SEG; ++i) {
+            float a = 2.f * 3.14159265f * i / SEG;
+            glVertex2f(c.x + r * std::cos(a), c.y + r * std::sin(a));
+        }
+        glEnd();
+        glLineWidth(1.f);
+    }
+}
+
+void Renderer::drawRect(float x, float y, float w, float h, const Color& fill) {
+    drawRect(x, y, w, h, fill, Color(0,0,0,0), 0.f);
+}
+
+void Renderer::drawRect(float x, float y, float w, float h, const Color& fill, const Color& outline, float outlineW) {
+    glDisable(GL_TEXTURE_2D);
+    if (fill.a > 0.f) {
+        glColor(fill);
+        glBegin(GL_QUADS);
+        glVertex2f(x, y);
+        glVertex2f(x + w, y);
+        glVertex2f(x + w, y + h);
+        glVertex2f(x, y + h);
+        glEnd();
+    }
+    if (outlineW > 0.f && outline.a > 0.f) {
+        glColor(outline);
+        glLineWidth(outlineW);
+        glBegin(GL_LINE_LOOP);
+        glVertex2f(x, y);
+        glVertex2f(x + w, y);
+        glVertex2f(x + w, y + h);
+        glVertex2f(x, y + h);
+        glEnd();
+        glLineWidth(1.f);
+    }
+}
+
+void Renderer::drawEdge(const Vec2& a, const Vec2& b, bool highlighted) {
+    static const Color hi(0.25f, 0.7f, 1.f, 0.8f);
+    static const Color lo(0.3f, 0.3f, 0.4f, 0.45f);
+    drawLine(a, b, highlighted ? hi : lo, highlighted ? 2.f : 1.f);
+}
+
+void Renderer::drawEdgeDashed(const Vec2& a, const Vec2& b, bool highlighted) {
+    float dx = b.x - a.x, dy = b.y - a.y;
+    float L = std::sqrt(dx*dx + dy*dy);
+    if (L < 0.001f) return;
+    dx /= L; dy /= L;
+    static const Color hi(0.25f, 0.7f, 1.f, 0.8f);
+    static const Color lo(0.3f, 0.3f, 0.4f, 0.45f);
+    const Color& col = highlighted ? hi : lo;
+    const float dash = 8.f, gap = 6.f;
+    float t = 0.f;
+    while (t < L) {
+        float e = std::min(t + dash, L);
+        glDisable(GL_TEXTURE_2D);
+        glColor(col);
+        glLineWidth(1.f);
+        glBegin(GL_LINES);
+        glVertex2f(a.x + dx*t, a.y + dy*t);
+        glVertex2f(a.x + dx*e, a.y + dy*e);
+        glEnd();
+        t += dash + gap;
+    }
+}
+
+void Renderer::drawSystem(const System& s) {
+    Color fill;
+    switch (s.primary) {
+        case PlanetType::Continental: fill = Color::from255(80, 200, 80);   break;
+        case PlanetType::Desert:      fill = Color::from255(220, 200, 80);  break;
+        case PlanetType::Ice:         fill = Color::from255(140, 200, 240); break;
+        default:                      fill = Color::from255(180, 180, 180); break;
+    }
+    if (s.isCapital) fill = Color::from255(220, 60, 220);
+    else if (s.isConnected) fill = Color::from255(150, 240, 150);
+
+    Color outline = s.hasBeacon ? Color::from255(255, 230, 0)
+                                : Color::from255(90, 90, 90);
+    float r = s.radius;
+    drawCircle(s.pos, r, fill, outline, s.hasBeacon ? 2.5f : 1.f);
+}
+
+// Hexagon marker (used for colonize convoys so they read differently from squares).
+static void drawHex(float cx, float cy, float r, const Color& fill,
+                    const Color& outline, float outlineW) {
+    glDisable(GL_TEXTURE_2D);
+    const int N = 6;
+    glColor(fill);
+    glBegin(GL_TRIANGLE_FAN);
+    glVertex2f(cx, cy);
+    for (int i = 0; i <= N; ++i) {
+        float a = (float)(M_PI / 3.0 * i);
+        glVertex2f(cx + r * std::cos(a), cy + r * std::sin(a));
+    }
+    glEnd();
+    if (outlineW > 0.f && outline.a > 0.f) {
+        glColor(outline);
+        glLineWidth(outlineW);
+        glBegin(GL_LINE_LOOP);
+        for (int i = 0; i < N; ++i) {
+            float a = (float)(M_PI / 3.0 * i);
+            glVertex2f(cx + r * std::cos(a), cy + r * std::sin(a));
+        }
+        glEnd();
+        glLineWidth(1.f);
+    }
+}
+
+void Renderer::drawConvoy(const Convoy& c, const Vec2& pos, float zoom, bool selected) {
+    Color outline;
+    if (c.owner != 0) {
+        // region convoy: drawn in the owning region's colour
+        uint32_t rgb = c.ownerColor;
+        outline = Color::from255((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF);
+    } else switch (c.duty) {
+        case FleetDuty::Explore:   outline = Color::from255(60, 160, 255); break; // blue
+        case FleetDuty::Build:     outline = Color::from255(255, 200, 40);  break; // yellow
+        case FleetDuty::BuildAuto: outline = Color::from255(200, 140, 30);  break; // darker yellow
+        case FleetDuty::Colonize:  outline = Color::from255(200, 80, 255);  break; // purple
+        default:                   outline = Color::from255(190, 190, 190); break;
+    }
+    Color fill = c.owner != 0 ? Color::from255(26, 30, 40, 230)
+                              : Color::from255(18, 20, 28, 230);
+
+    float half = 10.f / zoom;
+
+    // colonizer: distinct shape (hexagon) so it reads differently from the others
+    if (c.duty == FleetDuty::Colonize) {
+        drawHex(pos.x, pos.y, half, fill,
+                selected ? Color::from255(255, 255, 255) : outline,
+                selected ? 2.5f : 2.f);
+    } else {
+        // square icon, screen-constant 20 px (world size scales with 1/zoom)
+        drawRect(pos.x - half, pos.y - half, half*2.f, half*2.f, fill,
+                 selected ? Color::from255(255, 255, 255) : outline, selected ? 2.5f : 2.f);
+    }
+
+    if (fontsLoaded()) {
+        std::string num = std::to_string(c.id);
+        unsigned fs = (unsigned)(10.f / zoom);
+        float tw = measureText(num, fs);
+        font().draw(num, pos.x - tw/2.f, pos.y + 3.f / zoom, fs,
+                    selected ? Color::from255(0,0,0)
+                             : Color(1.f, 1.f, 1.f),
+                    false);
+    }
+}
+
+} // namespace sg
+
+
+================================================
+FILE: SpaceGraphGraphics/src/renderer/Sphere3D.cpp
+================================================
+#include "renderer/Renderer.h"
+
+#include <cmath>
+#include <vector>
+#include <GL/gl.h>
+
+namespace sg {
+
+// -----------------------------------------------------------------------
+// True 3D planet rendering.
+// Builds a UV sphere mesh (unit-radius, local +Y = north pole), then for
+// each planet applies an axis-alignment + spin rotation, scales it, offsets
+// it to the planet's view-space position, projects every vertex through the
+// same projection used by the system view (svProject) and draws with
+// per-vertex lighting (day/night terminator, limb darkening, atmosphere rim).
+// No depth buffer needed: back-facing quads (N.z < 0) are drawn before
+// front-facing ones, painter order per convex object.
+// -----------------------------------------------------------------------
+
+namespace {
+
+struct SV { float x, y, z, u, v; };
+
+struct Quad { SV a, b, c, d; };
+
+// Build the unit UV sphere once, cached statically.
+// lon segments around, lat segments up the side.
+const std::vector<Quad>& unitSphere() {
+    static const int LON = 40, LAT = 20;
+    static std::vector<Quad> mesh = [] {
+        std::vector<Quad> q;
+        q.reserve(LON * LAT);
+        for (int j = 0; j < LAT; ++j) {
+            float t0 = (float)j / (float)LAT;
+            float t1 = (float)(j + 1) / (float)LAT;
+            float th0 = 3.14159265f * t0;              // polar angle 0..pi
+            float th1 = 3.14159265f * t1;
+            float sy0 = std::sin(th0), cy0 = std::cos(th0);
+            float sy1 = std::sin(th1), cy1 = std::cos(th1);
+            for (int i = 0; i < LON; ++i) {
+                float ph0 = 2.f * 3.14159265f * (float)i / (float)LON;
+                float ph1 = 2.f * 3.14159265f * (float)(i + 1) / (float)LON;
+                float sx0 = std::sin(ph0), cx0 = std::cos(ph0);
+                float sx1 = std::sin(ph1), cx1 = std::cos(ph1);
+                float u0 = (float)i / (float)LON;
+                float u1 = (float)(i + 1) / (float)LON;
+                q.push_back({
+                    { sx0 * sy0, cy0, cx0 * sy0, 1.f - u0, t0 },
+                    { sx1 * sy0, cy0, cx1 * sy0, 1.f - u1, t0 },
+                    { sx1 * sy1, cy1, cx1 * sy1, 1.f - u1, t1 },
+                    { sx0 * sy1, cy1, cx0 * sy1, 1.f - u0, t1 },
+                });
+            }
+        }
+        return q;
+    }();
+    return mesh;
+}
+
+// 3x3 rotation from axis-angle (Rodrigues), m in row-major (m[r*3+c]).
+void rotAxis(float ax, float ay, float az, float ang, float m[9]) {
+    float len = std::sqrt(ax*ax + ay*ay + az*az);
+    if (len < 1e-5f) { m[0]=1; m[1]=0; m[2]=0; m[3]=0; m[4]=1; m[5]=0; m[6]=0; m[7]=0; m[8]=1; return; }
+    ax /= len; ay /= len; az /= len;
+    float c = std::cos(ang), s = std::sin(ang), t = 1.f - c;
+    float x = ax, y = ay, z = az;
+    m[0] = t*x*x + c;  m[1] = t*x*y - s*z; m[2] = t*x*z + s*y;
+    m[3] = t*x*y + s*z; m[4] = t*y*y + c;  m[5] = t*y*z - s*x;
+    m[6] = t*x*z - s*y; m[7] = t*y*z + s*x; m[8] = t*z*z + c;
+}
+
+// Rotation that maps +Y (planet pole) onto `axis` (orbit normal, view space).
+void alignPole(float ax, float ay, float az, float m[9]) {
+    const float ux = 0.f, uy = 1.f, uz = 0.f;
+    float cx = uy*az - uz*ay;
+    float cy = uz*ax - ux*az;
+    float cz = ux*ay - uy*ax;
+    float s = std::sqrt(cx*cx + cy*cy + cz*cz);
+    float c = ux*ax + uy*ay + uz*az;   // dot((0,1,0), axis) = ay
+    if (s < 1e-4f) {
+        if (c > 0.f) {
+            m[0]=1; m[1]=0; m[2]=0; m[3]=0; m[4]=1; m[5]=0; m[6]=0; m[7]=0; m[8]=1;
+        } else {
+            // axis points down: 180 degree flip about X
+            m[0]=1; m[1]=0; m[2]=0; m[3]=0; m[4]=-1; m[5]=0; m[6]=0; m[7]=0; m[8]=-1;
+        }
+        return;
+    }
+    float ang = std::atan2(s, c);
+    rotAxis(cx/s, cy/s, cz/s, ang, m);
+}
+
+// Matrix multiply: out = A * B.
+void mulMat(const float a[9], const float b[9], float out[9]) {
+    for (int r = 0; r < 3; ++r)
+        for (int c = 0; c < 3; ++c)
+            out[r*3+c] = a[r*3+0]*b[0*3+c] + a[r*3+1]*b[1*3+c] + a[r*3+2]*b[2*3+c];
+}
+
+void applyMat(const float m[9], float x, float y, float z,
+              float& ox, float& oy, float& oz) {
+    ox = m[0]*x + m[1]*y + m[2]*z;
+    oy = m[3]*x + m[4]*y + m[5]*z;
+    oz = m[6]*x + m[7]*y + m[8]*z;
+}
+
+} // namespace
+
+void Renderer::drawSphere3D(const ImageTex& tex,
+                            float px, float py, float pz,     // planet centre (view space)
+                            float baseR,                      // world radius
+                            float axisX, float axisY, float axisZ,
+                            float spin,
+                            float lightX, float lightY, float lightZ,
+                            float atmoR, float atmoG, float atmoB,
+                            float dist, float focal,
+                            float winW, float winH) {
+    if (!tex.ok || !tex.tex || baseR <= 0.f) return;
+
+    // Combined rotation: first align pole (+Y) to the axis, then spin around it.
+    float align[9], sp[9], R[9];
+    alignPole(axisX, axisY, axisZ, align);
+    rotAxis(axisX, axisY, axisZ, spin, sp);
+    mulMat(sp, align, R);
+
+    const float ll = std::sqrt(lightX*lightX + lightY*lightY + lightZ*lightZ);
+    float lx = lightX, ly = lightY, lz = lightZ;
+    if (ll > 1e-5f) { lx /= ll; ly /= ll; lz /= ll; }
+
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, tex.tex);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    // Weak-perspective projection: scale everything by the distance to the
+    // planet centre, not per-vertex depth.  A per-vertex depth divide makes
+    // near faces of a close sphere balloon while far faces shrink, stretching
+    // the silhouette off a circle when zoomed in.  Scaling by the centre depth
+    // matches svProject() at the centre, so the sphere stays circular and
+    // lines up with the orbit/outline circles at any distance.
+    const float depthC = dist - pz;
+    if (depthC < 1.f) return;
+    const float scale = focal / depthC;
+
+    // Two passes: back-facing quads first, then front-facing (no z-buffer).
+    for (int pass = 0; pass < 2; ++pass) {
+        bool backPass = (pass == 0);
+        glBegin(GL_QUADS);
+        for (const Quad& qd : unitSphere()) {
+            const SV* verts[4] = { &qd.a, &qd.b, &qd.c, &qd.d };
+            float nxs = 0, nys = 0, nzs = 0;   // sum of normals -> front face test
+            float prj[4][2];
+            for (int k = 0; k < 4; ++k) {
+                float dx, dy, dz;
+                applyMat(R, verts[k]->x, verts[k]->y, verts[k]->z, dx, dy, dz);
+                nxs += dx; nys += dy; nzs += dz;
+                float vx = px + dx * baseR;
+                float vy = py + dy * baseR;
+                prj[k][0] = winW / 2.f + vx * scale;
+                prj[k][1] = winH / 2.f - vy * scale;
+            }
+            // front faces have summed normal pointing toward camera (+z)
+            bool front = (nzs > 0.f);
+            if (front == backPass) continue;
+
+            for (int k = 0; k < 4; ++k) {
+                float nx, ny, nz;
+                applyMat(R, verts[k]->x, verts[k]->y, verts[k]->z, nx, ny, nz);
+                // per-vertex lighting
+                float ndl = nx*lx + ny*ly + nz*lz;
+                float diff = ndl > 0.f ? ndl : 0.f;
+                // soft terminator penumbra
+                float term = (ndl < -0.08f) ? 0.f : (ndl > 0.14f) ? 1.f
+                             : (ndl + 0.08f) / 0.22f;
+                float ambient = 0.07f;
+                float sun = ambient + term * (1.f - ambient);
+                // specular glint from the star
+                float vzdir = 1.f; // camera down +z
+                float hx = lx, hy = ly, hz = lz + vzdir;
+                float hl = std::sqrt(hx*hx + hy*hy + hz*hz);
+                if (hl > 1e-5f) { hx /= hl; hy /= hl; hz /= hl; }
+                float spec = std::pow(nx*hx + ny*hy + nz*hz > 0.f
+                                      ? nx*hx + ny*hy + nz*hz : 0.f, 26.f) * 0.35f;
+                // atmosphere rim on the limb
+                float rim = std::pow(1.f - nz, 2.4f);
+                float ar = atmoR * rim * (0.25f + diff * 0.75f);
+                float ag = atmoG * rim * (0.25f + diff * 0.75f);
+                float ab = atmoB * rim * (0.25f + diff * 0.75f);
+
+                float cr = sun + spec + ar;
+                float cg = sun + spec + ag;
+                float cb = sun + spec + ab;
+                if (cr > 1.f) cr = 1.f;
+                if (cg > 1.f) cg = 1.f;
+                if (cb > 1.f) cb = 1.f;
+
+                glColor4f(cr, cg, cb, 1.f);
+                glTexCoord2f(verts[k]->u, verts[k]->v);
+                glVertex2f(prj[k][0], prj[k][1]);
+            }
+        }
+        glEnd();
+    }
+    glDisable(GL_TEXTURE_2D);
+    glColor4f(1.f, 1.f, 1.f, 1.f);
+}
+
+} // namespace sg
+
+
+================================================
+FILE: SpaceGraphGraphics/src/texturegen/PlanetTextureGen.cpp
+================================================
+#include "texturegen/PlanetTextureGen.h"
+
+#include <cmath>
+#include <cstring>
+
+namespace sg {
+
+// --- hash & noise primitives -----------------------------------------------
+
+static uint32_t hash(uint32_t x, uint32_t y, uint32_t seed) {
+    uint32_t h = x * 374761393u + y * 668265263u + seed * 1274126177u;
+    h = (h ^ (h >> 13)) * 1274126177u;
+    h = h ^ (h >> 16);
+    return h;
+}
+
+float PlanetTextureGen::hashNoise(uint32_t seed, float x, float y) {
+    int ix = (int)std::floor(x);
+    int iy = (int)std::floor(y);
+    float fx = x - (float)ix;
+    float fy = y - (float)iy;
+    // smoothstep interpolation
+    fx = fx * fx * (3.f - 2.f * fx);
+    fy = fy * fy * (3.f - 2.f * fy);
+
+    float v00 = (float)(hash(ix,     iy,     seed) & 0xFFFFu) / 65535.f;
+    float v10 = (float)(hash(ix + 1, iy,     seed) & 0xFFFFu) / 65535.f;
+    float v01 = (float)(hash(ix,     iy + 1, seed) & 0xFFFFu) / 65535.f;
+    float v11 = (float)(hash(ix + 1, iy + 1, seed) & 0xFFFFu) / 65535.f;
+
+    return v00 * (1-fx) * (1-fy)
+         + v10 * fx     * (1-fy)
+         + v01 * (1-fx) * fy
+         + v11 * fx     * fy;
+}
+
+float PlanetTextureGen::fbm(uint32_t seed, float x, float y, int octaves) {
+    float val = 0.f, amp = 0.5f, freq = 1.f;
+    for (int i = 0; i < octaves; ++i) {
+        val += amp * hashNoise(seed + i * 137u, x * freq, y * freq);
+        amp *= 0.5f;
+        freq *= 2.f;
+    }
+    return val; // roughly [0, 1]
+}
+
+// Hash noise whose lattice wraps around the x-axis (mod `px` cells) so the
+// resulting texture is horizontally tileable (u=0 matches u=1), making the
+// sphere mapping seamless. `py` may wrap the y-axis too (kept 0 here).
+float PlanetTextureGen::hashNoiseP(uint32_t seed, float x, float y, int px, int py) {
+    if (px > 0) x = x - std::floor(x / (float)px) * (float)px;
+    if (py > 0) y = y - std::floor(y / (float)py) * (float)py;
+    int ix = (int)std::floor(x);
+    int iy = (int)std::floor(y);
+    float fx = x - (float)ix;
+    float fy = y - (float)iy;
+    fx = fx * fx * (3.f - 2.f * fx);
+    fy = fy * fy * (3.f - 2.f * fy);
+
+    int ix1 = (px > 0 && ix + 1 >= px) ? 0 : ix + 1;
+    int iy1 = (py > 0 && iy + 1 >= py) ? 0 : iy + 1;
+
+    float v00 = (float)(hash(ix,  iy,  seed) & 0xFFFFu) / 65535.f;
+    float v10 = (float)(hash(ix1, iy,  seed) & 0xFFFFu) / 65535.f;
+    float v01 = (float)(hash(ix,  iy1, seed) & 0xFFFFu) / 65535.f;
+    float v11 = (float)(hash(ix1, iy1, seed) & 0xFFFFu) / 65535.f;
+
+    return v00 * (1-fx) * (1-fy)
+         + v10 * fx     * (1-fy)
+         + v01 * (1-fx) * fy
+         + v11 * fx     * fy;
+}
+
+// fbm with horizontal period: the noise lattice wraps every `period` x-cells,
+// and each octave wraps its own (doubling) cell grid. Call with the texture's
+// horizontal coordinate measured in "per-turn-of-the-planet" multiples, e.g.
+// fbmP(seed, u*3, v*3, 5, 3) for a pattern repeating 3x around the sphere.
+float PlanetTextureGen::fbmP(uint32_t seed, float x, float y, int octaves, int period) {
+    float val = 0.f, amp = 0.5f;
+    for (int i = 0; i < octaves; ++i) {
+        val += amp * PlanetTextureGen::hashNoiseP(seed + i * 137u, x, y, period * (1 << i), 0);
+        amp *= 0.5f;
+        x *= 2.f;
+        y *= 2.f;
+    }
+    return val;
+}
+
+// --- helpers ----------------------------------------------------------------
+
+static uint8_t clamp255(float v) {
+    return (uint8_t)(v < 0.f ? 0 : v > 255.f ? 255 : v);
+}
+
+static float lerp(float a, float b, float t) { return a + (b - a) * t; }
+
+// Domain warping: offsets the sample coordinates with low-freq noise so
+// features (coasts, dunes, cloud bands) become organic instead of blocky.
+static void warpCoords(uint32_t seed, float u, float v,
+                       float& ow, float& ph) {
+    float wx = PlanetTextureGen::fbmP(seed, u * 2.f, v * 2.f, 3, 2);
+    float wy = PlanetTextureGen::fbmP(seed + 17u, v * 2.f, u * 2.f + 4.4f, 3, 2);
+    ph = (wx - 0.5f) * 0.22f;
+    ow = (wy - 0.5f) * 0.22f;
+}
+
+struct Pixel { uint8_t r, g, b, a; };
+static Pixel mix(Pixel a, Pixel b, float t) {
+    t = t < 0.f ? 0.f : t > 1.f ? 1.f : t;
+    return { (uint8_t)lerp(a.r, b.r, t), (uint8_t)lerp(a.g, b.g, t),
+             (uint8_t)lerp(a.b, b.b, t), 255 };
+}
+
+// Spherical albedo: maps our square texture onto a sphere.  We keep the whole
+// square opaque (alpha 255); the spherical mask + lighting live in the renderer.
+// Row 0 = north pole (v clamp handles the top seam).
+
+// --- surface detail ramps ---------------------------------------------------
+// Each returns the albedo pixel for fbm sample `t` at latitude `lat` (0=equator,
+// 1=pole) with domain-warped coordinates available as `u`,`v` (0..1).
+
+// Continental: ocean depth, coast lines, forests, mountains, polar ice.
+static Pixel continental(uint32_t seed, float u, float v, float t, float lat) {
+    // warp for organic continents
+    float ow, ph;
+    warpCoords(seed, u, v, ow, ph);
+    float tu = u * 3.f + ow;
+    float tv = v * 3.f + ph;
+    float terr = PlanetTextureGen::fbmP(seed ^ 0x5F3759DFu, tu, tv, 5, 3);
+    // raised continents (more distinct from ocean than plain threshold)
+    terr = (terr - 0.5f) * 1.6f + 0.5f;
+    terr = terr < 0.f ? 0.f : terr > 1.f ? 1.f : terr;
+
+    // pole ice: coverage grows toward the poles
+    float pole = lat * lat;                       // 0 equator..1 pole
+    float iceCov = pole * 0.95f + (t - 0.55f) * 0.25f;
+    iceCov = iceCov < 0.f ? 0.f : iceCov > 1.f ? 1.f : iceCov;
+
+    // mountains via high-frequency ridge
+    float ridge = PlanetTextureGen::fbmP(seed + 51u, tu * 8.f, tv * 8.f, 4, 24);
+    ridge = (ridge - 0.5f) * 2.f;                 // -1..1
+
+    if (iceCov > 0.65f && terr < 0.55f) {
+        // polar cap (white with faint shading)
+        Pixel w = { (uint8_t)lerp(225.f, 245.f, t),
+                    (uint8_t)lerp(225.f, 245.f, t),
+                    (uint8_t)lerp(235.f, 250.f, t), 255 };
+        return mix(w, { 210, 215, 228, 255 }, ridge * 0.15f + 0.2f);
+    }
+    if (terr < 0.44f) {
+        // ocean: depth shading + coastal shallow rim
+        float d = t * 0.6f + terr * 0.4f;
+        if (terr > 0.40f) {
+            // shallow coastal water
+            return { clamp255(lerp(40.f, 60.f, d)), clamp255(lerp(120.f, 150.f, d)),
+                     clamp255(lerp(180.f, 210.f, d)), 255 };
+        }
+        return { clamp255(lerp(15.f, 30.f, d)), clamp255(lerp(45.f, 80.f, d)),
+                 clamp255(lerp(110.f, 150.f, d)), 255 };
+    }
+    if (terr < 0.60f) {
+        // lowlands: vegetation (grass / meadows), greener in warmer bands
+        float veg = t * 0.5f + (1.f - lat) * 0.5f;
+        return { clamp255(lerp(55.f, 90.f, veg)), clamp255(lerp(130.f, 175.f, veg)),
+                 clamp255(lerp(45.f, 70.f, veg)), 255 };
+    }
+    if (terr < 0.70f) {
+        // highlands / hills
+        return { clamp255(lerp(95.f, 120.f, t)), clamp255(lerp(130.f, 150.f, t)),
+                 clamp255(lerp(80.f, 95.f, t)), 255 };
+    }
+    // mountains: rock with snow on the highest peaks (ridge high)
+    float snow = ridge > 0.35f ? (ridge - 0.35f) * 2.f : 0.f;
+    Pixel rock = { clamp255(lerp(105.f, 160.f, t)), clamp255(lerp(98.f, 150.f, t)),
+                   clamp255(lerp(88.f, 135.f, t)), 255 };
+    return mix(rock, { 240, 243, 250, 255 }, snow);
+}
+
+// Desert: sand dunes, darker big craters, warmer regolith streaks.
+static Pixel desert(uint32_t seed, float u, float v, float t, float lat) {
+    float ow, ph;
+    warpCoords(seed, u, v, ow, ph);
+    float tu = u * 4.f + ow * 2.f;
+    float tv = v * 4.f + ph * 2.f;
+    float dune = PlanetTextureGen::fbmP(seed ^ 0xC0FFEEu, tu, tv, 5, 4);
+    // banding across dunes (period-4 coordinate keeps the wrap seamless)
+    float band = std::sin(tu * 11.f + dune * 2.5f) * 0.5f + 0.5f;
+
+    // big impact craters: soft dark circles placed by hash of seed grid
+    float craters = 0.f;
+    {
+        const float gs = 6.f;
+        int cx0 = (int)(u * gs), cy0 = (int)(v * gs);
+        for (int gx = cx0 - 1; gx <= cx0 + 1; ++gx)
+        for (int gy = cy0 - 1; gy <= cy0 + 1; ++gy) {
+            float hx = gx + PlanetTextureGen::hashNoiseP(seed, (float)gx, (float)gy, 6, 0);
+            float hy = gy + PlanetTextureGen::hashNoiseP(seed, (float)gx, (float)gy + 7.3f, 6, 0);
+            float dx = (u * gs - hx), dy = (v * gs - hy);
+            float dd = std::sqrt(dx*dx + dy*dy);
+            float cr = 0.18f + 0.22f * PlanetTextureGen::hashNoiseP(seed, (float)gx + 3.f, (float)gy + 9.f, 6, 0);
+            if (dd < cr) craters = std::max(craters, 1.f - dd / cr);
+        }
+    }
+
+    // base sand palette: hotter/darker regolith near equator
+    float warm = (1.f - lat) * 0.5f;
+    Pixel sand = { clamp255(lerp(170.f, 225.f, band * 0.5f + t * 0.3f + warm)),
+                   clamp255(lerp(135.f, 185.f, band * 0.5f + t * 0.3f + warm)),
+                   clamp255(lerp(80.f, 115.f, band * 0.3f + t * 0.2f)), 255 };
+    // craters: cooler, darker interior with a lighter raised rim
+    Pixel crater = mix({ 150, 120, 80, 255 }, { 110, 88, 58, 255 }, t);
+    return mix(sand, crater, craters);
+}
+
+// Ice: blue-white surface, darker fracture lines, albedo variation.
+static Pixel ice(uint32_t seed, float u, float v, float t, float lat) {
+    float ow, ph;
+    warpCoords(seed, u, v, ow, ph);
+    float tu = u * 5.f + ow * 2.f;
+    float tv = v * 5.f + ph * 2.f;
+    float n = PlanetTextureGen::fbmP(seed ^ 0x1CEu, tu, tv, 5, 5);
+    // fractures: thin dark lines from high-freq noise threshold
+    float crack = PlanetTextureGen::fbmP(seed ^ 0xFAC1, tu * 3.f, tv * 3.f, 4, 15);
+    float line = (crack - 0.55f) * 6.f;           // sharp line boost
+    line = line < 0.f ? 0.f : line;
+
+    float base = lerp(200.f, 240.f, n);
+    float r = clamp255(base + line * 40.f);        // highlight
+    float g = clamp255(lerp(215.f, 245.f, n) + line * 20.f);
+    float b = clamp255(lerp(225.f, 255.f, n));
+    // polar shading darkest at equator? Ice is colder at poles - keep slight tint
+    Pixel p = { r, g, b, 255 };
+    // bigger multi-hued cracks / ridges
+    float ridge = (PlanetTextureGen::fbmP(seed ^ 0xBEEF, tu * 2.f, tv * 2.f, 4, 10) - 0.5f);
+    return mix(p, { clamp255(120.f + ridge*80.f), clamp255(140.f + ridge*80.f),
+                    clamp255(170.f + ridge*60.f), 255 }, (crack - 0.45f) * 1.5f > 0.f ?
+                         (crack - 0.45f) * 1.5f : 0.f);
+}
+
+// Gas giant: strong horizontal banding sheared by jets, with advected storms.
+static Pixel gasGiant(uint32_t seed, float u, float v, float t, float lat) {
+    // storm vortices: a handful of cyclones scattered by the seed.
+    // Longitude distances are wrapped to [-0.5,0.5] so storms crossing the
+    // u=0/u=1 seam behave like they do anywhere else on the sphere.
+    float d0[6], d1[6];
+    for (int k = 0; k < 6; ++k) {
+        d0[k] = PlanetTextureGen::hashNoise(seed + k * 37u, 1.f, 1.f);
+        d1[k] = PlanetTextureGen::hashNoise(seed + k * 37u, 2.f, 2.f);
+    }
+    float du = u, dv = v;
+    {
+        for (int k = 0; k < 6; ++k) {
+            float scx = d0[k], scy = d1[k];
+            float srad = 0.05f + 0.09f * PlanetTextureGen::hashNoise(seed + k * 37u, 3.f, 3.f);
+            float str = -0.6f + 1.2f * PlanetTextureGen::hashNoise(seed + k * 37u, 4.f, 4.f);
+            float dx = u - scx;
+            if (dx >  0.5f) dx -= 1.f;      // wrap shortest way around
+            else if (dx < -0.5f) dx += 1.f;
+            float dy = (v - scy) * 1.4f;    // stretch into ellipses
+            float dd = std::sqrt(dx*dx + dy*dy);
+            float swirl = (srad > 0.f) ? str * (1.f - dd / srad) : 0.f;
+            if (swirl > 0.f) {
+                float cs = std::cos(swirl * 3.5f), sn = std::sin(swirl * 3.5f);
+                float ru = dx * cs - dy * sn + scx;
+                float rv = dx * sn + dy * cs + scy;
+                if (ru < 0.f) ru += 1.f; else if (ru > 1.f) ru -= 1.f;  // wrap
+                du = ru; dv = rv;
+                break;
+            }
+        }
+    }
+
+    // jet shear: horizontal bands shift in longitude (u) by latitude-shaped sign
+    float shear = std::sin(dv * 6.2831853f) * 0.35f
+                + std::sin(dv * 12.566f + 1.3f) * 0.12f;
+    du += shear;
+
+    float ow, ph;
+    warpCoords(seed, du, dv, ow, ph);
+    float tu = du * 4.f + ow * 2.f;
+    float tv = dv * 6.f + ph * 2.f;
+    float b = PlanetTextureGen::fbmP(seed ^ 0xC001D, tu, tv, 5, 4);
+    float band = std::sin(dv * 20.f + b * 4.f) * 0.5f + 0.5f;
+
+    // band palette alternates pale/rich; storms get a cream brightening
+    float storm = 0.f;
+    for (int k = 0; k < 6; ++k) {
+        float dx = u - d0[k];
+        if (dx >  0.5f) dx -= 1.f; else if (dx < -0.5f) dx += 1.f;
+        float dy = (v - d1[k]) * 1.4f;
+        float dd = std::sqrt(dx*dx + dy*dy);
+        if (dd < 0.10f) storm = std::max(storm, 1.f - dd / 0.10f);
+    }
+
+    float c1 = band * 0.6f + t * 0.25f + b * 0.15f;   // 0..1
+    Pixel p1 = { clamp255(lerp(150.f, 205.f, c1)), clamp255(lerp(95.f, 155.f, c1)),
+                 clamp255(lerp(175.f, 215.f, c1)), 255 };
+    float c2 = (1.f - band) * 0.6f + t * 0.25f + b * 0.15f;
+    Pixel p2 = { clamp255(lerp(120.f, 185.f, c2)), clamp255(lerp(75.f, 130.f, c2)),
+                 clamp255(lerp(140.f, 195.f, c2)), 255 };
+    // blend then brighten storm core
+    Pixel bg = mix(p1, p2, std::fabs(band * 2.f - 1.f) > 0.5f ? 0.5f : 0.2f);
+    Pixel stormPx = { clamp255(225.f + storm * 30.f), clamp255(195.f + storm * 30.f),
+                      clamp255(200.f + storm * 20.f), 255 };
+    return mix(bg, stormPx, storm * 0.85f);
+}
+
+// Asteroid: grey rocky surface with darker craters and bright speckles.
+static Pixel asteroid(uint32_t seed, float u, float v, float t, float base) {
+    float n = PlanetTextureGen::fbmP(seed ^ 0x5057, u * 6.f, v * 6.f, 4, 6);
+    float speck = (PlanetTextureGen::fbmP(seed ^ 0x7EED, u * 12.f, v * 12.f, 3, 12) - 0.5f);
+    float g = base + (n - 0.5f) * 0.8f;
+    // craters punch small dark spots
+    float bone = 0.f;
+    {
+        const float gs = 10.f;
+        for (int gx = (int)(u*gs)-1; gx <= (int)(u*gs)+1; ++gx)
+        for (int gy = (int)(v*gs)-1; gy <= (int)(v*gs)+1; ++gy) {
+            float hx = gx + PlanetTextureGen::hashNoiseP(seed, (float)gx, (float)gy, 10, 0);
+            float hy = gy + PlanetTextureGen::hashNoiseP(seed, (float)gx, (float)gy+5.f, 10, 0);
+            float dx = u*gs - hx, dy = v*gs - hy;
+            float dd = std::sqrt(dx*dx+dy*dy);
+            float cr = 0.08f;
+            if (dd < cr) bone = std::max(bone, 1.f - dd / cr);
+        }
+    }
+    float lr = clamp255(lerp(90.f, 160.f, g) - bone * 45.f);
+    float lg = clamp255(lerp(82.f, 150.f, g) - bone * 40.f);
+    float lb = clamp255(lerp(75.f, 140.f, g) - bone * 35.f);
+    if (speck > 0.25f) {
+        lr = clamp255(lr + speck * 40.f);
+        lg = clamp255(lg + speck * 40.f);
+        lb = clamp255(lb + speck * 40.f);
+    }
+    return { lr, lg, lb, 255 };
+}
+
+// Star: bright yellow-white core, granulation, edge darkening, hot corona.
+// `mu` is the cosine of the angle between the surface normal and the view
+// direction (1 = centre of disc), used for limb darkening on the sphere.
+static Pixel star(uint32_t seed, float u, float v, float t, float mu) {
+    // granulation: convective cells (period-12 lattice wraps longitude)
+    float gran = PlanetTextureGen::fbmP(seed, u * 12.f, v * 12.f, 4, 12);
+    gran = (gran - 0.5f) * 1.6f + 0.5f;
+    // sunspots: darker patches from clustered noise (wrapped 7x7 grid)
+    float spots = 0.f;
+    {
+        const float gs = 7.f;
+        for (int gx = (int)(u*gs)-1; gx <= (int)(u*gs)+1; ++gx)
+        for (int gy = (int)(v*gs)-1; gy <= (int)(v*gs)+1; ++gy) {
+            float hx = gx + PlanetTextureGen::hashNoiseP(seed+1u, (float)gx, (float)gy, 7, 0);
+            float hy = gy + PlanetTextureGen::hashNoiseP(seed+2u, (float)gx, (float)gy+3.f, 7, 0);
+            float dx = u*gs - hx, dy = v*gs - hy;
+            float dd = std::sqrt(dx*dx+dy*dy);
+            float cr = 0.06f + 0.05f * PlanetTextureGen::hashNoiseP(seed+3u, (float)gx, (float)gy, 7, 0);
+            if (dd < cr) spots = std::max(spots, 1.f - dd / cr);
+        }
+    }
+    // limb darkening: intensity falls toward the silhouette (mu -> 0).
+    // A small floor keeps the rim from going fully black (corona glow adds on top).
+    float mu2 = mu > 0.f ? mu : 0.f;
+    float limb = 0.12f + 0.88f * std::pow(mu2, 0.55f);
+    float b = (t * 0.45f + gran * 0.45f + 0.1f) * limb;
+    // colour: white hot core -> yellow -> orange -> faint red edge
+    float r = clamp255((210.f + gran * 45.f) * b);
+    float g = clamp255((170.f + gran * 30.f) * b);
+    float bl = clamp255((70.f + gran * 20.f) * b);
+    if (spots > 0.55f) {
+        r = clamp255(r * 0.55f);
+        g = clamp255(g * 0.6f);
+        bl = clamp255(bl * 0.7f);
+    }
+    return { r, g, bl, 255 };
+}
+
+// --- public generators ------------------------------------------------------
+
+void PlanetTextureGen::generateRGBA(const Planet& planet, int w, int h,
+                                    std::vector<unsigned char>& rgba) {
+    const uint32_t seed = planet.textureSeed ? planet.textureSeed : 0xDEADBEEFu;
+    rgba.assign((size_t)w * h * 4, 0);
+
+    for (int y = 0; y < h; ++y) {
+        const float v = ((float)y + 0.5f) / (float)h;   // 0..1 (north->south)
+        const float lat = std::fabs(2.f * v - 1.f);     // 0 equator..1 pole
+        for (int x = 0; x < w; ++x) {
+            const float u = ((float)x + 0.5f) / (float)w;
+            // longitude-wrapped texture: sample warped coords
+            Pixel px{ 165, 165, 165, 255 };
+            switch (planet.type) {
+                case PlanetType::Continental:
+                    px = continental(seed, u, v, PlanetTextureGen::fbmP(seed, u*2.f, v*2.f, 4, 2), lat);
+                    break;
+                case PlanetType::Desert:
+                    px = desert(seed, u, v, PlanetTextureGen::fbmP(seed, u*2.f, v*2.f, 4, 2), lat);
+                    break;
+                case PlanetType::Ice:
+                    px = ice(seed, u, v, PlanetTextureGen::fbmP(seed, u*2.f, v*2.f, 4, 2), lat);
+                    break;
+                case PlanetType::GasGiant:
+                    px = gasGiant(seed, u, v, PlanetTextureGen::fbmP(seed, u*2.f, v*2.f, 4, 2), lat);
+                    break;
+                case PlanetType::AsteroidBelt:
+                    px = asteroid(seed, u, v, PlanetTextureGen::fbmP(seed, u*2.f, v*2.f, 4, 2),
+                                  PlanetTextureGen::hashNoiseP(seed, u*8.f, v*8.f, 8, 0));
+                    break;
+                default:
+                    px = { 165, 165, 165, 255 };
+                    break;
+            }
+            rgba[(size_t)(y * w + x) * 4 + 0] = px.r;
+            rgba[(size_t)(y * w + x) * 4 + 1] = px.g;
+            rgba[(size_t)(y * w + x) * 4 + 2] = px.b;
+            rgba[(size_t)(y * w + x) * 4 + 3] = 255;   // opaque full square
+        }
+    }
+}
+
+void PlanetTextureGen::generateStarRGBA(uint32_t seed, int w, int h,
+                                        std::vector<unsigned char>& rgba) {
+    rgba.assign((size_t)w * h * 4, 0);
+    for (int y = 0; y < h; ++y) {
+        const float v = ((float)y + 0.5f) / (float)h;   // 0..1 (north->south)
+        const float th = 3.14159265f * v;               // polar angle 0..pi
+        const float mu = std::cos(th);                  // pole faces the camera (+Z)
+        for (int x = 0; x < w; ++x) {
+            const float u = ((float)x + 0.5f) / (float)w;
+            // Texture generated with the pole (+Y) as view axis (+Z): the renderer
+            // aligns +Y to +Z and spins only around that axis, so mu here equals
+            // the normal's z the renderer sees — limb darkening stays glued to the
+            // silhouette while the granulation spins around the line of sight.
+            Pixel p = star(seed, u, v, PlanetTextureGen::fbmP(seed, u*3.f, v*3.f, 4, 3), mu);
+            rgba[(size_t)(y * w + x) * 4 + 0] = p.r;
+            rgba[(size_t)(y * w + x) * 4 + 1] = p.g;
+            rgba[(size_t)(y * w + x) * 4 + 2] = p.b;
+            rgba[(size_t)(y * w + x) * 4 + 3] = 255;    // opaque full square
+        }
+    }
+}
+
+} // namespace sg
+
+
+================================================
+FILE: SpaceGraphGraphics/src/texturegen/TextureCache.cpp
+================================================
+#include "texturegen/TextureCache.h"
+#include "texturegen/PlanetTextureGen.h"
+
+#include <cstdio>
+#include <string>
+
+// C++17 filesystem for cache directory management
+#include <filesystem>
+namespace fs = std::filesystem;
+
+namespace sg {
+
+static const char* CACHE_DIR = "texture_cache";
+
+// Ensure the cache directory exists (called once).
+static void ensureCacheDir() {
+    static bool created = false;
+    if (created) return;
+    created = true;
+    std::error_code ec;
+    fs::create_directories(CACHE_DIR, ec);
+    if (ec) std::fprintf(stderr, "[texture cache] could not create %s: %s\n",
+                         CACHE_DIR, ec.message().c_str());
+}
+
+// Build a cache file path for a planet texture.
+static std::string planetPath(const Planet& p) {
+    char buf[128];
+    std::snprintf(buf, sizeof(buf), "%s/planet_V%d_T%u_%08X.png",
+                  CACHE_DIR, PlanetTextureGen::kGenVersion,
+                  (unsigned)p.type, p.textureSeed);
+    return buf;
+}
+
+// Build a cache file path for a star texture.
+static std::string starPath(uint32_t seed) {
+    char buf[128];
+    std::snprintf(buf, sizeof(buf), "%s/star_V%d_%08X.png",
+                  CACHE_DIR, PlanetTextureGen::kGenVersion, seed);
+    return buf;
+}
+
+// Try to load from disk; on miss, call the generator to produce RGBA,
+// save a PNG cache file, and upload to GL.  Returns the GL texture handle.
+static ImageTex loadOrGenerate(Renderer& renderer,
+                               const std::string& path,
+                               bool isPlanet,
+                               const Planet& pl,
+                               uint32_t starSeed,
+                               int texSize) {
+    ensureCacheDir();
+
+    // 1. Try disk cache
+    {
+        ImageTex cached = renderer.loadImage(path.c_str());
+        if (cached.ok) return cached;
+    }
+
+    // 2. Generate RGBA (CPU-only)
+    std::vector<unsigned char> rgba;
+    if (isPlanet) {
+        PlanetTextureGen::generateRGBA(pl, texSize, texSize, rgba);
+    } else {
+        PlanetTextureGen::generateStarRGBA(starSeed, texSize, texSize, rgba);
+    }
+
+    // 3. Write disk cache (ignore failure — non-critical)
+    savePNG(path.c_str(), texSize, texSize, rgba.data());
+
+    // 4. Upload to GL
+    return textureFromRGBA(texSize, texSize, rgba);
+}
+
+// ---- TextureCache public API -----------------------------------------------
+
+void TextureCache::ensureSystemTextures(Renderer& renderer, const System& sys) {
+    if (hasSystem(sys.id)) return;
+
+    clear(renderer);
+    cachedSystemId_ = sys.id;
+
+    const int sz = PlanetTextureGen::kTexSize;
+
+    // Star: seed derived from system id
+    uint32_t starSeed = (uint32_t)sys.id * 2654435761u + 0x9E3779B9u;
+    starTex_ = loadOrGenerate(renderer, starPath(starSeed),
+                              false, Planet{}, starSeed, sz);
+
+    // Planets
+    planetTex_.resize(sys.planets.size());
+    for (size_t i = 0; i < sys.planets.size(); ++i) {
+        const Planet& p = sys.planets[i];
+        planetTex_[i] = loadOrGenerate(renderer, planetPath(p),
+                                       true, p, 0, sz);
+    }
+}
+
+ImageTex* TextureCache::getPlanetTexture(int planetIndex) {
+    if (planetIndex < 0 || planetIndex >= (int)planetTex_.size()) return nullptr;
+    if (!planetTex_[planetIndex].ok) return nullptr;
+    return &planetTex_[planetIndex];
+}
+
+ImageTex* TextureCache::getStarTexture() {
+    if (!starTex_.ok) return nullptr;
+    return &starTex_;
+}
+
+void TextureCache::clear(Renderer& renderer) {
+    if (starTex_.ok) {
+        renderer.destroyImage(starTex_);
+        starTex_ = {};
+    }
+    for (auto& t : planetTex_) {
+        if (t.ok) renderer.destroyImage(t);
+    }
+    planetTex_.clear();
+    cachedSystemId_ = static_cast<Id>(-1);
+}
+
+bool TextureCache::hasSystem(Id sysId) const {
+    return cachedSystemId_ == sysId;
+}
+
+} // namespace sg
+

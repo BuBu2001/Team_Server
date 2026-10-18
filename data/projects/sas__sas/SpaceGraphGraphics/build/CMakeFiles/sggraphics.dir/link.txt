@@ -1,2 +1,0 @@
-/usr/bin/ar qc libsggraphics.a CMakeFiles/sggraphics.dir/src/renderer/Renderer.cpp.o CMakeFiles/sggraphics.dir/src/renderer/ImageLoader.cpp.o CMakeFiles/sggraphics.dir/src/renderer/Sphere3D.cpp.o CMakeFiles/sggraphics.dir/src/renderer/FontRenderer.cpp.o CMakeFiles/sggraphics.dir/src/texturegen/PlanetTextureGen.cpp.o CMakeFiles/sggraphics.dir/src/texturegen/TextureCache.cpp.o
-/usr/bin/ranlib libsggraphics.a

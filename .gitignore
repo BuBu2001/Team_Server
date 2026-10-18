@@ -7,3 +7,15 @@ venv/
 .env
 *.egg-info/
 .cryless/
+
+# Артефакты сборки C++-проектов, которые Pi заливают на сервер вместе с кодом.
+# Раньше такие файлы (CMakeCache.txt, *.o, build/) случайно попадали в git.
+data/**/build/
+data/**/CMakeCache.txt
+data/**/CMakeFiles/
+data/**/cmake_install.cmake
+data/**/Makefile
+data/**/*.o
+data/**/*.a
+data/**/*.so
+data/**/a.out

@@ -1,4 +1,0 @@
-/home/vcheeto/Documents/project/SpaceGraphGraphics/build/CMakeFiles/sggraphics.dir
-/home/vcheeto/Documents/project/SpaceGraphGraphics/build/CMakeFiles/sg_demo.dir
-/home/vcheeto/Documents/project/SpaceGraphGraphics/build/CMakeFiles/edit_cache.dir
-/home/vcheeto/Documents/project/SpaceGraphGraphics/build/CMakeFiles/rebuild_cache.dir

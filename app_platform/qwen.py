@@ -49,6 +49,27 @@ SEL_LOGIN_BTN = (
 EDIT_FILE_MARK = re.compile(r"^[ \t]*ФАЙЛ:[ \t]*(.+?)[ \t]*$", re.M)
 EDIT_END_MARK = re.compile(r"^[ \t]*КОНЕЦ-ФАЙЛА[ \t]*$", re.M)
 
+#: Скрытие признаков автоматизации: Google читает navigator.webdriver и
+#: бренды userAgentData и отклоняет вход («браузер небезопасен»), если видит
+#: робота. Работает в паре с --disable-blink-features=AutomationControlled.
+STEALTH_JS = """
+Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+Object.defineProperty(Navigator.prototype, 'userAgentData', {
+  get: () => ({
+    brands: [
+      {brand: 'Google Chrome', version: '155'},
+      {brand: 'Chromium', version: '155'},
+      {brand: 'Not_A Brand', version: '24'},
+    ],
+    mobile: false,
+    platform: 'Linux',
+  }),
+});
+Object.defineProperty(navigator, 'languages', {
+  get: () => ['ru-RU', 'ru', 'en-US', 'en'],
+});
+"""
+
 #: Сколько символов ответа возвращаем в API (дальше — «…»).
 MAX_ANSWER_CHARS = 40_000
 #: Сколько ждём ответа, секунд. ИИ думает по несколько минут на большом коде.
@@ -128,9 +149,24 @@ async def _ensure_page():
         user_data_dir=str(profile),
         executable_path=_executable(),
         headless=False,  # окно видимое: пользователь входит в аккаунт сам
-        args=["--no-sandbox", "--disable-dev-shm-usage"],
+        args=[
+            "--no-sandbox",
+            "--disable-dev-shm-usage",
+            # Google не пускает через «Войти с Google» браузеры с признаком
+            # автоматизации (navigator.webdriver) — гасим его, иначе отказ
+            # «Этот браузер или приложение небезопасны».
+            "--disable-blink-features=AutomationControlled",
+        ],
         viewport={"width": 1400, "height": 900},
+        # Client Hints тоже должны говорить «Google Chrome», а не «Chromium».
+        extra_http_headers={
+            "Sec-CH-UA": '"Google Chrome";v="155", "Chromium";v="155", "Not_A Brand";v="24"',
+            "Sec-CH-UA-Mobile": "?0",
+            "Sec-CH-UA-Platform": '"Linux"',
+        },
     )
+    # Та же маскировка внутри страниц: webdriver, бренды, языки.
+    await _context.add_init_script(script=STEALTH_JS)
     page = _context.pages[0] if _context.pages else await _context.new_page()
     await page.goto(QWEN_URL, wait_until="domcontentloaded", timeout=45_000)
     logger.info("песочница: браузер открыт на {}", page.url)

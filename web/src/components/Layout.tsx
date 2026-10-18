@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   FolderGit2,
+  FlaskConical,
   Search,
   ScrollText,
   Users,
@@ -22,6 +23,7 @@ import { DragonIcon } from "./DragonIcon";
 const NAV = [
   { to: "/", label: "Обзор", icon: LayoutDashboard, end: true },
   { to: "/projects", label: "Проекты", icon: FolderGit2 },
+  { to: "/sandbox", label: "Песочница", icon: FlaskConical },
   { to: "/analyze", label: "Анализ репозитория", icon: Search },
   { to: "/journal", label: "Журнал", icon: ScrollText },
   { to: "/team", label: "Команда", icon: Users },

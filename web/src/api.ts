@@ -102,6 +102,27 @@ export interface CanvasData {
   updated_by: string | null;
 }
 
+/** Состояние браузера Qwen на сервере (раздел «Песочница»). */
+export interface SandboxStatus {
+  open: boolean;
+  url: string | null;
+  logged_in: boolean | null;
+}
+
+/** Ответ ИИ на вопрос из песочницы. */
+export interface SandboxAnswer {
+  answer: string;
+  project: string;
+  /** Правки из ответа (блоки «ФАЙЛ: …»), которые можно применить к проекту. */
+  edits: SandboxFileEdit[];
+}
+
+/** Одна правка файла из ответа ИИ. */
+export interface SandboxFileEdit {
+  path: string;
+  content: string;
+}
+
 export class ApiError extends Error {
   status: number;
   constructor(status: number, message: string) {
@@ -177,6 +198,19 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ scene }),
     }),
+  // --- «песочница»: разговор с ИИ (Qwen) через браузер на сервере ---
+  sandboxStatus: () => request<SandboxStatus>("/api/sandbox/status"),
+  sandboxBrowser: () => request<SandboxStatus>("/api/sandbox/browser", { method: "POST" }),
+  sandboxAsk: (prompt: string, projectId?: number | null) =>
+    request<SandboxAnswer>(
+      "/api/sandbox/ask",
+      jsonBody({ prompt, project_id: projectId ?? null }),
+    ),
+  sandboxApply: (projectId: number, path: string, content: string) =>
+    request<{ path: string; bytes: number }>(
+      "/api/sandbox/apply",
+      jsonBody({ project_id: projectId, path, content }),
+    ),
   removeProject: (id: number) =>
     request<{ ok: boolean }>(`/api/projects/${id}`, { method: "DELETE" }),
 

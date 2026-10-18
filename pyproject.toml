@@ -10,6 +10,7 @@ dependencies = [
     "httpx",
     "loguru>=0.7.0",
     "pathspec>=0.12.1",
+    "playwright>=1.40",  # «песочница»: разговор с ИИ через браузер на сервере
     "pydantic",
     "python-dotenv",
     "starlette>=0.40.0",  # Minimum safe release (https://osv.dev/vulnerability/GHSA-f96h-pmfr-66vw)

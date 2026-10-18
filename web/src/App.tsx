@@ -6,6 +6,7 @@ import { Login } from "./pages/Login";
 import { Dashboard } from "./pages/Dashboard";
 import { Projects } from "./pages/Projects";
 import { ProjectDetail } from "./pages/ProjectDetail";
+import { Sandbox } from "./pages/Sandbox";
 import { Analyze } from "./pages/Analyze";
 import { Journal } from "./pages/Journal";
 import { Team } from "./pages/Team";
@@ -55,6 +56,7 @@ function AppRoutes() {
         <Route index element={<Dashboard />} />
         <Route path="/projects" element={<Projects />} />
         <Route path="/projects/:id" element={<ProjectDetail />} />
+        <Route path="/sandbox" element={<Sandbox />} />
         <Route path="/analyze" element={<Analyze />} />
         <Route path="/journal" element={<Journal />} />
         <Route path="/team" element={<Team />} />

@@ -42,6 +42,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from . import db
+from . import qwen
 from .code_diagram import code_mermaid
 from .diagram_gen import mermaid_has_nodes, tree_to_mermaid
 from .image_gen import tree_to_image
@@ -732,6 +733,162 @@ def api_project_canvas_save(project_id: int, payload: CanvasPayload, request: Re
     row = db.save_project_canvas(project_id, scene, user["id"])
     db.log_action(user["username"], "canvas", "сохранил холст", project["name"])
     return _canvas_json(row["scene"], row["updated_at"], row["updated_by"])
+
+
+# =====================================================================
+#  «Песочница»: разговор с ИИ (Qwen) через браузер на сервере
+# =====================================================================
+#
+# Здесь нет собственного чат-бэкенда: парсер (app_platform/qwen.py) открывает
+# chat.qwen.ai в отдельном окне с постоянным профилем. Пользователь входит в
+# аккаунт один раз вручную, а вопрос/ответ ходят через наш API.
+
+#: Сколько символов вопроса допускаем (дальше — перебор, а не вопрос).
+MAX_PROMPT_CHARS = 20_000
+#: Максимум содержимого, который пишем в файл проекта по кнопке «Применить».
+MAX_FILE_EDIT_CHARS = 400_000
+
+
+class SandboxAskPayload(BaseModel):
+    prompt: str
+    project_id: int | None = None  # если указан — файлы проекта уходят как контекст
+
+
+class SandboxApplyPayload(BaseModel):
+    project_id: int
+    path: str  # относительный путь внутри проекта
+    content: str  # новое содержимое файла целиком
+
+
+async def _qwen_status_or_error():
+    """Общий код для статуса/открытия: либо (dict, None), либо (None, JSONResponse)."""
+    try:
+        return await qwen.status(), None
+    except qwen.QwenError as exc:
+        return None, JSONResponse({"detail": str(exc)}, status_code=503)
+
+
+@app.get("/api/sandbox/status")
+async def api_sandbox_status(request: Request):
+    """Открыт ли браузер Qwen, вошли ли в аккаунт."""
+    if not current_user(request):
+        return _unauthorized()
+    status, err = await _qwen_status_or_error()
+    return err if err else status
+
+
+@app.post("/api/sandbox/browser")
+async def api_sandbox_browser(request: Request):
+    """Открывает (или пробуждает) окно браузера с чатом Qwen на сервере."""
+    user = current_user(request)
+    if not user:
+        return _unauthorized()
+    try:
+        status = await qwen.open_browser()
+    except qwen.QwenError as exc:
+        return JSONResponse({"detail": str(exc)}, status_code=503)
+    db.log_action(user["username"], "sandbox", "открыл браузер ИИ")
+    return status
+
+
+@app.post("/api/sandbox/ask")
+async def api_sandbox_ask(payload: SandboxAskPayload, request: Request):
+    """Задаёт вопрос ИИ и возвращает готовый ответ.
+
+    Промпт уходит в настоящий браузер Qwen на сервере; если указан проект —
+    к вопросу подкладывается содержимое его файлов, чтобы ИИ видел код.
+    """
+    user = current_user(request)
+    if not user:
+        return _unauthorized()
+
+    prompt = (payload.prompt or "").strip()
+    if not prompt:
+        return JSONResponse({"detail": "Введите вопрос к ИИ."}, status_code=422)
+    if len(prompt) > MAX_PROMPT_CHARS:
+        return JSONResponse(
+            {"detail": f"Вопрос слишком длинный (максимум {MAX_PROMPT_CHARS} символов)"},
+            status_code=413,
+        )
+
+    # Контекст проекта: только файлы, к которым у пользователя есть доступ.
+    context = ""
+    project_name = ""
+    if payload.project_id:
+        ctx = _require_project(payload.project_id, request)
+        if isinstance(ctx, JSONResponse):
+            return ctx
+        project = ctx[1]
+        project_name = project["name"]
+        try:
+            context = qwen.build_project_context(_browse_root(project), project["name"])
+        except ValueError as exc:
+            return JSONResponse({"detail": str(exc)}, status_code=400)
+
+    try:
+        answer = await qwen.ask(prompt, context=context)
+    except qwen.QwenError as exc:
+        return JSONResponse({"detail": str(exc)}, status_code=503)
+
+    db.log_action(
+        user["username"], "sandbox", f"вопрос ИИ: {prompt[:80]}", project_name
+    )
+    return {
+        "answer": answer,
+        "project": project_name,
+        "edits": qwen.parse_file_edits(answer) if project_name else [],
+    }
+
+
+@app.post("/api/sandbox/apply")
+async def api_sandbox_apply(payload: SandboxApplyPayload, request: Request):
+    """Применяет правку из ответа ИИ к файлу проекта на сервере.
+
+    ИИ помечает правки блоками «ФАЙЛ: путь» … «КОНЕЦ-ФАЙЛА» (см.
+    qwen.parse_file_edits). Пользователь нажимает «Применить» — и содержимое
+    файла перезаписывается на сервере (правит только владелец проекта или
+    Host, действие уходит в журнал).
+    """
+    ctx = _require_project(payload.project_id, request)
+    if isinstance(ctx, JSONResponse):
+        return ctx
+    user, project = ctx
+    if not (project["owner"] == user["username"] or user["role"] == "host"):
+        return JSONResponse(
+            {"detail": "Править файлы может только владелец проекта или Host"},
+            status_code=403,
+        )
+
+    try:
+        root = _browse_root(project)
+    except ValueError as exc:
+        return JSONResponse({"detail": str(exc)}, status_code=400)
+
+    content = payload.content or ""
+    if len(content) > MAX_FILE_EDIT_CHARS:
+        return JSONResponse(
+            {"detail": f"Файл слишком большой (максимум {MAX_FILE_EDIT_CHARS} символов)"},
+            status_code=413,
+        )
+
+    try:
+        target = _safe_child(root, payload.path)
+    except ValueError:
+        return JSONResponse({"detail": "Недопустимый путь к файлу"}, status_code=400)
+    if target.is_dir():
+        return JSONResponse({"detail": "По этому пути папка, а не файл"}, status_code=400)
+    if not target.exists():
+        return JSONResponse({"detail": "Файл не найден в проекте"}, status_code=404)
+
+    try:
+        target.write_text(content, encoding="utf-8")
+    except OSError as exc:
+        return JSONResponse({"detail": f"Не удалось записать файл: {exc}"}, status_code=500)
+
+    db.log_action(
+        user["username"], "sandbox", f"применил правку ИИ в {payload.path}", project["name"]
+    )
+    return {"path": payload.path, "bytes": len(content.encode("utf-8"))}
 
 
 # =====================================================================

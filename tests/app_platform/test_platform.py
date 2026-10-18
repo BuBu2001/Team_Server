@@ -396,3 +396,244 @@ def test_project_canvas_removed_with_project(platform):
 
     assert client.delete(f"/api/projects/{pid}").status_code == 200
     assert client.get(f"/api/projects/{pid}/canvas").status_code == 404  # проекта нет
+
+
+# =====================================================================
+#  «Песочница»: разговор с ИИ (Qwen) + правка файлов из ответа
+# =====================================================================
+
+
+def test_sandbox_requires_login(platform):
+    """Без сессии все песочные роуты отвечают 401 (браузер не поднимается)."""
+    client, _main, _db, _tmp = platform
+    assert client.get("/api/sandbox/status").status_code == 401
+    assert client.post("/api/sandbox/browser").status_code == 401
+    assert client.post("/api/sandbox/ask", json={"prompt": "привет"}).status_code == 401
+    assert client.post(
+        "/api/sandbox/apply", json={"project_id": 1, "path": "a.py", "content": "1"}
+    ).status_code == 401
+
+
+def test_sandbox_status_closed_by_default(platform):
+    """До первого открытия статус честно говорит «браузер закрыт»."""
+    client, _main, _db, _tmp = platform
+    _login(client, "nick_sandbox", "host")
+    resp = client.get("/api/sandbox/status")
+    assert resp.status_code == 200
+    assert resp.json()["open"] is False
+    assert resp.json()["logged_in"] is None
+
+
+def test_sandbox_ask_validation(platform):
+    """Пустой вопрос — 422, слишком длинный — 413, чужой проект — 403."""
+    client, _main, _db, _tmp = platform
+    _login(client, "nick_sandbox", "host")
+    project = _upload(client, "sandbox-ask", {"a.py": "print(1)\n"})
+    pid = project["id"]
+
+    assert client.post("/api/sandbox/ask", json={"prompt": "   "}).status_code == 422
+    assert (
+        client.post(
+            "/api/sandbox/ask", json={"prompt": "х" * 20_001, "project_id": pid}
+        ).status_code
+        == 413
+    )
+
+    # доступ к чужому проекту закрыт и здесь
+    client.post("/api/auth/login", json={"nick": "other_pi"})
+    assert (
+        client.post(
+            "/api/sandbox/ask", json={"prompt": "привет", "project_id": pid}
+        ).status_code
+        == 403
+    )
+
+
+def test_sandbox_ask_sends_project_context(platform, monkeypatch):
+    """Вопрос уходит с контекстом файлов проекта, ответ разбирается на правки."""
+    from app_platform import qwen
+
+    client, _main, _db, _tmp = platform
+    _login(client, "nick_sandbox", "host")
+    project = _upload(client, "sandbox-ctx", {"main.py": "print('hi')\n"})
+    pid = project["id"]
+
+    seen: dict = {}
+
+    async def fake_ask(prompt: str, context: str = "", timeout_s: int = 0) -> str:
+        seen["prompt"] = prompt
+        seen["context"] = context
+        return (
+            "Вот исправленный файл:\n"
+            "ФАЙЛ: main.py\n"
+            "print('hello')\n"
+            "КОНЕЦ-ФАЙЛА\n"
+            "Готово."
+        )
+
+    monkeypatch.setattr(qwen, "ask", fake_ask)
+    resp = client.post(
+        "/api/sandbox/ask", json={"prompt": "почини", "project_id": pid}
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["project"] == "sandbox-ctx"
+    # контекст содержит файл проекта и инструкцию про маркеры правок
+    assert "main.py" in seen["context"]
+    assert "КОНЕЦ-ФАЙЛА" in seen["context"]
+    # правка из ответа разобрана и отдана фронту
+    assert body["edits"] == [{"path": "main.py", "content": "print('hello')\n"}]
+
+    # вопрос ушёл в журнал
+    actions = [a for a in client.get("/api/journal").json()["rows"] if a["action"] == "sandbox"]
+    assert any("вопрос ИИ" in (a["details"] or "") for a in actions)
+
+
+def test_sandbox_ask_without_project_has_no_edits(platform, monkeypatch):
+    """Общий вопрос без проекта: контекста нет, правки не предлагаются."""
+    from app_platform import qwen
+
+    client, _main, _db, _tmp = platform
+    _login(client, "nick_sandbox", "host")
+
+    async def fake_ask(prompt: str, context: str = "", timeout_s: int = 0) -> str:
+        assert context == ""
+        return "Привет! Я просто отвечаю."
+
+    monkeypatch.setattr(qwen, "ask", fake_ask)
+    resp = client.post("/api/sandbox/ask", json={"prompt": "привет"})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["edits"] == []
+    assert resp.json()["answer"].startswith("Привет")
+
+
+def test_sandbox_apply_writes_file(platform):
+    """«Применить» перезаписывает файл проекта и пишет запись в журнал."""
+    client, _main, _db, _tmp = platform
+    _login(client, "nick_sandbox", "host")
+    project = _upload(client, "sandbox-apply", {"main.py": "old = 1\n"})
+    pid = project["id"]
+
+    resp = client.post(
+        "/api/sandbox/apply",
+        json={"project_id": pid, "path": "main.py", "content": "new = 2\n"},
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json() == {"path": "main.py", "bytes": len("new = 2\n")}
+
+    # файл реально изменился — читаем через файловый роут
+    body = client.get(f"/api/projects/{pid}/file?path=main.py").json()
+    assert body["content"] == "new = 2\n"
+
+    # запись ушла в журнал
+    actions = [a for a in client.get("/api/journal").json()["rows"] if a["action"] == "sandbox"]
+    assert any("применил правку" in (a["details"] or "") for a in actions)
+
+
+def test_sandbox_apply_rejects_bad_paths(platform):
+    """Путь наружу из проекта, папка и несуществующий файл — отказ."""
+    client, _main, _db, _tmp = platform
+    _login(client, "nick_sandbox", "host")
+    project = _upload(client, "sandbox-paths", {"main.py": "x = 1\n"})
+    pid = project["id"]
+
+    def apply(path: str):
+        return client.post(
+            "/api/sandbox/apply",
+            json={"project_id": pid, "path": path, "content": "y\n"},
+        )
+
+    assert apply("../evil.py").status_code == 400  # выход за корень
+    assert apply("").status_code == 400  # пустой путь — это сам корень (папка)
+    assert apply("sub/missing.py").status_code == 404  # файла нет
+    assert client.get(f"/api/projects/{pid}/file?path=main.py").json()["content"] == "x = 1\n"
+
+
+def test_sandbox_apply_denied_for_stranger(platform):
+    """Посторонний Pi (не владелец) не может править файлы проекта."""
+    client, _main, _db, _tmp = platform
+    _login(client, "owner_nick", "host")
+    project = _upload(client, "sandbox-denied", {"main.py": "a = 1\n"})
+    pid = project["id"]
+
+    client.post("/api/auth/login", json={"nick": "stranger_pi"})
+    resp = client.post(
+        "/api/sandbox/apply",
+        json={"project_id": pid, "path": "main.py", "content": "hack\n"},
+    )
+    assert resp.status_code in (403, 404)  # доступ к проекту закрыт вовсе
+    assert resp.status_code != 200
+
+
+def test_parse_file_edits_blocks():
+    """Разбор маркеров «ФАЙЛ: …» / «КОНЕЦ-ФАЙЛА» в ответе ИИ."""
+    from app_platform import qwen
+
+    # два блока подряд
+    answer = (
+        "Сначала одно:\n"
+        "ФАЙЛ: src/a.py\n"
+        "line1\n"
+        "line2\n"
+        "КОНЕЦ-ФАЙЛА\n"
+        "Потом другое:\n"
+        "ФАЙЛ: b.py\n"
+        "print(42)\n"
+        "КОНЕЦ-ФАЙЛА\n"
+        "Конец ответа."
+    )
+    assert qwen.parse_file_edits(answer) == [
+        {"path": "src/a.py", "content": "line1\nline2\n"},
+        {"path": "b.py", "content": "print(42)\n"},
+    ]
+
+    # без КОНЦА-ФАЙЛА блок тянется до следующего маркера
+    no_end = "ФАЙЛ: a.py\nX = 1\nФАЙЛ: b.py\nY = 2\nКОНЕЦ-ФАЙЛА"
+    assert qwen.parse_file_edits(no_end) == [
+        {"path": "a.py", "content": "X = 1\n"},
+        {"path": "b.py", "content": "Y = 2\n"},
+    ]
+
+    # обычный ответ без маркеров — пусто, а не мусор
+    assert qwen.parse_file_edits("Просто ответ, правок нет.") == []
+    assert qwen.parse_file_edits("") == []
+    # маркер без содержимого пропускается
+    assert qwen.parse_file_edits("ФАЙЛ: empty.py\n\nКОНЕЦ-ФАЙЛА") == []
+
+
+def test_build_project_context_captures_files(tmp_path):
+    """Контекст собирает файлы, пропускает .git/бинарники и несёт правила правок."""
+    from app_platform import qwen
+
+    root = tmp_path / "proj"
+    root.mkdir()
+    (root / "app.py").write_text("print('ctx')\n", encoding="utf-8")
+    (root / "big.py").write_text("z" * (qwen.MAX_FILE_CHARS + 500), encoding="utf-8")
+    (root / ".git").mkdir()
+    (root / ".git" / "config").write_text("[core]\n", encoding="utf-8")
+    (root / "blob.bin").write_bytes(b"\x00\x01\x02binary")
+
+    ctx = qwen.build_project_context(root, "проект-контекст")
+    assert "проект-контекст" in ctx
+    assert "### app.py" in ctx and "print('ctx')" in ctx
+    assert "КОНЕЦ-ФАЙЛА" in ctx  # инструкция про маркеры правок
+    assert "… (файл обрезан)" in ctx  # большой файл порезан
+    assert "### .git/config" not in ctx  # служебная папка не тащится
+    assert "\x00" not in ctx  # бинарник не тащится
+    assert "пропущено служебных/бинарных" in ctx
+
+    # пустая папка — пустой контекст
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    assert qwen.build_project_context(empty, "пусто") == ""
+
+
+def test_qwen_executable_env_override(monkeypatch, tmp_path):
+    """TEAM_SERVER_BROWSER задаёт бинарник браузера вручную."""
+    from app_platform import qwen
+
+    fake = tmp_path / "chrome-stub"
+    fake.write_text("#!/bin/sh\n", encoding="utf-8")
+    fake.chmod(0o755)
+    monkeypatch.setenv("TEAM_SERVER_BROWSER", str(fake))
+    assert qwen._executable() == str(fake)

@@ -22,3 +22,6 @@ data/**/a.out
 
 # Исходники Excalidraw — для веб-сборки берётся npm-пакет @excalidraw/excalidraw.
 excalidraw-master/
+
+# Профиль браузера Qwen («песочница»): куки и сессия аккаунта, в git не тащим.
+data/qwen_profile/

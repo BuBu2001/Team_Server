@@ -19,3 +19,6 @@ data/**/*.o
 data/**/*.a
 data/**/*.so
 data/**/a.out
+
+# Исходники Excalidraw — для веб-сборки берётся npm-пакет @excalidraw/excalidraw.
+excalidraw-master/

@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@excalidraw/excalidraw": "^0.17.6",
     "lucide-react": "^0.469.0",
     "mermaid": "^11.4.1",
     "react": "^18.3.1",

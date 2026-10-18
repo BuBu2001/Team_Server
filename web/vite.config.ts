@@ -6,6 +6,19 @@ import tailwindcss from "@tailwindcss/vite";
 // В dev-режиме (npm run dev) запросы к API проксируются на локальный сервер.
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // @excalidraw/excalidraw подключается через CJS-обёртку main.js, где выбор
+  // бандла зависит от process.env.IS_PREACT. В браузере process не существует,
+  // поэтому подставляем значение явно — иначе вкладка падает с ReferenceError.
+  define: {
+    "process.env.IS_PREACT": JSON.stringify("false"),
+  },
+  optimizeDeps: {
+    esbuildOptions: {
+      define: {
+        "process.env.IS_PREACT": JSON.stringify("false"),
+      },
+    },
+  },
   build: {
     outDir: "dist",
     emptyOutDir: true,

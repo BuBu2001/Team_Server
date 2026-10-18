@@ -10,6 +10,7 @@ import {
   GitBranch,
   Image as ImageIcon,
   Lock,
+  PenLine,
   Play,
   Trash2,
   User,
@@ -20,16 +21,18 @@ import { useAsync } from "../hooks";
 import { Badge, Button, Card, ErrorNote, Spinner, formatDate } from "../components/ui";
 import { Mermaid } from "../components/Mermaid";
 import { useDiagramSettings } from "../components/DiagramSettings";
+import { Canvas } from "../components/Canvas";
 import { FilesBrowser } from "../components/FilesBrowser";
 import { GitingestView } from "../components/GitingestView";
 import { Pulse } from "../components/Pulse";
 
-type Tab = "code" | "gitingest" | "diagram" | "pulse" | "digest";
+type Tab = "code" | "gitingest" | "diagram" | "canvas" | "pulse" | "digest";
 
 const TABS: { id: Tab; label: string; icon: typeof Code2 }[] = [
   { id: "code", label: "Код", icon: Code2 },
   { id: "gitingest", label: "gitingest", icon: GitBranch },
   { id: "diagram", label: "Диаграмма", icon: ImageIcon },
+  { id: "canvas", label: "Холст", icon: PenLine },
   { id: "pulse", label: "Пульс", icon: Activity },
   { id: "digest", label: "Digest", icon: Braces },
 ];
@@ -296,6 +299,10 @@ export function ProjectDetail() {
             </>
           )}
         </Card>
+      )}
+
+      {tab === "canvas" && (
+        <Canvas projectId={id} projectName={project.name} canAccess={project.access} />
       )}
 
       {tab === "pulse" && <Pulse projectId={id} />}

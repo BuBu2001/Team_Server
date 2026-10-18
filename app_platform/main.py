@@ -667,6 +667,74 @@ def api_project_pulse(project_id: int, request: Request):
 
 
 # =====================================================================
+#  «Холст» проекта — рисунок Excalidraw, живущий только в системе
+# =====================================================================
+
+# Холст — это не файл репозитория, а сущность платформы: он хранится в БД
+# и никогда не попадает в git. Лимит щедрый, потому что в сцену Excalidraw
+# могут быть встроены картинки (base64), но всё же ограничен.
+MAX_CANVAS_CHARS = 5_000_000
+
+
+class CanvasPayload(BaseModel):
+    scene: str  # JSON-сцена Excalidraw: {type, version, elements, appState, files}
+
+
+def _canvas_json(scene: str, updated_at: str | None, updated_by: str | None) -> dict:
+    return {"scene": scene, "updated_at": updated_at, "updated_by": updated_by}
+
+
+_EMPTY_SCENE = json.dumps({"type": "excalidraw", "version": 2, "elements": [], "appState": {}, "files": {}})
+
+
+@app.get("/api/projects/{project_id}/canvas")
+def api_project_canvas(project_id: int, request: Request):
+    """Холст проекта: сцена Excalidraw. Пустая сцена — если холст не заводили."""
+    ctx = _require_project(project_id, request)
+    if isinstance(ctx, JSONResponse):
+        return ctx
+    row = db.get_project_canvas(project_id)
+    if not row:
+        return _canvas_json(_EMPTY_SCENE, None, None)
+    return _canvas_json(row["scene"], row["updated_at"], row["updated_by"])
+
+
+@app.put("/api/projects/{project_id}/canvas")
+def api_project_canvas_save(project_id: int, payload: CanvasPayload, request: Request):
+    """Сохраняет холст проекта (владелец или Host)."""
+    ctx = _require_project(project_id, request)
+    if isinstance(ctx, JSONResponse):
+        return ctx
+    user, project = ctx
+    scene = payload.scene
+    if len(scene) > MAX_CANVAS_CHARS:
+        return JSONResponse(
+            {"detail": f"Холст слишком большой (максимум {MAX_CANVAS_CHARS} символов)"},
+            status_code=413,
+        )
+    # Храним только валидную сцену — иначе фронтенд при загрузке упадёт.
+    try:
+        parsed = json.loads(scene)
+    except (TypeError, ValueError):
+        return JSONResponse({"detail": "Холст должен содержать JSON-сцену"}, status_code=422)
+    if not isinstance(parsed, dict) or not isinstance(parsed.get("elements", []), list):
+        return JSONResponse(
+            {"detail": "Некорректная сцена: нужен объект с полем elements (список)"},
+            status_code=422,
+        )
+
+    # Повторная запись той же сцены (фронтенд шлёт её при каждом открытии
+    # вкладки) — no-op: не двигаем время правки и не пишем дубль в журнал.
+    existing = db.get_project_canvas(project_id)
+    if existing and existing["scene"] == scene:
+        return _canvas_json(existing["scene"], existing["updated_at"], existing["updated_by"])
+
+    row = db.save_project_canvas(project_id, scene, user["id"])
+    db.log_action(user["username"], "canvas", "сохранил холст", project["name"])
+    return _canvas_json(row["scene"], row["updated_at"], row["updated_by"])
+
+
+# =====================================================================
 #  Произвольный репозиторий (gitingest) — раздел «Анализ репозитория»
 # =====================================================================
 

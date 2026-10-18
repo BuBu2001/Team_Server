@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import io
+import json
 import zipfile
 from pathlib import Path
 
@@ -275,3 +276,123 @@ def test_spa_is_served_and_api_404(platform):
 
     # неизвестный /api/* — честный 404, а не index.html
     assert client.get("/api/does-not-exist").status_code == 404
+
+
+# ---------- «холст» проекта (сцена Excalidraw, только в системе) ----------
+
+def _scene(pad: str = "") -> str:
+    """Минимальная валидная сцена Excalidraw (как её отдаёт serializeAsJSON)."""
+    return json.dumps(
+        {
+            "type": "excalidraw",
+            "version": 2,
+            "elements": [{"id": "box1", "type": "rectangle"}],
+            "appState": {"viewBackgroundColor": "#121212"},
+            "files": {},
+            "pad": pad,
+        },
+        separators=(",", ":"),
+    )
+
+
+def _canvas_rows(client: TestClient) -> list[dict]:
+    return [r for r in client.get("/api/journal?limit=500").json()["rows"]
+            if r.get("action") == "canvas"]
+
+
+def test_project_canvas_persists_and_is_private(platform):
+    """Холст: создаётся, живёт между запросами, чужим Pi недоступен, Host — доступен."""
+    client, _main, _db, _tmp = platform
+    _login(client, "vanya_pi", "pi")
+    project = _upload(client, "canvas-demo", {"a.py": "1\n"})
+    pid = project["id"]
+
+    # холст ещё не заводили — пустая сцена, но не ошибка
+    empty = client.get(f"/api/projects/{pid}/canvas")
+    assert empty.status_code == 200
+    data = empty.json()
+    assert data["updated_at"] is None and data["updated_by"] is None
+    assert json.loads(data["scene"])["elements"] == []
+
+    # сохраняем сцену и читаем её обратно
+    scene = _scene()
+    saved = client.put(f"/api/projects/{pid}/canvas", json={"scene": scene})
+    assert saved.status_code == 200, saved.text
+    body = saved.json()
+    assert body["scene"] == scene
+    assert body["updated_by"] == "vanya_pi" and body["updated_at"]
+
+    again = client.get(f"/api/projects/{pid}/canvas").json()
+    assert again["scene"] == scene  # холст сохранился
+    assert again["updated_at"] == body["updated_at"]
+
+    # повторная запись той же сцены — no-op: один след в журнале, время не едет
+    assert client.put(f"/api/projects/{pid}/canvas", json={"scene": scene}).status_code == 200
+    assert len(_canvas_rows(client)) == 1
+
+    # холст — сущность платформы: в каталоге репозитория его нет
+    names = {e["name"] for e in client.get(f"/api/projects/{pid}/files").json()["entries"]}
+    assert "canvas" not in names and "notes" not in names and "scene" not in names
+
+    # чужой Pi не читает и не пишет холст
+    client.post("/api/auth/logout")
+    _login(client, "other_pi", "pi")
+    assert client.get(f"/api/projects/{pid}/canvas").status_code == 403
+    assert client.put(
+        f"/api/projects/{pid}/canvas", json={"scene": _scene()}
+    ).status_code == 403
+
+    # Host видит холст и общий журнал: отказ в журнал не попал
+    client.post("/api/auth/logout")
+    _login(client, "the_host", "host")
+    assert client.get(f"/api/projects/{pid}/canvas").json()["scene"] == scene
+    assert len(_canvas_rows(client)) == 1
+
+
+def test_project_canvas_rejects_broken_scene(platform):
+    """В БД попадает только валидная сцена — иначе вкладка падает при открытии."""
+    client, _main, _db, _tmp = platform
+    _login(client, "vanya_pi", "pi")
+    pid = _upload(client, "canvas-broken", {"a.py": "1\n"})["id"]
+
+    for bad in ("{не json", "[1, 2, 3]", '{"elements": {"a": 1}}'):
+        resp = client.put(f"/api/projects/{pid}/canvas", json={"scene": bad})
+        assert resp.status_code == 422, (bad, resp.status_code, resp.text)
+
+    assert client.get(f"/api/projects/{pid}/canvas").json()["updated_at"] is None
+    assert len(_canvas_rows(client)) == 0
+
+
+def test_project_canvas_size_limit(platform):
+    """Холст ограничивается по размеру — это не файловое хранилище."""
+    client, main_module, _db, _tmp = platform
+    _login(client, "vanya_pi", "pi")
+    pid = _upload(client, "canvas-big", {"a.py": "1\n"})["id"]
+    limit = main_module.MAX_CANVAS_CHARS
+
+    scene_ok = _scene("x" * (limit - 500))
+    assert len(scene_ok) <= limit
+    assert client.put(
+        f"/api/projects/{pid}/canvas", json={"scene": scene_ok}
+    ).status_code == 200, limit
+
+    scene_big = _scene("x" * (limit + 1000))
+    assert len(scene_big) > limit
+    assert client.put(
+        f"/api/projects/{pid}/canvas", json={"scene": scene_big}
+    ).status_code == 413
+
+    # содержимое не подменилось
+    assert client.get(f"/api/projects/{pid}/canvas").json()["scene"] == scene_ok
+
+
+def test_project_canvas_removed_with_project(platform):
+    """Удаление проекта подчищает его холст."""
+    client, _main, _db, _tmp = platform
+    _login(client, "vanya_pi", "host")
+    project = _upload(client, "canvas-gone", {"a.py": "1\n"})
+    pid = project["id"]
+    client.put(f"/api/projects/{pid}/canvas", json={"scene": _scene()})
+
+    assert client.delete(f"/api/projects/{pid}").status_code == 200
+    assert client.get(f"/api/projects/{pid}/canvas").status_code == 404  # проекта нет

@@ -60,6 +60,15 @@ def init_db() -> None:
                 username TEXT NOT NULL,
                 created_at TEXT NOT NULL DEFAULT (datetime('now'))
             );
+            -- «Холст» проекта: рисунок Excalidraw, привязанный к репозиторию, но
+            -- живущий ТОЛЬКО в системе — в git он не попадает (это не файл, а
+            -- отдельная сущность). Ровно один холст на проект (project_id PK).
+            CREATE TABLE IF NOT EXISTS project_canvas (
+                project_id INTEGER PRIMARY KEY REFERENCES projects(id),
+                scene TEXT NOT NULL DEFAULT '[]',       -- JSON-сцена Excalidraw
+                updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+                updated_by INTEGER REFERENCES users(id)
+            );
             """
         )
 
@@ -136,9 +145,10 @@ def get_project(project_id: int) -> dict | None:
 
 
 def delete_project(project_id: int) -> None:
-    """Удаляет проект и связанные с ним токены cryless (данные на диске — вызывающий)."""
+    """Удаляет проект и связанные с ним токены cryless и холст (файлы — вызывающий)."""
     with get_conn() as conn:
         conn.execute("DELETE FROM cryless_tokens WHERE repo_id = ?", (project_id,))
+        conn.execute("DELETE FROM project_canvas WHERE project_id = ?", (project_id,))
         conn.execute("DELETE FROM projects WHERE id = ?", (project_id,))
 
 
@@ -245,4 +255,36 @@ def resolve_repo_token(token: str) -> dict | None:
             (digest,),
         ).fetchone()
     return dict(row) if row else None
+
+
+# ---------- «Холст» проекта (рисунок Excalidraw; только в системе) ----------
+
+_CANVAS_SELECT = (
+    "SELECT n.scene, n.updated_at, u.username AS updated_by "
+    "FROM project_canvas n LEFT JOIN users u ON u.id = n.updated_by "
+    "WHERE n.project_id = ?"
+)
+
+
+def get_project_canvas(project_id: int) -> dict | None:
+    """Сцена-холст проекта; ``None`` — если холст ещё не заводили."""
+    with get_conn() as conn:
+        row = conn.execute(_CANVAS_SELECT, (project_id,)).fetchone()
+    return dict(row) if row else None
+
+
+def save_project_canvas(project_id: int, scene: str, user_id: int) -> dict:
+    """Создаёт или обновляет холст проекта (ровно один на проект)."""
+    with get_conn() as conn:
+        conn.execute(
+            "INSERT INTO project_canvas (project_id, scene, updated_by) "
+            "VALUES (?, ?, ?) "
+            "ON CONFLICT(project_id) DO UPDATE SET "
+            "  scene = excluded.scene, "
+            "  updated_by = excluded.updated_by, "
+            "  updated_at = datetime('now')",
+            (project_id, scene, user_id),
+        )
+        row = conn.execute(_CANVAS_SELECT, (project_id,)).fetchone()
+    return dict(row)
 

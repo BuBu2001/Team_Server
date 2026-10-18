@@ -95,6 +95,13 @@ export interface PulseData {
   analyzed: boolean;
 }
 
+/** «Холст» проекта: сцена Excalidraw, хранящаяся только в системе (не в git). */
+export interface CanvasData {
+  scene: string;
+  updated_at: string | null;
+  updated_by: string | null;
+}
+
 export class ApiError extends Error {
   status: number;
   constructor(status: number, message: string) {
@@ -162,6 +169,14 @@ export const api = {
   file: (id: number, path: string) =>
     request<FileContent>(`/api/projects/${id}/file?path=${encodeURIComponent(path)}`),
   pulse: (id: number) => request<PulseData>(`/api/projects/${id}/pulse`),
+  // --- «холст» проекта (сцена Excalidraw, только в системе) ---
+  canvas: (id: number) => request<CanvasData>(`/api/projects/${id}/canvas`),
+  saveCanvas: (id: number, scene: string) =>
+    request<CanvasData>(`/api/projects/${id}/canvas`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scene }),
+    }),
   removeProject: (id: number) =>
     request<{ ok: boolean }>(`/api/projects/${id}`, { method: "DELETE" }),
 

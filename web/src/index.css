@@ -175,3 +175,10 @@ a {
 .diagram-canvas .flowchart-link {
   shape-rendering: geometricPrecision;
 }
+
+/* «Холст» (Excalidraw): компонент сам раскрашивает интерфейс под тёмную тему,
+   но размеры держим за собой — холст обязан заполнять контейнер целиком. */
+.holst-box .excalidraw {
+  width: 100%;
+  height: 100%;
+}

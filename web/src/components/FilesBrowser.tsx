@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   ChevronRight,
@@ -26,8 +26,18 @@ function crumbs(path: string): { label: string; to: string }[] {
 /**
  * Браузер кода проекта: список файлов/папок + просмотр файла.
  * Работает даже до анализа — по реальным файлам в хранилище.
+ *
+ * ``refreshToken`` — родитель инкрементирует его после правки файлов (например,
+ * по кнопке «Применить» в чате ИИ): список и открытый файл перечитываются,
+ * поэтому изменения видны сразу.
  */
-export function FilesBrowser({ projectId }: { projectId: number }) {
+export function FilesBrowser({
+  projectId,
+  refreshToken = 0,
+}: {
+  projectId: number;
+  refreshToken?: number;
+}) {
   const [path, setPath] = useState("");
   const [entries, setEntries] = useState<FileEntry[] | null>(null);
   const [listError, setListError] = useState("");
@@ -37,6 +47,8 @@ export function FilesBrowser({ projectId }: { projectId: number }) {
   const [file, setFile] = useState<FileContent | null>(null);
   const [fileError, setFileError] = useState("");
   const [loadingFile, setLoadingFile] = useState(false);
+
+  const lastRefresh = useRef(refreshToken);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,7 +68,22 @@ export function FilesBrowser({ projectId }: { projectId: number }) {
     return () => {
       cancelled = true;
     };
-  }, [projectId, path]);
+  }, [projectId, path, refreshToken]);
+
+  // После применения правки ИИ: открытый файл перечитываем молча, без спиннера.
+  useEffect(() => {
+    if (refreshToken === lastRefresh.current) return;
+    lastRefresh.current = refreshToken;
+    if (!openPath) return;
+    api
+      .file(projectId, openPath)
+      .then((res) => setFile(res))
+      .catch(() => {
+        // файла больше нет — вернёмся к списку, где он и правда отсутствует
+        setFile(null);
+        setOpenPath(null);
+      });
+  }, [refreshToken, openPath, projectId]);
 
   async function openFile(p: string) {
     setLoadingFile(true);

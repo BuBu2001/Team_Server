@@ -36,7 +36,7 @@ SEL_INPUT = "textarea.message-input-textarea"
 SEL_SEND = ".message-input-right-button-send"
 SEL_LOADING = ".response-loading"
 SEL_STATUS = ".qwen-chat-status-card-title"
-SEL_ANSWER = ".qwen-markdown-text"
+SEL_THINKING_TITLE = ".qwen-chat-thinking-status-card-title-text"
 #: Модалка «Добро пожаловать в Qwen» / входа (antd) — всплывает без аккаунта.
 SEL_LOGIN_MODAL = ".ant-modal-root"
 #: Кнопка входа в шапке (встречается русская и английская вёрстка).
@@ -233,6 +233,30 @@ async def open_browser() -> dict:
     return await status()
 
 
+async def new_chat() -> dict:
+    """Начинает свежий диалог: перезагружает страницу Qwen в пустой чат.
+
+    Контекст проекта подклеивается к каждому вопросу, а старая переписка на
+    странице Qwen путает ИИ при смене проекта — поэтому «Новый диалог»
+    сбрасывает и страницу, и локальную историю чата на фронте.
+    """
+    async with _lock:
+        page = await _ensure_page()
+        try:
+            await page.bring_to_front()
+        except Exception:
+            pass
+        await page.goto(QWEN_URL, wait_until="domcontentloaded", timeout=45_000)
+        try:
+            await page.wait_for_selector(SEL_INPUT, timeout=25_000)
+        except Exception as exc:
+            raise QwenError(
+                "Страница Qwen перезагрузилась, но поле ввода не появилось. "
+                "Войдите в аккаунт в окне браузера на сервере."
+            ) from exc
+    return await status()
+
+
 async def close_browser() -> None:
     """Гасит браузер (при остановке сервера)."""
     global _context
@@ -303,25 +327,86 @@ async def _send(page) -> None:
 
 
 async def _answer_text(page) -> str:
-    """Последний ответ на странице (пустая строка, если ответов ещё нет)."""
+    """Текст последнего ответа ИИ целиком.
+
+    В новой вёрстке Qwen каждый фрагмент — отдельный span, поэтому берём
+    контейнер последнего ассистентского ответа (.response-message-content),
+    который даёт полный текст целиком.
+    """
+    try:
+        loc = page.locator(
+            ".qwen-chat-message-assistant .response-message-content"
+        )
+        if await loc.count():
+            text = (await loc.last.inner_text() or "").strip()
+            if text:
+                return text
+    except Exception:
+        pass
+
+    # запасной: если контейнер ответа сильно изменился — склеиваем все
+    # .qwen-markdown-text внутри последней .custom-qwen-markdown
+    try:
+        scope = page.locator(".custom-qwen-markdown")
+        if await scope.count():
+            texts: list[str] = []
+            markdown = scope.last
+            for span in await markdown.locator(".qwen-markdown-text").all():
+                t = (await span.inner_text() or "").strip()
+                if t:
+                    texts.append(t)
+            if texts:
+                return "\n".join(texts)
+    except Exception:
+        pass
+
+    # совсем старый запасной вариант
     try:
         blocks = page.locator(SEL_ANSWER)
-        if not await blocks.count():
-            return ""
-        return (await blocks.last.inner_text() or "").strip()
+        if await blocks.count():
+            return (await blocks.last.inner_text() or "").strip()
     except Exception:
         return ""
+    return ""
 
 
 async def _busy(page) -> bool:
-    """Горит ли индикатор «ИИ думает» (загрузка или карточка статуса)."""
-    for sel in (SEL_LOADING, SEL_STATUS):
-        try:
-            loc = page.locator(sel)
-            if await loc.count() and await loc.first.is_visible():
-                return True
-        except Exception:
-            continue
+    """Горит ли индикатор «ИИ думает» (загрузка, карточка статуса, размышление)."""
+    try:
+        load = page.locator(SEL_LOADING)
+        if await load.count() and await load.first.is_visible():
+            return True
+    except Exception:
+        pass
+
+    # Карточка размышления: есть текст и нет слова «Завершено/Отменено»
+    try:
+        title = page.locator(SEL_THINKING_TITLE)
+        if await title.count():
+            for t in await title.all():
+                try:
+                    txt = (await t.inner_text() or "").strip().lower()
+                except Exception:
+                    continue
+                if not txt:
+                    continue
+                if "заверш" not in txt and "отмен" not in txt:
+                    return True
+    except Exception:
+        pass
+
+    try:
+        st = page.locator(SEL_STATUS)
+        if await st.count() and await st.first.is_visible():
+            try:
+                txt = (await st.first.inner_text() or "").strip().lower()
+                if txt and "заверш" in txt:
+                    return False
+            except Exception:
+                pass
+            return True
+    except Exception:
+        pass
     return False
 
 

@@ -201,6 +201,7 @@ export const api = {
   // --- «песочница»: разговор с ИИ (Qwen) через браузер на сервере ---
   sandboxStatus: () => request<SandboxStatus>("/api/sandbox/status"),
   sandboxBrowser: () => request<SandboxStatus>("/api/sandbox/browser", { method: "POST" }),
+  sandboxReset: () => request<SandboxStatus>("/api/sandbox/reset", { method: "POST" }),
   sandboxAsk: (prompt: string, projectId?: number | null) =>
     request<SandboxAnswer>(
       "/api/sandbox/ask",

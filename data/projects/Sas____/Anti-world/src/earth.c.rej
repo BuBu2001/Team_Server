@@ -1,0 +1,15 @@
+--- src/earth.c
++++ src/earth.c
+@@ -388,9 +388,12 @@ static float river_cut(float lon, float lat)
+         float dmin = 1e9f;
+         int j;
+         for (j = 0; j + 1 < r->n; j++) {
+             float d = seg_dist(lon, lat,
+                                r->pts[2 * j], r->pts[2 * j + 1],
+                                r->pts[2 * j + 2], r->pts[2 * j + 3]);
++            if (fabsf(lon+90)<0.01f && fabsf(lat-36)<0.01f && i<2)
++                fprintf(stderr,"  river%d seg%d d=%.3f n=%d b0=%.1f b1=%.1f b2=%.1f b3=%.1f\n",
++                    i,j,d,r->n,r->b[0],r->b[1],r->b[2],r->b[3]);
+             if (d < dmin) dmin = d;
+         }
+ 

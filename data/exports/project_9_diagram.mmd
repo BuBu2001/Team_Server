@@ -1,0 +1,23 @@
+flowchart TD
+    0[/"🗂 Sas____"/]
+    0 --> 1[/"📁 Anti-world"/]
+    1 --> 2(&quot;📄 antiworld&quot;)
+    1 --> 3(&quot;📄 Makefile&quot;)
+    1 --> 4(&quot;📄 SESSION_LOG.txt&quot;)
+    1 --> 5(&quot;📄 shot.ppm&quot;)
+    1 --> 6[/"📁 src"/]
+    6 --> 7(&quot;📄 earth.c&quot;)
+    6 --> 8(&quot;📄 earth.c.orig&quot;)
+    6 --> 9(&quot;📄 earth.c.rej&quot;)
+    6 --> 10(&quot;📄 earth.h&quot;)
+    6 --> 11(&quot;📄 earth_data.h&quot;)
+    6 --> 12(&quot;📄 gmath.h&quot;)
+    6 --> 13(&quot;📄 main.c&quot;)
+    6 --> 14(&quot;📄 noise.c&quot;)
+    6 --> 15(&quot;📄 noise.h&quot;)
+    6 --> 16(&quot;📄 renderer.c&quot;)
+    6 --> 17(&quot;📄 renderer.h&quot;)
+    classDef dir fill:#1f6feb22,stroke:#1f6feb,color:#58a6ff;
+    classDef file fill:#21262d,stroke:#30363d,color:#c9d1d9;
+    class 0,1,6 dir;
+    class 2,3,4,5,7,8,9,10,11,12,13,14,15,16,17 file;

@@ -637,3 +637,27 @@ def test_qwen_executable_env_override(monkeypatch, tmp_path):
     fake.chmod(0o755)
     monkeypatch.setenv("TEAM_SERVER_BROWSER", str(fake))
     assert qwen._executable() == str(fake)
+
+
+def test_sandbox_reset_starts_new_dialog(platform, monkeypatch):
+    """Сброс диалога: уходит в qwen.new_chat(), результат — в журнал."""
+    from app_platform import qwen
+
+    client, _main, _db, _tmp = platform
+    assert client.post("/api/sandbox/reset").status_code == 401
+
+    _login(client, "nick_sandbox", "host")
+    called: dict = {}
+
+    async def fake_new_chat():
+        called["yes"] = True
+        return {"open": True, "url": "https://chat.qwen.ai/", "logged_in": True}
+
+    monkeypatch.setattr(qwen, "new_chat", fake_new_chat)
+    resp = client.post("/api/sandbox/reset")
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["open"] is True
+    assert called.get("yes")
+
+    actions = [a for a in client.get("/api/journal").json()["rows"] if a["action"] == "sandbox"]
+    assert any("новый диалог" in (a["details"] or "") for a in actions)

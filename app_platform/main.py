@@ -791,6 +791,20 @@ async def api_sandbox_browser(request: Request):
     return status
 
 
+@app.post("/api/sandbox/reset")
+async def api_sandbox_reset(request: Request):
+    """Начинает новый диалог: страница Qwen сбрасывается в пустой чат."""
+    user = current_user(request)
+    if not user:
+        return _unauthorized()
+    try:
+        status = await qwen.new_chat()
+    except qwen.QwenError as exc:
+        return JSONResponse({"detail": str(exc)}, status_code=503)
+    db.log_action(user["username"], "sandbox", "начал новый диалог с ИИ")
+    return status
+
+
 @app.post("/api/sandbox/ask")
 async def api_sandbox_ask(payload: SandboxAskPayload, request: Request):
     """Задаёт вопрос ИИ и возвращает готовый ответ.

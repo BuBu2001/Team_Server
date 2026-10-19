@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   ChevronRight,
+  Download,
   FileText,
   Folder,
   Home,
 } from "lucide-react";
-import { api, ApiError, type FileContent, type FileEntry } from "../api";
-import { ErrorNote, Spinner, formatBytes } from "./ui";
+import { api, ApiError, downloadUrl, type FileContent, type FileEntry } from "../api";
+import { Button, ErrorNote, Spinner, formatBytes } from "./ui";
 
 const MAX_RENDER_LINES = 5000;
 
@@ -146,16 +147,58 @@ export function FilesBrowser({
                 <span className="text-xs text-ink-400">{formatBytes(file.size)}</span>
               </div>
             </div>
-            {file.truncated && (
-              <span className="text-xs text-amber-400">
-                показаны первые {formatBytes(512 * 1024)}
-              </span>
-            )}
+            <div className="flex flex-wrap items-center gap-3">
+              {file.truncated && (
+                <span className="text-xs text-amber-400">
+                  показаны первые {formatBytes(512 * 1024)}
+                </span>
+              )}
+              <a href={downloadUrl(projectId, file.path)} download title="Скачать этот файл">
+                <Button variant="outline" size="sm" icon={<Download size={14} />}>
+                  Скачать
+                </Button>
+              </a>
+            </div>
           </div>
 
           {file.binary ? (
-            <div className="code-view py-10 text-center text-sm text-ink-400">
-              Двоичный файл — содержимое не отображается.
+            <div className="space-y-4">
+              <div className="rounded-lg border border-ink-700 bg-ink-800 px-4 py-3 text-sm text-ink-300">
+                <span className="font-medium text-white">
+                  {file.kind ?? "Двоичный файл"}
+                </span>{" "}
+                — это не текстовый файл, исходного кода внутри нет. Ниже — hex-дамп
+                первых байт и строки, вшитые в файл (из них видно, из чего он собран).
+              </div>
+
+              {file.hex && (
+                <details open>
+                  <summary className="cursor-pointer text-xs text-ink-400 hover:text-white">
+                    hex-дамп (первые 512 байт)
+                  </summary>
+                  <div className="code-view mt-2 overflow-x-auto">
+                    <pre className="code">{file.hex}</pre>
+                  </div>
+                </details>
+              )}
+
+              {file.strings && file.strings.length > 0 && (
+                <details>
+                  <summary className="cursor-pointer text-xs text-ink-400 hover:text-white">
+                    строки внутри файла ({file.strings.length})
+                  </summary>
+                  <ul className="mt-2 max-h-80 divide-y divide-ink-800 overflow-y-auto rounded-lg border border-ink-700">
+                    {file.strings.map((s, i) => (
+                      <li
+                        key={i}
+                        className="break-all px-3 py-1 font-mono text-xs text-ink-200"
+                      >
+                        {s}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
             </div>
           ) : (
             <div className="code-view flex">

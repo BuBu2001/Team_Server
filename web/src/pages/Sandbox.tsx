@@ -3,13 +3,25 @@ import {
   Bot,
   FileText,
   FolderGit2,
+  List,
   MessageSquarePlus,
   RefreshCw,
   Rocket,
+  Save,
+  Search,
   Send,
+  Square,
   Wrench,
 } from "lucide-react";
-import { api, ApiError, type SandboxFileEdit, type SandboxStatus } from "../api";
+import { marked } from "marked";
+import DOMPurify from "dompurify";
+import {
+  api,
+  ApiError,
+  type SandboxAgentStep,
+  type SandboxFileEdit,
+  type SandboxStatus,
+} from "../api";
 import {
   Badge,
   Button,
@@ -27,6 +39,16 @@ const PRESETS = [
   "Как запустить этот проект локально? Что нужно установить?",
 ];
 
+/** Иконки инструментов режима агента (шаги под ответом). */
+const TOOL_ICONS: Record<string, ReactNode> = {
+  список: <List size={13} />,
+  чтение: <FileText size={13} />,
+  поиск: <Search size={13} />,
+  запись: <Save size={13} />,
+  создать: <FolderGit2 size={13} />,
+  конец: <Square size={13} />,
+};
+
 /** Одно сообщение чата. История живёт в браузере и переживает F5. */
 interface ChatMessage {
   id: number;
@@ -40,6 +62,10 @@ interface ChatMessage {
   edits?: SandboxFileEdit[];
   applied?: string[];
   applyErr?: string;
+  /** Шаги режима агента: там правки уже применены, остаётся только журнал. */
+  agentLog?: SandboxAgentStep[];
+  /** Ответ на запрос в режиме агента (для подписи «Агент работает…»). */
+  agent?: boolean;
   error?: boolean;
   pending?: boolean;
 }
@@ -63,13 +89,15 @@ function loadChat(): ChatMessage[] {
 }
 
 /**
- * «Песочница»: чат с ИИ, прикреплённый к выбранному проекту.
+ * «Песочница»: чат с ИИ (chat qwen.ai), прикреплённый к выбранному проекту.
  *
  * ИИ работает через настоящий браузер на сервере (app_platform/qwen.py):
  * окно chat.qwen.ai открывается по кнопке в шапке, туда один раз входят в
  * аккаунт. Каждое сообщение уходит с контекстом файлов выбранного проекта,
  * ответ появляется здесь, в чате. Правки из ответа (блоки «ФАЙЛ: …»)
- * применяются кнопкой — файлы проекта внизу обновляются сразу.
+ * применяются кнопкой — файлы проекта внизу обновляются сразу. Без проекта
+ * можно попросить создать репозиторий: блок «ИНСТРУМЕНТ: создать»
+ * выполняется на сервере, новый проект появляется в списке и подключается.
  */
 export function Sandbox() {
   const [status, setStatus] = useState<SandboxStatus | null>(null);
@@ -84,6 +112,11 @@ export function Sandbox() {
   const [prompt, setPrompt] = useState("");
   const [asking, setAsking] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+
+  // режим агента: ИИ сам читает и правит файлы проекта (без «Применить»)
+  const [agentMode, setAgentMode] = useState(false);
+  // пока переключаем родный режим на сайте Qwen (клик по меню режимов)
+  const [modeSwitching, setModeSwitching] = useState(false);
 
   // правка ИИ → файлы проекта; refreshKey заставляет FilesBrowser перечитать
   const [applying, setApplying] = useState<string | null>(null);
@@ -104,19 +137,26 @@ export function Sandbox() {
       .catch((e: unknown) => setStatusErr(errText(e)));
   }, []);
 
+  // ---- список проектов (повторно вызывается, когда ИИ создаёт репозиторий) ----
+  const loadProjects = useCallback(
+    () =>
+      api
+        .projects()
+        .then((res) =>
+          setProjects(
+            res.projects
+              .filter((p) => p.access)
+              .map((p) => ({ id: p.id, name: p.name, access: p.access })),
+          ),
+        )
+        .catch((e: unknown) => setProjectsErr(errText(e))),
+    [],
+  );
+
   useEffect(() => {
     refreshStatus();
-    api
-      .projects()
-      .then((res) =>
-        setProjects(
-          res.projects
-            .filter((p) => p.access)
-            .map((p) => ({ id: p.id, name: p.name, access: p.access })),
-        ),
-      )
-      .catch((e: unknown) => setProjectsErr(errText(e)));
-  }, [refreshStatus]);
+    loadProjects();
+  }, [refreshStatus, loadProjects]);
 
   // пока браузер открыт — раз в 5 с подтягиваем статус (вошли ли в аккаунт)
   useEffect(() => {
@@ -181,9 +221,28 @@ export function Sandbox() {
       .catch((e: unknown) => setStatusErr(errText(e)));
   };
 
+  // ---- тумблер «Режим агента»: включает наш протокол И режим на сайте Qwen ----
+  const toggleAgent = () => {
+    if (asking || modeSwitching) return;
+    const next = !agentMode;
+    setModeSwitching(true);
+    setStatusErr("");
+    api
+      .sandboxMode(next)
+      .then((res) => {
+        setAgentMode(res.agent);
+        api.sandboxStatus().then(setStatus).catch(() => undefined);
+      })
+      // не включилось — показываем причину (нет окна/входа, пункт недоступен)
+      .catch((e: unknown) => setStatusErr(errText(e)))
+      .finally(() => setModeSwitching(false));
+  };
+
   // ---- отправка сообщения ----
   const ask = (override?: string) => {
     const text = (override ?? prompt).trim();
+    // агент правит выбранный проект, а без него — создаёт репозиторий по просьбе
+    const useAgent = agentMode;
     if (!text || asking) return;
     const proj = projects.find((p) => p.id === projectId);
     const userId = (idRef.current += 1);
@@ -197,6 +256,7 @@ export function Sandbox() {
         text: "",
         project: proj?.name,
         pid: projectId ?? undefined,
+        agent: useAgent,
         pending: true,
       },
     ]);
@@ -204,8 +264,13 @@ export function Sandbox() {
     setAsking(true);
     setElapsed(0);
     api
-      .sandboxAsk(text, projectId)
+      .sandboxAsk(text, projectId, useAgent)
       .then((res) => {
+        // агент уже записал файлы (и создал репозиторий) — список перечитываем сразу
+        const wrote = !!res.agent_log?.some(
+          (s) =>
+            (s.tool === "запись" || s.tool === "создать") && !s.note.startsWith("ошибка"),
+        );
         setMessages((prev) =>
           prev.map((m) =>
             m.id === aiId
@@ -214,11 +279,24 @@ export function Sandbox() {
                   pending: false,
                   text: res.answer,
                   edits: res.edits,
-                  project: res.project || m.project,
+                  agentLog: res.agent_log,
+                  project: res.project || res.created?.name || m.project,
                 }
               : m,
           ),
         );
+        // новый репозиторий от ИИ: перечитываем список и сразу подключаем его к чату
+        const created = res.created;
+        if (created) {
+          void loadProjects().then(() => {
+            setProjectId(created.id);
+            setRefreshKey((n) => n + 1);
+          });
+        }
+        if (wrote) {
+          setRefreshKey((n) => n + 1);
+          filesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
       })
       .catch((e: unknown) => {
         setMessages((prev) =>
@@ -315,17 +393,20 @@ export function Sandbox() {
 
           {m.pending ? (
             <div className="text-sm text-ink-300">
-              <Spinner label={`ИИ отвечает… ${elapsed} с`} />
+              <Spinner
+                label={m.agent ? `Агент выполняет задачу… ${elapsed} с` : `ИИ отвечает… ${elapsed} с`}
+              />
             </div>
           ) : (
             <>
               <div
-                className={`whitespace-pre-wrap break-words text-sm ${
+                className={`chat-md max-w-none text-sm ${
                   m.error ? "text-dragon-400" : "text-ink-200"
                 }`}
-              >
-                {m.text}
-              </div>
+                dangerouslySetInnerHTML={{
+                  __html: DOMPurify.sanitize(marked.parse(m.text || "") as string),
+                }}
+              />
 
               {!!m.edits?.length && (
                 <div className="mt-3 border-t border-ink-700 pt-2.5">
@@ -375,6 +456,43 @@ export function Sandbox() {
                   {m.applyErr && <p className="mt-2 text-xs text-dragon-400">{m.applyErr}</p>}
                 </div>
               )}
+
+              {!!m.agentLog?.length && (
+                <div className="mt-3 border-t border-ink-700 pt-2.5">
+                  <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-emerald-400">
+                    <Wrench size={13} /> Действия агента — «запись» и «создать» применяются сразу
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    {m.agentLog.map((step, i) => {
+                      const err = step.note.startsWith("ошибка");
+                      const wrote =
+                        (step.tool === "запись" || step.tool === "создать") && !err;
+                      const tone = err
+                        ? "text-dragon-400"
+                        : wrote
+                          ? "text-emerald-400"
+                          : "text-ink-400";
+                      return (
+                        <div
+                          key={`${m.id}-step-${i}`}
+                          className="flex flex-wrap items-center gap-2 rounded-lg border border-ink-700 bg-ink-950/60 px-3 py-1.5 text-xs"
+                        >
+                          <span className={`shrink-0 ${tone}`}>
+                            {TOOL_ICONS[step.tool] ?? <Wrench size={13} />}
+                          </span>
+                          <span className="shrink-0 font-medium text-white">{step.tool}</span>
+                          {step.path && (
+                            <span className="min-w-0 flex-1 truncate font-mono text-ink-300">
+                              {step.path}
+                            </span>
+                          )}
+                          <span className={tone}>{step.note}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -385,7 +503,7 @@ export function Sandbox() {
     <div className="animate-fade-up">
       <PageHeader
         title="Песочница"
-        subtitle="Чат с ИИ прикреплён к выбранному проекту: видит его файлы и правит их по вашей команде."
+        subtitle="chat qwen.ai: прикрепляется к выбранному проекту — видит его файлы и правит их; без проекта может создать репозиторий по вашей просьбе."
         actions={
           <Button
             icon={<Rocket size={16} />}
@@ -430,16 +548,39 @@ export function Sandbox() {
           )}
         </div>
 
-        {/* Чат с ИИ — на месте прежней плашки «Браузер ИИ открыт» */}
+        {/* chat qwen.ai — на месте прежней плашки «Браузер ИИ открыт» */}
         <div className="card flex flex-col overflow-hidden">
           {/* шапка чата */}
           <div className="flex flex-wrap items-center gap-2 border-b border-ink-700 bg-ink-800/60 px-4 py-3">
             <Bot size={18} className="text-dragon-500" />
-            <span className="text-sm font-semibold text-white">Чат с ИИ</span>
+            <span className="text-sm font-semibold text-white">chat qwen.ai</span>
             <Badge tone={attachedName ? "blue" : "neutral"}>
               {attachedName ? `прикреплён: ${attachedName}` : "без проекта"}
             </Badge>
             <span className="ml-auto flex items-center gap-2">
+              <button
+                type="button"
+                onClick={toggleAgent}
+                disabled={asking || modeSwitching}
+                title="Включает режим агента: наш протокол инструментов + родный Agent Mode на сайте Qwen (окно браузера на сервере)"
+                className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-60 ${
+                  agentMode
+                    ? "border-dragon-700 bg-dragon-900/60 text-white"
+                    : "border-ink-600 text-ink-300 hover:border-ink-500 hover:text-white"
+                }`}
+              >
+                <Wrench size={13} className={agentMode ? "text-emerald-400" : ""} />
+                Режим агента
+                <span
+                  className={`ml-0.5 h-2 w-2 rounded-full ${
+                    modeSwitching
+                      ? "animate-pulse bg-amber-400"
+                      : agentMode
+                        ? "bg-emerald-400"
+                        : "bg-ink-500"
+                  }`}
+                />
+              </button>
               <Badge
                 tone={
                   !status?.open
@@ -497,11 +638,12 @@ export function Sandbox() {
                 <p className="mb-1 text-sm text-ink-200">
                   {attachedName
                     ? `Чат прикреплён к проекту «${attachedName}» — его файлы уходят ИИ с каждым сообщением.`
-                    : "Выберите проект слева — ИИ получит его файлы, либо спросите без контекста."}
+                    : "Выберите проект слева — ИИ получит его файлы; либо просто попросите «создай репозиторий» — ИИ создаст новый проект."}
                 </p>
                 <p className="text-xs text-ink-400">
                   ИИ может править файлы: кнопка «Применить» под ответом записывает изменения,
-                  и они сразу видны в списке файлов ниже.
+                  и они сразу видны в списке файлов ниже. Либо включите «Режим агента» в шапке —
+                  тогда ИИ сам читает файлы, правит их и создаёт репозитории без подтверждения.
                 </p>
                 <div className="mt-4 flex flex-col gap-2">
                   {PRESETS.map((p) => (
@@ -546,12 +688,20 @@ export function Sandbox() {
                 disabled={!prompt.trim()}
                 onClick={() => ask()}
               >
-                {asking ? "ИИ отвечает…" : "Отправить"}
+                {asking ? (agentMode ? "Агент работает…" : "ИИ отвечает…") : "Отправить"}
               </Button>
             </div>
+            {agentMode && projectId == null && (
+              <p className="mt-2 text-xs text-ink-400">
+                Режим агента без проекта: попросите ИИ «создай репозиторий» — он создаст новый
+                проект, он появится слева и подключится к чату.
+              </p>
+            )}
             {asking && (
               <p className="mt-2 text-xs text-ink-400">
-                ИИ печатает ответ в окне браузера на сервере — ответ придёт сюда, подождите.
+                {agentMode
+                  ? "Агент выполняет задачу инструментами сервера (читает, пишет, создаёт репозитории) — ответ с журналом шагов придёт сюда, подождите."
+                  : "ИИ печатает ответ в окне браузера на сервере — ответ придёт сюда, подождите."}
               </p>
             )}
           </div>

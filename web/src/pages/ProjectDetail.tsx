@@ -7,6 +7,7 @@ import {
   Calendar,
   Code2,
   Download,
+  FileArchive,
   GitBranch,
   Image as ImageIcon,
   Lock,
@@ -15,7 +16,7 @@ import {
   Trash2,
   User,
 } from "lucide-react";
-import { api, exportUrl, digestUrl, pngUrl, ApiError, type Analysis, type Diagram } from "../api";
+import { api, exportUrl, digestUrl, pngUrl, sourceUrl, ApiError, type Analysis, type Diagram } from "../api";
 import { useAuth } from "../auth";
 import { useAsync } from "../hooks";
 import { Badge, Button, Card, ErrorNote, Spinner, formatDate } from "../components/ui";
@@ -190,6 +191,11 @@ export function ProjectDetail() {
               <a href={digestUrl(id)} download>
                 <Button variant="outline" icon={<Download size={16} />} disabled={!project.has_digest}>
                   Digest
+                </Button>
+              </a>
+              <a href={sourceUrl(id)} download>
+                <Button variant="outline" icon={<FileArchive size={16} />}>
+                  Исходник
                 </Button>
               </a>
               <a href={exportUrl(id)} target="_blank" rel="noreferrer">

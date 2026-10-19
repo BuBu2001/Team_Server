@@ -77,6 +77,12 @@ export interface FileContent {
   binary: boolean;
   truncated: boolean;
   content: string;
+  /** Для бинарников: тип файла по магическим байтам (ELF, PNG, ZIP…). */
+  kind?: string;
+  /** Для бинарников: hex-дамп первых байт. */
+  hex?: string;
+  /** Для бинарников: печатные строки, вшитые в файл. */
+  strings?: string[];
 }
 
 export interface PulseAction {
@@ -115,6 +121,17 @@ export interface SandboxAnswer {
   project: string;
   /** Правки из ответа (блоки «ФАЙЛ: …»), которые можно применить к проекту. */
   edits: SandboxFileEdit[];
+  /** Шаги режима агента (там правки уже применены — «Применить» не нужен). */
+  agent_log?: SandboxAgentStep[];
+  /** Репозиторий, который ИИ создал по этой просьбе (инструмент «создать»). */
+  created?: { id: number; name: string };
+}
+
+/** Один шаг режима агента: вызов инструмента и что из него вышло. */
+export interface SandboxAgentStep {
+  tool: string; // «список» | «чтение» | «запись» | «поиск» | «конец»
+  path: string; // путь или строка поиска
+  note: string; // короткая запись в журнал («записан …», «ошибка: …»)
 }
 
 /** Одна правка файла из ответа ИИ. */
@@ -163,7 +180,11 @@ function jsonBody(data: unknown): RequestInit {
 export const api = {
   // --- сессия ---
   me: () => request<{ user: User }>("/api/auth/me"),
-  login: (nick: string) => request<{ user: User }>("/api/auth/login", jsonBody({ nick })),
+  login: (nick: string) =>
+    request<{ user: User; profile_forgotten?: boolean }>(
+      "/api/auth/login",
+      jsonBody({ nick }),
+    ),
   logout: () => request<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
   setRole: (role: Role) => request<{ user: User }>("/api/auth/role", jsonBody({ role })),
 
@@ -202,10 +223,13 @@ export const api = {
   sandboxStatus: () => request<SandboxStatus>("/api/sandbox/status"),
   sandboxBrowser: () => request<SandboxStatus>("/api/sandbox/browser", { method: "POST" }),
   sandboxReset: () => request<SandboxStatus>("/api/sandbox/reset", { method: "POST" }),
-  sandboxAsk: (prompt: string, projectId?: number | null) =>
+  // родный «Agent Mode» на странице Qwen — переключается тем же тумблером
+  sandboxMode: (agent: boolean) =>
+    request<{ agent: boolean }>("/api/sandbox/mode", jsonBody({ agent })),
+  sandboxAsk: (prompt: string, projectId?: number | null, agent = false) =>
     request<SandboxAnswer>(
       "/api/sandbox/ask",
-      jsonBody({ prompt, project_id: projectId ?? null }),
+      jsonBody({ prompt, project_id: projectId ?? null, agent }),
     ),
   sandboxApply: (projectId: number, path: string, content: string) =>
     request<{ path: string; bytes: number }>(
@@ -223,3 +247,8 @@ export const api = {
 export const pngUrl = (id: number) => `/api/projects/${id}/png`;
 export const digestUrl = (id: number) => `/api/projects/${id}/digest`;
 export const exportUrl = (id: number) => `/api/projects/${id}/export`;
+/** Zip со всеми исходниками проекта (кнопка «Исходник»). */
+export const sourceUrl = (id: number) => `/api/projects/${id}/source`;
+/** Скачивание одного файла проекта (кнопка «Скачать» в просмотре файла). */
+export const downloadUrl = (id: number, path: string) =>
+  `/api/projects/${id}/download?path=${encodeURIComponent(path)}`;

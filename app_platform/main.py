@@ -145,9 +145,49 @@ class RolePayload(BaseModel):
     role: str
 
 
+def _client_ip(request: Request) -> str:
+    """IP текущего входа.
+
+    За обратным прокси на той же машине (nginx и т.п.) — X-Forwarded-For,
+    иначе прямой адрес клиента.
+    """
+    xff = (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
+    if xff:
+        return xff
+    return request.client.host if request.client else ""
+
+
+def _last_login_ip_path() -> Path:
+    """Файл с IP последнего входа: data/last_login_ip (в git не тащится)."""
+    return UPLOAD_DIR.parent / "last_login_ip"
+
+
+def _last_login_ip() -> str:
+    """IP последнего входа; "" — входа ещё не было."""
+    try:
+        return _last_login_ip_path().read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
+
+
+def _save_login_ip(ip: str) -> None:
+    try:
+        path = _last_login_ip_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(ip, encoding="utf-8")
+        path.chmod(0o600)
+    except OSError:
+        pass  # не записался — следующий вход посчитается первым (без стирания)
+
+
 @app.post("/api/auth/login")
-def api_login(payload: NickPayload):
-    """Вход без пароля: если ника нет — аккаунт создаётся (роль Pi)."""
+async def api_login(payload: NickPayload, request: Request):
+    """Вход без пароля: если ника нет — аккаунт создаётся (роль Pi).
+
+    С нового IP данные прошлого входа забываются: профиль браузера (куки,
+    история, сохранённые пароли) стирается — см. qwen.forget_profile.
+    Вход с того же IP ничего не трогает.
+    """
     nick = payload.nick.strip()
     if not USERNAME_RE.match(nick):
         return JSONResponse(
@@ -160,7 +200,29 @@ def api_login(payload: NickPayload):
         db.create_user(nick, role="pi")
         db.log_action(nick, "register", "регистрация в веб-панели", "")
     user = db.get_user_by_name(nick)
-    resp = JSONResponse({"user": _user_json(user)})
+
+    ip = _client_ip(request)
+    last_ip = _last_login_ip() if ip else ""
+    forgotten = False
+    if ip and last_ip and last_ip != ip:
+        # новый IP: следов прошлого входа не оставляем — профиль стирается
+        forgotten = True
+        try:
+            await qwen.forget_profile()
+            db.log_action(
+                nick, "login", f"вход с нового IP {ip} — профиль браузера стёр", ""
+            )
+        except qwen.QwenError as exc:
+            db.log_action(
+                nick,
+                "login",
+                f"вход с нового IP {ip} — профиль стёрть не вышло: {exc}",
+                "",
+            )
+    if ip:
+        _save_login_ip(ip)
+
+    resp = JSONResponse({"user": _user_json(user), "profile_forgotten": forgotten})
     resp.set_cookie("nick", nick, httponly=True, samesite="lax")
     return resp
 
@@ -557,6 +619,68 @@ def _require_project(project_id: int, request: Request):
     return user, project
 
 
+#: Магические байты → человекочитаемый тип файла (браузер кода показывает их
+#: вместо пустого «двоичный файл»: исполняемые файлы, картинки, архивы…).
+_BINARY_MAGIC: tuple[tuple[bytes, str], ...] = (
+    (b"\x7fELF", "ELF — исполняемый файл/библиотека (Linux)"),
+    (b"MZ", "PE — исполняемый файл (Windows)"),
+    (b"\x89PNG\r\n\x1a\n", "PNG — изображение"),
+    (b"\xff\xd8\xff", "JPEG — изображение"),
+    (b"GIF87a", "GIF — изображение"),
+    (b"GIF89a", "GIF — изображение"),
+    (b"BM", "BMP — изображение"),
+    (b"%PDF", "PDF — документ"),
+    (b"PK\x03\x04", "ZIP — архив (или docx/xlsx/epub)"),
+    (b"\x1f\x8b", "gzip — архив"),
+    (b"Rar!\x1a\x07", "RAR — архив"),
+    (b"7z\xbc\xaf\x27\x1c", "7z — архив"),
+    (b"\x00asm", "WebAssembly — модуль"),
+    (b"SQLite format 3\x00", "SQLite — база данных"),
+    (b"\xca\xfe\xba\xbe", "Java class"),
+    (b"\x00\x00\x01\x00", "ICO — иконка"),
+    (b"RIFF", "RIFF — медиафайл (wav/webp/avi)"),
+)
+
+
+def _binary_info(data: bytes) -> dict:
+    """Что за бинарник: тип по магии, hex-дамп и строки, вшитые в файл.
+
+    В текстовом файле «написанный код» и так виден, а у исполняемого файла
+    исходников нет — вместо пустого сообщения показываем hex-дамп первых
+    байт и печатные строки (как утилита ``strings``): в них часто видно,
+    из чего и как собран файл.
+    """
+    kind = "двоичный файл"
+    for magic, name in _BINARY_MAGIC:
+        if data.startswith(magic):
+            kind = name
+            if magic == b"\x7fELF" and len(data) > 4:
+                kind += ", 64-битный" if data[4] == 2 else ", 32-битный"
+            break
+
+    dump = data[:512]
+    lines = []
+    for off in range(0, len(dump), 16):
+        chunk = dump[off : off + 16]
+        hex_part = " ".join(f"{b:02x}" for b in chunk)
+        ascii_part = "".join(chr(b) if 32 <= b < 127 else "." for b in chunk)
+        lines.append(f"{off:08x}  {hex_part:<47}  {ascii_part}")
+
+    strings: list[str] = []
+    for match in re.finditer(rb"[\x20-\x7e]{5,}", data):
+        if len(strings) >= 200:
+            break
+        strings.append(match.group().decode("ascii")[:120])
+
+    return {"kind": kind, "hex": "\n".join(lines), "strings": strings}
+
+
+def _safe_filename(name: str) -> str:
+    """Имя файла для Content-Disposition: без кавычек, «../» и управляющих символов."""
+    name = re.sub(r'[\\/:*?"<>|\x00-\x1f]+', "_", name).strip(" .")
+    return name or "file"
+
+
 @app.get("/api/projects/{project_id}/files")
 def api_project_files(project_id: int, path: str = "", request: Request = None):
     """Список файлов и папок проекта (браузер кода, как на GitHub)."""
@@ -622,13 +746,88 @@ def api_project_file(project_id: int, path: str, request: Request):
     truncated = size > MAX_VIEW_BYTES
     binary = b"\x00" in data
     content = "" if binary else data.decode("utf-8", errors="replace")
-    return {
+    result = {
         "path": target.relative_to(root).as_posix(),
         "size": size,
         "binary": binary,
         "truncated": truncated,
         "content": content,
     }
+    if binary:
+        # для бинарника вместо пустого сообщения — тип, hex-дамп и строки
+        result.update(_binary_info(data))
+    return result
+
+
+@app.get("/api/projects/{project_id}/source")
+def api_project_source(project_id: int, request: Request):
+    """Исходники проекта целиком — zip-архив (кнопка «Исходник» рядом с Digest)."""
+    ctx = _require_project(project_id, request)
+    if isinstance(ctx, JSONResponse):
+        return ctx
+    _user, project = ctx
+    try:
+        root = _browse_root(project)
+    except (OSError, ValueError, zipfile.BadZipFile) as e:
+        return JSONResponse({"detail": str(e)}, status_code=404)
+
+    buf = io.BytesIO()
+    files_count = 0
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        # обходим вручную: служебные каталоги (node_modules и т.п.) не заходим
+        stack = [root]
+        while stack:
+            current = stack.pop()
+            try:
+                children = sorted(current.iterdir())
+            except OSError:
+                continue
+            for child in children:
+                if child.name in _BROWSE_SKIP or child.is_symlink():
+                    continue
+                if child.is_dir():
+                    stack.append(child)
+                elif child.is_file():
+                    zf.write(child, child.relative_to(root).as_posix())
+                    files_count += 1
+    if files_count == 0:
+        return JSONResponse({"detail": "В проекте нет файлов"}, status_code=404)
+
+    db.log_action(_user["username"], "download", "исходник проекта", project["name"])
+    return Response(
+        content=buf.getvalue(),
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="{_safe_filename(project["name"])}.zip"'
+        },
+    )
+
+
+@app.get("/api/projects/{project_id}/download")
+def api_project_download(project_id: int, path: str, request: Request):
+    """Скачивание одного файла проекта (кнопка «Скачать» в просмотре файла)."""
+    ctx = _require_project(project_id, request)
+    if isinstance(ctx, JSONResponse):
+        return ctx
+    _user, project = ctx
+    try:
+        root = _browse_root(project)
+        target = _safe_child(root, path)
+    except (OSError, ValueError, zipfile.BadZipFile) as e:
+        return JSONResponse({"detail": str(e)}, status_code=404)
+    if not target.is_file():
+        return JSONResponse({"detail": "Файл не найден"}, status_code=404)
+    try:
+        data = target.read_bytes()
+    except OSError as e:
+        return JSONResponse({"detail": f"Не удалось прочитать файл: {e}"}, status_code=500)
+
+    db.log_action(_user["username"], "download", f"файл {target.name}", project["name"])
+    return Response(
+        content=data,
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{_safe_filename(target.name)}"'},
+    )
 
 
 @app.get("/api/projects/{project_id}/pulse")
@@ -752,12 +951,17 @@ MAX_FILE_EDIT_CHARS = 400_000
 class SandboxAskPayload(BaseModel):
     prompt: str
     project_id: int | None = None  # если указан — файлы проекта уходят как контекст
+    agent: bool = False  # режим агента: ИИ сам правит файлы проекта (без «Применить»)
 
 
 class SandboxApplyPayload(BaseModel):
     project_id: int
     path: str  # относительный путь внутри проекта
     content: str  # новое содержимое файла целиком
+
+
+class SandboxModePayload(BaseModel):
+    agent: bool = False  # включить/выключить родный «Agent Mode» на сайте Qwen
 
 
 async def _qwen_status_or_error():
@@ -805,12 +1009,71 @@ async def api_sandbox_reset(request: Request):
     return status
 
 
+@app.post("/api/sandbox/mode")
+async def api_sandbox_mode(payload: SandboxModePayload, request: Request):
+    """Щёлкает родным «Agent Mode» на странице Qwen в окне браузера сервера.
+
+    Переключатель «Режим агента» в «Песочнице» включает и наш протокол
+    инструментов, и режим на самом сайте Qwen — окно браузера показывает
+    включённый пункт меню режимов.
+    """
+    user = current_user(request)
+    if not user:
+        return _unauthorized()
+    try:
+        on = await qwen.set_site_agent_mode(payload.agent)
+    except qwen.QwenError as exc:
+        return JSONResponse({"detail": str(exc)}, status_code=503)
+    db.log_action(
+        user["username"],
+        "sandbox",
+        "включил режим агента на сайте Qwen" if on else "выключил режим агента на сайте Qwen",
+    )
+    return {"agent": on}
+
+
+def _ai_create_repo(user: dict, name: str) -> dict:
+    """Создаёт новый проект (репозиторий) по просьбе ИИ. Возвращает проект.
+
+    Каталог и запись в БД — как при обычной загрузке (``api_create_project``),
+    только без архива: файлы в новый репозиторий дописывает сам ИИ
+    (инструмент «запись») или пользователь через браузер кода. Повторное
+    создание с тем же именем у того же владельца — ошибка (ИИ получит её
+    результатом инструмента и попробует другое имя).
+    """
+    name = (name or "").strip()
+    if not name:
+        raise ValueError("не указано название репозитория")
+    if len(name) > 64:
+        raise ValueError("название слишком длинное (максимум 64 символа)")
+    if "/" in name or "\\" in name or name in (".", ".."):
+        raise ValueError("название не должно содержать «/», «\\» или «..»")
+    if any(p["name"] == name for p in db.list_projects(user["id"])):
+        raise ValueError(f"репозиторий «{name}» уже существует")
+
+    slug = re.sub(r"[^A-Za-z0-9_.-]", "_", name)
+    dest = UPLOAD_DIR / f"{user['username']}__{slug}"
+    guard = 0
+    while dest.exists():  # слаги разных имён могли совпасть — добиваем суффиксом
+        guard += 1
+        if guard > 20:
+            raise ValueError("не удалось подобрать каталог для репозитория")
+        dest = UPLOAD_DIR / f"{user['username']}__{slug}_{guard}"
+    dest.mkdir(parents=True, exist_ok=True)
+
+    project = db.add_project(user["id"], name, str(dest))
+    db.log_action(user["username"], "sandbox", f"ИИ создал репозиторий «{name}»", name)
+    return project
+
+
 @app.post("/api/sandbox/ask")
 async def api_sandbox_ask(payload: SandboxAskPayload, request: Request):
     """Задаёт вопрос ИИ и возвращает готовый ответ.
 
     Промпт уходит в настоящий браузер Qwen на сервере; если указан проект —
     к вопросу подкладывается содержимое его файлов, чтобы ИИ видел код.
+    Блок «ИНСТРУМЕНТ: создать» из ответа (и в обычном чате, и в режиме
+    агента) выполняется сразу: появляется новый репозиторий (проект).
     """
     user = current_user(request)
     if not user:
@@ -824,6 +1087,75 @@ async def api_sandbox_ask(payload: SandboxAskPayload, request: Request):
             {"detail": f"Вопрос слишком длинный (максимум {MAX_PROMPT_CHARS} символов)"},
             status_code=413,
         )
+
+    # Колбэк «создать» для режима агента: создаёт проект и отдаёт его папку,
+    # чтобы агент продолжил работу уже внутри нового репозитория.
+    created_list: list[dict] = []
+
+    def _create_repo_cb(name: str) -> tuple[str, str, Path]:
+        new_project = _ai_create_repo(user, name)
+        created_list.append({"id": new_project["id"], "name": new_project["name"]})
+        return (
+            f"Репозиторий «{new_project['name']}» создан — папка проекта готова, "
+            "можно писать в него файлы инструментом «запись».",
+            f"создан репозиторий «{new_project['name']}»",
+            _browse_root(new_project),
+        )
+
+    # Режим агента: ИИ сам применяет правки к файлам, поэтому для правки
+    # нужен проект и права на запись (те же, что у /api/sandbox/apply).
+    # Без проекта агент тоже работает — он создаёт репозиторий инструментом
+    # «создать» и продолжает в нём же.
+    if payload.agent:
+        project: dict | None = None
+        root = None
+        if payload.project_id:
+            ctx = _require_project(payload.project_id, request)
+            if isinstance(ctx, JSONResponse):
+                return ctx
+            _user, project = ctx
+            if not (project["owner"] == user["username"] or user["role"] == "host"):
+                return JSONResponse(
+                    {"detail": "Править файлы может только владелец проекта или Host"},
+                    status_code=403,
+                )
+            try:
+                root = _browse_root(project)
+            except ValueError as exc:
+                return JSONResponse({"detail": str(exc)}, status_code=400)
+
+        try:
+            answer, agent_log = await qwen.run_agent(
+                prompt,
+                root,
+                project["name"] if project else "",
+                create_repo=_create_repo_cb,
+            )
+        except qwen.QwenError as exc:
+            return JSONResponse({"detail": str(exc)}, status_code=503)
+
+        # Журнал: проект — выбранный, либо только что созданный репозиторий.
+        journal_project = (
+            project["name"] if project else (created_list[-1]["name"] if created_list else "")
+        )
+        db.log_action(user["username"], "sandbox", f"агент ИИ: {prompt[:80]}", journal_project)
+        for step in agent_log:
+            if step["tool"] == "запись" and not step["note"].startswith("ошибка"):
+                db.log_action(
+                    user["username"],
+                    "sandbox",
+                    f"агент ИИ записал {step['path']}",
+                    journal_project,
+                )
+        result_body = {
+            "answer": answer,
+            "project": project["name"] if project else "",
+            "edits": [],  # правки уже применены — ручное «Применить» не нужно
+            "agent_log": agent_log,
+        }
+        if created_list:
+            result_body["created"] = created_list[-1]
+        return result_body
 
     # Контекст проекта: только файлы, к которым у пользователя есть доступ.
     context = ""
@@ -839,19 +1171,52 @@ async def api_sandbox_ask(payload: SandboxAskPayload, request: Request):
         except ValueError as exc:
             return JSONResponse({"detail": str(exc)}, status_code=400)
 
+    # Инструкция «создать репозиторий» — в самый конец промпта, ПОСЛЕ файлов
+    # проекта: прочитанная последней, она срабатывает надёжнее — иначе ИИ
+    # отвечает обычным текстом и вместо блока выдаёт команды терминала.
+    # То же самое в режиме агента делает build_project_context(rules=AGENT_RULES).
+    context = (
+        f"{context}\n\n{qwen.CREATE_RULES.strip()}" if context else qwen.CREATE_RULES.strip()
+    )
     try:
         answer = await qwen.ask(prompt, context=context)
     except qwen.QwenError as exc:
         return JSONResponse({"detail": str(exc)}, status_code=503)
 
+    # Выполняем вызовы «создать» и вычищаем сырые блоки протокола из текста.
+    created: dict | None = None
+    create_calls = [c for c in qwen.parse_agent_calls(answer) if c["tool"] == "создать"]
+    if not create_calls and re.search(r"репозитор|\bрепо\b", prompt, re.I):
+        # просят репозиторий, а блока нет — подсказка тонула или модель ответила
+        # командами: пишем в лог, чтобы по нему видно было, что починить
+        qwen.logger.warning(
+            "Блок «создать» не найден в ответе ИИ (промпт: {}…)", prompt[:80]
+        )
+    if create_calls:
+        answer = qwen.strip_tool_calls(answer, {"создать"})
+        for call in create_calls:
+            try:
+                new_project = _ai_create_repo(user, call.get("name") or call.get("path") or "")
+            except (ValueError, OSError) as exc:
+                answer = f"{answer}\n\n**Репозиторий не создан:** {exc}."
+                continue
+            created = {"id": new_project["id"], "name": new_project["name"]}
+            answer = (
+                f"{answer}\n\n✅ **Репозиторий «{created['name']}» создан** — "
+                "он уже в списке проектов и подключён к чату."
+            )
+
     db.log_action(
         user["username"], "sandbox", f"вопрос ИИ: {prompt[:80]}", project_name
     )
-    return {
+    result_body = {
         "answer": answer,
         "project": project_name,
         "edits": qwen.parse_file_edits(answer) if project_name else [],
     }
+    if created:
+        result_body["created"] = created
+    return result_body
 
 
 @app.post("/api/sandbox/apply")

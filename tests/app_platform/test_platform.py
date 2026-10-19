@@ -243,6 +243,65 @@ def test_project_files_browser(platform):
     ).status_code == 404
 
 
+def test_download_source_zip_and_single_file(platform):
+    """Скачивание исходника (zip, кнопка у Digest) и одного файла (в просмотре)."""
+    client, _main, _db, _tmp = platform
+    _login(client, "vanya_pi", "pi")
+    project = _upload(
+        client, "dl-demo", {"README.md": "# hi\n", "src/app.py": "print(1)\n"}
+    )
+    pid = project["id"]
+
+    # исходник: zip со всеми файлами и исходной структурой каталогов
+    src = client.get(f"/api/projects/{pid}/source")
+    assert src.status_code == 200, src.text
+    assert src.headers["content-type"].startswith("application/zip")
+    assert 'filename="dl-demo.zip"' in src.headers["content-disposition"]
+    with zipfile.ZipFile(io.BytesIO(src.content)) as zf:
+        assert set(zf.namelist()) == {"README.md", "src/app.py"}
+        assert zf.read("src/app.py") == b"print(1)\n"
+
+    # один файл — полный оригинал с принудительным скачиванием
+    got = client.get(f"/api/projects/{pid}/download", params={"path": "src/app.py"})
+    assert got.status_code == 200 and got.content == b"print(1)\n"
+    assert 'attachment; filename="app.py"' in got.headers["content-disposition"]
+
+    # выход за пределы проекта запрещён
+    assert client.get(
+        f"/api/projects/{pid}/download", params={"path": "../../etc/passwd"}
+    ).status_code == 404
+
+    # обе выгрузки попали в журнал (вкладка «Пульс»)
+    pulse = client.get(f"/api/projects/{pid}/pulse").json()
+    downloads = [a for a in pulse["actions"] if a["action"] == "download"]
+    assert len(downloads) == 2
+
+
+def test_binary_file_view_reports_kind_hex_and_strings(platform):
+    """Бинарник в браузере кода: тип по магии, hex-дамп и вшитые строки."""
+    client, *_ = platform
+    _login(client, "vanya_pi", "pi")
+    elf = (
+        b"\x7fELF\x02\x01\x01"
+        + b"\x00" * 9
+        + b"built from src/main.c: antiworld renderer v1"
+        + b"\x00" * 8
+    )
+    project = _upload(client, "bin-demo", {"antiworld": elf, "note.txt": "текст\n"})
+    pid = project["id"]
+
+    body = client.get(f"/api/projects/{pid}/file", params={"path": "antiworld"}).json()
+    assert body["binary"] is True
+    assert "ELF" in body["kind"] and "64" in body["kind"]
+    assert body["hex"].startswith("00000000  7f 45 4c 46")
+    assert any("antiworld renderer" in s for s in body["strings"])
+
+    # обычный текстовый файл рядом — как раньше показывает код
+    txt = client.get(f"/api/projects/{pid}/file", params={"path": "note.txt"}).json()
+    assert txt["binary"] is False and txt["content"] == "текст\n"
+    assert "hex" not in txt
+
+
 def test_project_pulse_and_file_permissions(platform):
     """«Пульс» считает активность и файлы; чужие файлы Pi не видит."""
     client, _main, _db, _tmp = platform
@@ -490,14 +549,18 @@ def test_sandbox_ask_sends_project_context(platform, monkeypatch):
 
 
 def test_sandbox_ask_without_project_has_no_edits(platform, monkeypatch):
-    """Общий вопрос без проекта: контекста нет, правки не предлагаются."""
+    """Общий вопрос без проекта: файлов нет и правки не предлагаются —
+    в контексте только инструкция про создание репозитория."""
     from app_platform import qwen
 
     client, _main, _db, _tmp = platform
     _login(client, "nick_sandbox", "host")
 
     async def fake_ask(prompt: str, context: str = "", timeout_s: int = 0) -> str:
-        assert context == ""
+        # файлов проекта и правок нет — только CREATE_RULES в самом конце
+        assert "main.py" not in context
+        assert "КОНЕЦ-ФАЙЛА" not in context
+        assert "ИНСТРУМЕНТ: создать" in context
         return "Привет! Я просто отвечаю."
 
     monkeypatch.setattr(qwen, "ask", fake_ask)
@@ -505,6 +568,409 @@ def test_sandbox_ask_without_project_has_no_edits(platform, monkeypatch):
     assert resp.status_code == 200, resp.text
     assert resp.json()["edits"] == []
     assert resp.json()["answer"].startswith("Привет")
+
+
+def test_parse_agent_calls_blocks():
+    """Разбор блоков «ИНСТРУМЕНТ: … КОНЕЦ-ИНСТРУМЕНТА» в ответе ИИ."""
+    from app_platform import qwen
+
+    # без блоков — пусто (это обычный финальный ответ)
+    assert qwen.parse_agent_calls("Обычный ответ без инструментов.") == []
+
+    # один блок: имя инструмента и путь
+    answer = "Смотрю проект.\nИНСТРУМЕНТ: список\nФАЙЛ: .\nКОНЕЦ-ИНСТРУМЕНТА\nГотово."
+    assert qwen.parse_agent_calls(answer) == [
+        {"tool": "список", "path": ".", "query": "", "name": "", "content": ""}
+    ]
+
+    # блок «создать»: имя репозитория берётся из строки «НАЗВАНИЕ:»
+    answer = "ИНСТРУМЕНТ: создать\nНАЗВАНИЕ: My Repo\nКОНЕЦ-ИНСТРУМЕНТА"
+    calls = qwen.parse_agent_calls(answer)
+    assert [c["tool"] for c in calls] == ["создать"]
+    assert calls[0]["name"] == "My Repo"
+
+    # два блока подряд: у записи снимается кодовый блок, у поиска — запрос
+    answer = (
+        "Правлю:\n"
+        "ИНСТРУМЕНТ: запись\n"
+        "ФАЙЛ: pkg/mod.py\n"
+        "```python\nx = 1\n```\n"
+        "КОНЕЦ-ИНСТРУМЕНТА\n"
+        "ИНСТРУМЕНТ: поиск\n"
+        "ЗАПРОС: x = 1\n"
+        "КОНЕЦ-ИНСТРУМЕНТА\n"
+    )
+    calls = qwen.parse_agent_calls(answer)
+    assert [c["tool"] for c in calls] == ["запись", "поиск"]
+    assert calls[0]["path"] == "pkg/mod.py"
+    assert calls[0]["content"] == "x = 1\n"
+    assert calls[1]["query"] == "x = 1"
+
+    # strip_tool_calls: блок «создать» вырезается целиком, чужие блоки — остаются
+    mixed = (
+        "Готово.\n\n"
+        "ИНСТРУМЕНТ: создать\nНАЗВАНИЕ: r1\nКОНЕЦ-ИНСТРУМЕНТА\n\n"
+        "И файл:\n"
+        "ИНСТРУМЕНТ: чтение\nФАЙЛ: a.py\nКОНЕЦ-ИНСТРУМЕНТА\n"
+    )
+    stripped = qwen.strip_tool_calls(mixed, {"создать"})
+    assert "НАЗВАНИЕ: r1" not in stripped
+    assert "ИНСТРУМЕНТ: чтение" in stripped
+    assert stripped.startswith("Готово.")
+
+
+def test_qwen_profile_hardening(tmp_path):
+    """Профиль браузера: папка только для владельца, пароли не сохраняются."""
+    import stat
+
+    from app_platform import qwen
+
+    profile = tmp_path / "qwen_profile"
+    default = profile / "Default"
+    default.mkdir(parents=True)
+    prefs_file = default / "Preferences"
+    prefs_file.write_text(
+        json.dumps(
+            {"credentials_enable_service": True, "browser": {"show_home_button": True}}
+        ),
+        encoding="utf-8",
+    )
+
+    qwen._harden_profile(profile)
+
+    # папка профиля — только владелец (куки со стороны не читаются)
+    assert stat.S_IMODE(profile.stat().st_mode) == 0o700
+    # менеджер паролей выключен, чужие настройки целы
+    prefs = json.loads(prefs_file.read_text(encoding="utf-8"))
+    assert prefs["credentials_enable_service"] is False
+    assert prefs["profile"]["password_manager_enabled"] is False
+    assert prefs["browser"]["show_home_button"] is True
+    assert stat.S_IMODE(prefs_file.stat().st_mode) == 0o600
+
+    # профиль ещё не создавался — хардинг просто создаёт файл со своими ключами
+    fresh = tmp_path / "fresh"
+    fresh.mkdir()
+    qwen._harden_profile(fresh)
+    prefs = json.loads((fresh / "Default" / "Preferences").read_text(encoding="utf-8"))
+    assert prefs["credentials_enable_service"] is False
+    assert prefs["profile"]["password_manager_enabled"] is False
+
+
+def test_safe_url_hides_query():
+    """В логи не утекают query-параметры (OAuth-коды, state, токены)."""
+    from app_platform import qwen
+
+    assert qwen._safe_url("https://chat.qwen.ai/c/1?code=SECRET&state=x") == (
+        "https://chat.qwen.ai/c/1"
+    )
+    assert qwen._safe_url("https://chat.qwen.ai/") == "https://chat.qwen.ai/"
+    assert qwen._safe_url("") == ""
+    assert qwen._safe_url(None) == ""  # type: ignore[arg-type]
+
+
+def test_login_from_new_ip_forgets_profile(platform, monkeypatch):
+    """Вход с нового IP стирает профиль браузера; с того же — ничего не трогается."""
+    from app_platform import qwen
+
+    client, _main, _db, _tmp = platform
+
+    # фиктивный профиль со «следами прошлого входа» + подмена пути в тестах
+    profile = _tmp / "qwen_profile"
+    (profile / "Default").mkdir(parents=True)
+    (profile / "Default" / "Cookies").write_bytes(b"old-session")
+    monkeypatch.setattr(qwen, "profile_dir", lambda: profile)
+
+    closed: list = []
+
+    async def fake_close():
+        closed.append(True)
+
+    monkeypatch.setattr(qwen, "close_browser", fake_close)
+
+    def login(ip: str, nick: str = "ip_user"):
+        return client.post(
+            "/api/auth/login",
+            json={"nick": nick},
+            headers={"X-Forwarded-For": ip},
+        )
+
+    # первый вход: IP записан, стирать нечего — профиль цел
+    assert login("10.0.0.1").status_code == 200
+    assert not closed and profile.exists()
+
+    # тот же IP: ничего не забывается
+    resp = login("10.0.0.1")
+    assert resp.status_code == 200
+    assert resp.json()["profile_forgotten"] is False
+    assert not closed and profile.exists()
+
+    # новый IP: данные прошлого входа стёрты (куки/история/пароли)
+    resp = login("203.0.113.5")
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["profile_forgotten"] is True
+    assert closed and not profile.exists()
+
+    # и снова этот же IP: уже ничего не стирается
+    resp = login("203.0.113.5")
+    assert resp.json()["profile_forgotten"] is False
+    assert len(closed) == 1
+
+    # журнал объясняет, почему выбросило из аккаунта Qwen
+    actions = [
+        a for a in client.get("/api/journal").json()["rows"] if a["action"] == "login"
+    ]
+    assert any("нового IP 203.0.113.5" in (a["details"] or "") for a in actions)
+
+
+def test_run_tool_writes_and_stays_inside_root(tmp_path):
+    """«запись» пишет файл сразу; чтение/список/поиск работают; ../ отсекается."""
+    from app_platform import qwen
+
+    root = tmp_path.resolve()
+    (root / "a.py").write_text("x = 1\n", encoding="utf-8")
+
+    def tool(**call):
+        base = {"tool": "", "path": "", "query": "", "content": ""}
+        base.update(call)
+        return qwen.run_tool(base, root)
+
+    # запись создаёт файл вместе с папками — без «Применить»
+    _res, note = tool(tool="запись", path="pkg/new.py", content="y = 2\n")
+    assert (root / "pkg" / "new.py").read_text(encoding="utf-8") == "y = 2\n"
+    assert note.startswith("записан pkg/new.py")
+
+    res, _ = tool(tool="чтение", path="a.py")
+    assert res == "x = 1\n"
+    res, _ = tool(tool="список", path=".")
+    assert "a.py" in res and "pkg/" in res
+    res, _ = tool(tool="поиск", query="x = 1")
+    assert "a.py:1:" in res
+
+    # путь наружу — ошибка в журнал, файл не создаётся
+    res, note = tool(tool="запись", path="../evil.py", content="hack\n")
+    assert note.startswith("ошибка") and "Ошибка" in res
+    assert not (root.parent / "evil.py").exists()
+
+
+def test_sandbox_agent_runs_loop_and_writes(platform, monkeypatch):
+    """Режим агента: цикл инструментов крутится, файл пишется сразу, есть журнал."""
+    from app_platform import qwen
+
+    # владелец-пи (не Host) тоже может работать агентом
+    client, _main, _db, _tmp = platform
+    _login(client, "owner_nick", "pi")
+    project = _upload(client, "sandbox-agent", {"main.py": "old = 1\n"})
+    pid = project["id"]
+
+    turns = iter(
+        [
+            # первый ответ модели: блок «запись» (замаскированный под ответ)
+            "Правлю файл.\n"
+            "ИНСТРУМЕНТ: запись\n"
+            "ФАЙЛ: main.py\n"
+            "```python\nnew = 2\n```\n"
+            "КОНЕЦ-ИНСТРУМЕНТА\n",
+            # второй ход: финальный ответ без блоков — цикл заканчивается
+            "Готово: файл исправлен.",
+        ]
+    )
+
+    async def fake_turn(page, text: str, timeout_s: int) -> str:
+        # первый ход — вопрос с инструкцией агента, второй — результат инструмента
+        if "Результаты инструментов" in text:
+            assert "Файл main.py записан" in text
+        return next(turns)
+
+    async def fake_page():
+        return None
+
+    site_mode: dict = {}
+
+    async def fake_site_mode(page, on: bool) -> bool:
+        site_mode["on"] = on
+        return on
+
+    monkeypatch.setattr(qwen, "_turn", fake_turn)
+    monkeypatch.setattr(qwen, "_ensure_chat_page", fake_page)
+    monkeypatch.setattr(qwen, "_set_agent_mode", fake_site_mode)
+
+    resp = client.post(
+        "/api/sandbox/ask", json={"prompt": "почини", "project_id": pid, "agent": True}
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["edits"] == []  # в агенте «Применить» не нужен
+    assert body["answer"] == "Готово: файл исправлен."
+    assert [s["tool"] for s in body["agent_log"]] == ["запись"]
+    assert body["agent_log"][0]["path"] == "main.py"
+    assert body["agent_log"][0]["note"].startswith("записан main.py")
+    # перед циклом на сайте Qwen включается родный режим агента
+    assert site_mode["on"] is True
+
+    # файл проекта реально изменился — читаем через файловый роут
+    f = client.get(f"/api/projects/{pid}/file?path=main.py").json()
+    assert f["content"] == "new = 2\n"
+
+    # действия агента ушли в журнал
+    actions = [a for a in client.get("/api/journal").json()["rows"] if a["action"] == "sandbox"]
+    assert any("агент ИИ записал main.py" in (a["details"] or "") for a in actions)
+
+
+def test_sandbox_agent_rights(platform):
+    """Чужой проект агенту не берётся (403/404); без проекта — см. следующий тест."""
+    client, _main, _db, _tmp = platform
+    _login(client, "nick_sandbox", "host")
+    project = _upload(client, "sandbox-agent-perm", {"main.py": "x = 1\n"})
+    pid = project["id"]
+
+    # без проекта агент теперь работает — он создаёт репозиторий инструментом
+    # «создать» (это test_sandbox_agent_creates_repo_without_project); а чужой
+    # проект взять нельзя — доступ закрыт вовсе
+    client.post("/api/auth/login", json={"nick": "stranger_pi"})
+    resp = client.post(
+        "/api/sandbox/ask", json={"prompt": "почини", "project_id": pid, "agent": True}
+    )
+    assert resp.status_code in (403, 404)  # доступ к проекту закрыт вовсе
+    assert resp.status_code != 200
+
+
+def test_sandbox_agent_creates_repo_without_project(platform, monkeypatch):
+    """Агент без выбранного проекта создаёт репозиторий и пишет файлы уже в него."""
+    from app_platform import qwen
+
+    client, _main, _db, _tmp = platform
+    _login(client, "owner_nick", "pi")
+
+    turns = iter(
+        [
+            # первый ответ: блок «создать» — проекта ещё нет вовсе
+            "Создаю репозиторий.\n"
+            "ИНСТРУМЕНТ: создать\n"
+            "НАЗВАНИЕ: agent-new-repo\n"
+            "КОНЕЦ-ИНСТРУМЕНТА\n",
+            # второй ход: файл пишется уже в новый репозиторий
+            "Записываю файл.\n"
+            "ИНСТРУМЕНТ: запись\n"
+            "ФАЙЛ: main.py\n"
+            "```python\nprint('hi')\n```\n"
+            "КОНЕЦ-ИНСТРУМЕНТА\n",
+            # третий: финальный ответ без блоков — цикл заканчивается
+            "Готово: репозиторий создан.",
+        ]
+    )
+    first: dict = {}
+
+    async def fake_turn(page, text: str, timeout_s: int) -> str:
+        if not first:
+            first["text"] = text
+            # без проекта агенту прямо сказано, что доступно только «создать»
+            assert "Проект не выбран" in text
+        return next(turns)
+
+    async def fake_page():
+        return None
+
+    async def fake_site_mode(page, on: bool) -> bool:
+        return on
+
+    monkeypatch.setattr(qwen, "_turn", fake_turn)
+    monkeypatch.setattr(qwen, "_ensure_chat_page", fake_page)
+    monkeypatch.setattr(qwen, "_set_agent_mode", fake_site_mode)
+
+    resp = client.post(
+        "/api/sandbox/ask",
+        json={"prompt": "создай репозиторий agent-new-repo", "agent": True},
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["project"] == ""
+    assert body["created"]["name"] == "agent-new-repo"
+    assert [s["tool"] for s in body["agent_log"]] == ["создать", "запись"]
+    assert body["agent_log"][0]["note"].startswith("создан репозиторий")
+
+    # репозиторий реально появился в списке, файл записан именно в него
+    names = {p["name"] for p in client.get("/api/projects").json()["projects"]}
+    assert "agent-new-repo" in names
+    f = client.get(
+        f"/api/projects/{body['created']['id']}/file", params={"path": "main.py"}
+    ).json()
+    assert f["content"] == "print('hi')\n"
+
+    # журнал: ИИ создал репозиторий
+    actions = [
+        a for a in client.get("/api/journal").json()["rows"] if a["action"] == "sandbox"
+    ]
+    assert any("создал репозиторий «agent-new-repo»" in (a["details"] or "") for a in actions)
+
+
+def test_sandbox_plain_chat_creates_repo(platform, monkeypatch):
+    """Обычный чат (без проекта): блок «создать» выполняется, сырой блок вычищен."""
+    from app_platform import qwen
+
+    client, _main, _db, _tmp = platform
+    _login(client, "owner_nick", "pi")
+
+    async def fake_ask(prompt: str, context: str = "", timeout_s: int = 0) -> str:
+        # инструкция про создание уходит в промпт и стоит в самом конце
+        # (после файлов проекта) — прочитанная последней, она надёжнее
+        assert prompt == "создай репозиторий plain-repo"
+        assert "ИНСТРУМЕНТ: создать" in context
+        assert context.strip().endswith(qwen.CREATE_RULES.strip())
+        return (
+            "Создаю репозиторий для тебя.\n\n"
+            "ИНСТРУМЕНТ: создать\n"
+            "НАЗВАНИЕ: plain-repo\n"
+            "КОНЕЦ-ИНСТРУМЕНТА\n"
+        )
+
+    monkeypatch.setattr(qwen, "ask", fake_ask)
+
+    resp = client.post("/api/sandbox/ask", json={"prompt": "создай репозиторий plain-repo"})
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["created"]["name"] == "plain-repo"
+    # сырой протокол из ответа вычищен — пользователь видит только итог
+    assert "ИНСТРУМЕНТ" not in body["answer"]
+    assert "plain-repo" in body["answer"]
+
+    names = {p["name"] for p in client.get("/api/projects").json()["projects"]}
+    assert "plain-repo" in names
+
+
+def test_sandbox_mode_switches_site_qwen(platform, monkeypatch):
+    """Тумблер щёлкает родным «Agent Mode» на странице Qwen; сбой — 503."""
+    from app_platform import qwen
+
+    client, _main, _db, _tmp = platform
+    assert client.post("/api/sandbox/mode", json={"agent": True}).status_code == 401
+
+    _login(client, "nick_sandbox", "host")
+    seen: dict = {}
+
+    async def fake_mode(on: bool) -> bool:
+        seen["on"] = on
+        return on
+
+    monkeypatch.setattr(qwen, "set_site_agent_mode", fake_mode)
+    resp = client.post("/api/sandbox/mode", json={"agent": True})
+    assert resp.status_code == 200, resp.text
+    assert resp.json() == {"agent": True}
+    assert seen["on"] is True
+
+    # ошибка браузера/вёрстки Qwen — понятный текст и 503, фронт покажет причину
+    async def boom(on: bool) -> bool:
+        raise qwen.QwenError("Меню режимов Qwen не открылось — повторите попытку.")
+
+    monkeypatch.setattr(qwen, "set_site_agent_mode", boom)
+    resp = client.post("/api/sandbox/mode", json={"agent": False})
+    assert resp.status_code == 503
+    assert "Меню режимов" in resp.json()["detail"]
+
+    # включение ушло в журнал
+    monkeypatch.setattr(qwen, "set_site_agent_mode", fake_mode)
+    client.post("/api/sandbox/mode", json={"agent": True})
+    actions = [a for a in client.get("/api/journal").json()["rows"] if a["action"] == "sandbox"]
+    assert any("режим агента на сайте Qwen" in (a["details"] or "") for a in actions)
 
 
 def test_sandbox_apply_writes_file(platform):

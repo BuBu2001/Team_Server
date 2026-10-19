@@ -81,12 +81,18 @@ class TeamServerClient:
             raise self._error_from_response(response)
         return response.json(), latency
 
-    def create_repository(self, name: str, user: str, force: bool = False) -> dict:
+    def create_repository(
+        self, name: str, user: str, force: bool = False, token: str = ""
+    ) -> dict:
+        """Создаёт репозиторий; при ``force`` сервер требует текущий токен."""
+        headers = {"X-Cryless-User": user}
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
         response = self._request(
             "POST",
             "/api/cryless/repositories",
             json={"name": name, "force": force},
-            headers={"X-Cryless-User": user},
+            headers=headers,
         )
         if response.status_code != 201:
             raise self._error_from_response(response)

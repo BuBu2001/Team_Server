@@ -24,6 +24,10 @@ FG = (201, 209, 217)     # основной текст
 TITLE = (88, 166, 255)   # заголовок
 DIM = (110, 118, 129)    # второстепенный текст
 
+#: Максимум строк дерева в одной картинке: дерево на 100k файлов даёт PNG
+#: высотой в мегапиксели и падает по памяти (аудит H-6).
+MAX_TREE_LINES = 4000
+
 
 def tree_to_image(tree_str: str, title: str, summary: str) -> bytes:
     """Рисуем дерево каталогов в PNG и возвращаем байты."""
@@ -31,7 +35,12 @@ def tree_to_image(tree_str: str, title: str, summary: str) -> bytes:
     title_font = _load_font(20)
     small_font = _load_font(13)
 
-    lines = [ln for ln in tree_str.splitlines()]
+    all_lines = tree_str.splitlines()
+    lines = all_lines[:MAX_TREE_LINES]
+    if len(all_lines) > MAX_TREE_LINES:
+        lines = lines + [
+            f"... (ещё строк обрезано: {len(all_lines) - MAX_TREE_LINES})"
+        ]
     pad = 24
     line_h = 22
     title_h = 34

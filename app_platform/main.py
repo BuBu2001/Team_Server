@@ -35,10 +35,12 @@ import re
 import shutil
 import zipfile
 from pathlib import Path
+from urllib.parse import urlparse
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
+from loguru import logger
 from pydantic import BaseModel
 
 from . import db
@@ -57,6 +59,16 @@ EXPORT_DIR = DATA_DIR / "exports"
 # файлы Pi и проекты хост складывает сюда же, поэтому веб и консоль видят
 # одни и те же данные, а не две отдельные папки.
 PI_FILES_DIR = DATA_DIR / "files"
+
+# Лимиты приёма файлов (защита от исчерпания памяти и zip-бомб, аудит H-6).
+MAX_UPLOAD_BYTES = 512 * 1024 * 1024          # одиночный файл или архив целиком
+MAX_ZIP_ENTRIES = 20_000                     # файлов в одном архиве
+MAX_UNPACKED_BYTES = 2 * 1024 * 1024 * 1024  # суммарно после распаковки (2 ГБ)
+MAX_ZIP_RATIO = 200                          # допустимый коэффициент раскрытия
+
+#: Допустимое имя одиночного файла из multipart: без управляющих символов,
+#: разделителей путей и «запрещённых в Windows» знаков (аудит C-3).
+_SAFE_UPLOAD_NAME_RE = re.compile(r'^[^\x00-\x1f/\\:*?"<>|]{1,128}$')
 
 # Собранный фронтенд (React SPA). Собирается в web/ (npm run build, setup.sh).
 WEB_DIST = BASE_DIR.parent / "web" / "dist"
@@ -373,18 +385,33 @@ async def api_create_project(
     dest.mkdir(parents=True, exist_ok=True)
 
     if archive is not None and archive.filename:
-        data = await archive.read()
+        # читаем ограниченное количество байт: большой файл не съест память (H-6)
+        data = await archive.read(MAX_UPLOAD_BYTES + 1)
         if not data:
             return JSONResponse({"detail": "Пустой файл"}, status_code=422)
+        if len(data) > MAX_UPLOAD_BYTES:
+            return JSONResponse(
+                {"detail": f"Файл больше {MAX_UPLOAD_BYTES // (1024 * 1024)} МБ"},
+                status_code=413,
+            )
         if archive.filename.lower().endswith(".zip"):
             try:
                 _safe_extract_zip(data, dest)
             except (zipfile.BadZipFile, ValueError) as e:
                 return JSONResponse({"detail": f"Ошибка архива: {e}"}, status_code=422)
         else:
-            (dest / archive.filename).write_bytes(data)
+            # имя файла присылает клиент — берём только «чистую» часть (C-3)
+            try:
+                target = _upload_target(dest, archive.filename)
+            except ValueError as e:
+                return JSONResponse({"detail": str(e)}, status_code=422)
+            target.write_bytes(data)
     elif source.strip():
-        (dest / ".source_url").write_text(source.strip(), encoding="utf-8")
+        try:
+            source_url = _validate_source_url(source)
+        except ValueError as e:
+            return JSONResponse({"detail": str(e)}, status_code=422)
+        (dest / ".source_url").write_text(source_url, encoding="utf-8")
     else:
         return JSONResponse(
             {"detail": "Загрузите zip-архив проекта или укажите ссылку на репозиторий"},
@@ -465,7 +492,17 @@ def api_analyze(project_id: int, request: Request):
     except SourceError as e:
         return JSONResponse({"detail": str(e)}, status_code=422)
     except AnalysisError as e:
-        return JSONResponse({"detail": str(e)}, status_code=500)
+        # детали (пути, версии библиотек) — в лог, клиенту — без разведки (M-3)
+        logger.warning("analyze: {}", e)
+        return JSONResponse(
+            {
+                "detail": (
+                    "Не удалось проанализировать проект — "
+                    "подробности в журнале сервера"
+                )
+            },
+            status_code=500,
+        )
 
     db.log_action(
         user["username"], "analyze", f"проект «{project['name']}»", project["name"]
@@ -513,7 +550,7 @@ def api_project_digest(project_id: int, request: Request):
     return Response(
         content=digest.read_text(encoding="utf-8"),
         media_type="text/plain; charset=utf-8",
-        headers={"Content-Disposition": f'inline; filename="{project["name"]}_digest.txt"'},
+        headers={"Content-Disposition": f'inline; filename="{_safe_filename(project["name"])}_digest.txt"'},
     )
 
 
@@ -535,7 +572,7 @@ def api_project_png(project_id: int, request: Request):
     return Response(
         content=export.read_bytes(),
         media_type="image/png",
-        headers={"Content-Disposition": f'inline; filename="{project["name"]}_tree.png"'},
+        headers={"Content-Disposition": f'inline; filename="{_safe_filename(project["name"])}_tree.png"'},
     )
 
 
@@ -601,6 +638,49 @@ def _safe_child(root: Path, rel: str) -> Path:
     if target != root and root not in target.parents:
         raise ValueError("Недопустимый путь")
     return target
+
+
+def _upload_target(dest: Path, filename: str) -> Path:
+    """Цель для одиночного файла из multipart-запроса.
+
+    Значение ``filename`` присылает клиент и оно ничем не нормализовано:
+    берётся только basename, запрещаются разделители путей, управляющие
+    символы и служебное имя ``.source_url``; результат ещё раз проходит
+    через ``_safe_child`` (аудит C-3: запись за пределы каталога проекта).
+    """
+    base = Path((filename or "").strip()).name
+    if (
+        not base
+        or base in {".", ".."}
+        or base == ".source_url"          # внутренний файл-указатель платформы
+        or not _SAFE_UPLOAD_NAME_RE.match(base)
+    ):
+        raise ValueError(f"Недопустимое имя файла: {filename!r}")
+    return _safe_child(dest, base)
+
+
+def _validate_source_url(raw: str) -> str:
+    """Допускается только https-URL известного git-хоста.
+
+    Закрывает аудит C-4: поле ``source`` (и файл ``.source_url``) больше
+    нельзя использовать для чтения локальных каталогов сервера (`/etc`,
+    `.ssh`, чужие проекты, профиль браузера) и для SSRF-переходов.
+    """
+    from gitingest.utils.query_parser_utils import KNOWN_GIT_HOSTS
+
+    url = raw.strip()
+    parsed = urlparse(url)
+    if parsed.scheme.lower() != "https":
+        raise ValueError(
+            "Укажите ссылку на репозиторий вида https://github.com/user/repo"
+        )
+    host = (parsed.hostname or "").lower()
+    if host not in KNOWN_GIT_HOSTS:
+        raise ValueError(
+            f"Хост «{host}» не входит в список разрешённых git-хостов "
+            "(github.com, gitlab.com и др.)"
+        )
+    return url
 
 
 def _require_project(project_id: int, request: Request):
@@ -676,8 +756,12 @@ def _binary_info(data: bytes) -> dict:
 
 
 def _safe_filename(name: str) -> str:
-    """Имя файла для Content-Disposition: без кавычек, «../» и управляющих символов."""
-    name = re.sub(r'[\\/:*?"<>|\x00-\x1f]+', "_", name).strip(" .")
+    """Имя файла для Content-Disposition: без кавычек, «;» и управляющих символов.
+
+    «;» и «,» тоже вычищаются: часть клиентов парсит заголовок наивно и
+    подставляет второй параметр (например ``; filename=pwn.exe``) — аудит M-2.
+    """
+    name = re.sub(r'[\\/:*?"<>|;,\x00-\x1f]+', "_", name).strip(" .")
     return name or "file"
 
 
@@ -702,7 +786,11 @@ def api_project_files(project_id: int, path: str = "", request: Request = None):
             target.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())
         )
     except OSError as e:
-        return JSONResponse({"detail": f"Не удалось прочитать папку: {e}"}, status_code=500)
+        logger.warning("browse: не удалось прочитать папку {}: {}", target, e)
+        return JSONResponse(
+            {"detail": "Не удалось прочитать папку — подробности в журнале сервера"},
+            status_code=500,
+        )
     for child in children:
         if child.name in _BROWSE_SKIP:
             continue
@@ -742,7 +830,11 @@ def api_project_file(project_id: int, path: str, request: Request):
     try:
         data = target.read_bytes()[:MAX_VIEW_BYTES]
     except OSError as e:
-        return JSONResponse({"detail": f"Не удалось прочитать файл: {e}"}, status_code=500)
+        logger.warning("file: не удалось прочитать {}: {}", target, e)
+        return JSONResponse(
+            {"detail": "Не удалось прочитать файл — подробности в журнале сервера"},
+            status_code=500,
+        )
     truncated = size > MAX_VIEW_BYTES
     binary = b"\x00" in data
     content = "" if binary else data.decode("utf-8", errors="replace")
@@ -820,7 +912,11 @@ def api_project_download(project_id: int, path: str, request: Request):
     try:
         data = target.read_bytes()
     except OSError as e:
-        return JSONResponse({"detail": f"Не удалось прочитать файл: {e}"}, status_code=500)
+        logger.warning("download: не удалось прочитать {}: {}", target, e)
+        return JSONResponse(
+            {"detail": "Не удалось прочитать файл — подробности в журнале сервера"},
+            status_code=500,
+        )
 
     db.log_action(_user["username"], "download", f"файл {target.name}", project["name"])
     return Response(
@@ -1303,7 +1399,16 @@ async def api_ingest(payload: IngestPayload, request: Request):
             token=payload.token.strip() or None,
         )
     except Exception as exc:  # noqa: BLE001
-        return JSONResponse({"detail": f"Ошибка анализа: {exc!s}"}, status_code=500)
+        logger.exception("ingest: сбой анализа {}", url)
+        return JSONResponse(
+            {
+                "detail": (
+                    "Не удалось проанализировать репозиторий — "
+                    "подробности в журнале сервера"
+                )
+            },
+            status_code=500,
+        )
 
     if not hasattr(res, "summary"):
         return JSONResponse(
@@ -1324,11 +1429,38 @@ async def api_ingest(payload: IngestPayload, request: Request):
 # =====================================================================
 
 def _safe_extract_zip(data: bytes, dest: Path) -> None:
+    """Распаковка архива с проверкой путей (zip-slip) и лимитов (zip-бомба).
+
+    Проверяем число файлов, суммарный распакованный объём и коэффициент
+    сжатия до записи на диск, а содержимое читаем блоками — аудит H-6.
+    """
     with zipfile.ZipFile(io.BytesIO(data)) as zf:
-        for member in zf.namelist():
+        infos = zf.infolist()
+        if len(infos) > MAX_ZIP_ENTRIES:
+            raise ValueError(f"Слишком много файлов в архиве (>{MAX_ZIP_ENTRIES})")
+        total = sum(i.file_size for i in infos)
+        if total > MAX_UNPACKED_BYTES:
+            raise ValueError("Архив распаковывается в слишком большой объём")
+        if total > max(len(data), 1) * MAX_ZIP_RATIO:
+            raise ValueError("Подозрительный коэффициент сжатия (возможна zip-бомба)")
+        for info in infos:
+            member = info.filename
             if member.startswith("/") or ".." in Path(member).parts:
                 raise ValueError(f"Недопустимый путь в архиве: {member}")
-        zf.extractall(dest)
+            target = _safe_child(dest, member)
+            if info.is_dir():
+                target.mkdir(parents=True, exist_ok=True)
+                continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            written = 0
+            with zf.open(info) as src, open(target, "wb") as out:
+                while block := src.read(1 << 20):
+                    written += len(block)
+                    if written > MAX_UNPACKED_BYTES:
+                        out.close()
+                        target.unlink(missing_ok=True)
+                        raise ValueError("Архив превысил лимит распаковки")
+                    out.write(block)
 
 
 def _run_gitingest(path_or_url: str) -> tuple[str, str, str]:
@@ -1391,8 +1523,12 @@ def analyze_and_export(project: dict) -> dict:
     )
     try:
         if not has_files and url_file.exists():
-            # проект добавлен ссылкой на репозиторий — клонируем при анализе
-            target: str | Path = url_file.read_text(encoding="utf-8").strip()
+            # проект добавлен ссылкой на репозиторий — клонируем при анализе.
+            # Валидируем заново: .source_url мог попасть в папку вместе с
+            # загруженным архивом (аудит C-4).
+            target: str | Path = _validate_source_url(
+                url_file.read_text(encoding="utf-8")
+            )
         else:
             target = _resolve_project_target(project)
         if isinstance(target, Path):

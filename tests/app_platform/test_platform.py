@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import io
 import json
+import re
 import zipfile
 from pathlib import Path
 
@@ -720,6 +721,210 @@ def test_login_from_new_ip_forgets_profile(platform, monkeypatch):
         a for a in client.get("/api/journal").json()["rows"] if a["action"] == "login"
     ]
     assert any("нового IP 203.0.113.5" in (a["details"] or "") for a in actions)
+
+
+# ---------- аудит безопасности: критичные дыры (C-3, C-4, C-5, C-6, H-6, M-2) ----------
+
+
+def test_upload_filename_traversal_neutralized(platform):
+    """Имя файла из multipart не выводит запись за пределы проекта (C-3).
+
+    «../» и абсолютный путь срезаются до basename и записываются безопасным
+    именем внутри каталога проекта; мусорные имена отклоняются.
+    """
+    client, _main, _db, tmp = platform
+    _login(client, "vanya_pi", "pi")
+
+    resp = client.post(
+        "/api/projects",
+        data={"name": "trav"},
+        files={"archive": ("../../../../tmp/pwn_upload", b"data", "text/plain")},
+    )
+    assert resp.status_code == 200, resp.text
+    assert not Path("/tmp/pwn_upload").exists()          # за пределы не вышли
+    assert (tmp / "projects" / "vanya_pi__trav" / "pwn_upload").read_bytes() == b"data"
+
+    resp = client.post(
+        "/api/projects",
+        data={"name": "trav2"},
+        files={"archive": ("/tmp/pwn_upload_abs", b"data2", "text/plain")},
+    )
+    assert resp.status_code == 200, resp.text
+    assert not Path("/tmp/pwn_upload_abs").exists()
+    assert (
+        tmp / "projects" / "vanya_pi__trav2" / "pwn_upload_abs"
+    ).read_bytes() == b"data2"
+
+    resp = client.post(
+        "/api/projects",
+        data={"name": "trav3"},
+        files={"archive": ("..\\..\\evil.txt", b"x", "text/plain")},
+    )
+    assert resp.status_code == 422, resp.text
+
+    # служебный файл-указатель платформы подменить нельзя
+    resp = client.post(
+        "/api/projects",
+        data={"name": "trav4"},
+        files={"archive": (".source_url", b"/etc", "text/plain")},
+    )
+    assert resp.status_code == 422, resp.text
+
+    # юникод-имя по-прежнему работает — русские названия файлов не ломаем
+    resp = client.post(
+        "/api/projects",
+        data={"name": "trav5"},
+        files={"archive": ("заметки.txt", "привет".encode(), "text/plain")},
+    )
+    assert resp.status_code == 200, resp.text
+    assert (
+        tmp / "projects" / "vanya_pi__trav5" / "заметки.txt"
+    ).read_text(encoding="utf-8") == "привет"
+
+
+def test_source_field_only_allows_git_hosts(platform):
+    """Поле source: только https-URL известного git-хоста (C-4)."""
+    client, _main, _db, _tmp = platform
+    _login(client, "vanya_pi", "pi")
+    for bad in (
+        "/etc",
+        "file:///etc",
+        "http://github.com/x/y",
+        "https://evil.example/x/y",
+        "https://git.internal.corp/r",
+    ):
+        resp = client.post("/api/projects", data={"name": "leak", "source": bad})
+        assert resp.status_code == 422, (bad, resp.text)
+    ok = client.post(
+        "/api/projects",
+        data={"name": "okrepo", "source": "https://github.com/octocat/Hello-World"},
+    )
+    assert ok.status_code == 200, ok.text
+
+
+def test_source_url_inside_zip_revalidated(platform):
+    """`.source_url`, попавший в папку архивом, тоже валидируется (C-4)."""
+    client, _main, _db, _tmp = platform
+    _login(client, "vanya_pi", "pi")
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr(".source_url", "/etc")
+    resp = client.post(
+        "/api/projects",
+        data={"name": "zipurl"},
+        files={"archive": ("zipurl.zip", buf.getvalue(), "application/zip")},
+    )
+    assert resp.status_code == 200, resp.text
+    pid = resp.json()["project"]["id"]
+    resp = client.post(f"/api/projects/{pid}/analyze")
+    assert resp.status_code == 422, resp.text
+    assert resp.json()["detail"]  # отказ, а не анализ /etc
+
+
+def test_zip_bomb_rejected(platform):
+    """Zip-бомба отклоняется по коэффициенту сжатия до распаковки (H-6)."""
+    client, _main, _db, _tmp = platform
+    _login(client, "vanya_pi", "pi")
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for i in range(40):
+            zf.writestr(f"bomb_{i}.bin", b"A" * (1024 * 1024))  # 40 МБ сплошняком
+    data = buf.getvalue()
+    assert len(data) < 200_000  # сжато почти в ноль → коэффициент ~1000x
+    resp = client.post(
+        "/api/projects",
+        data={"name": "bomb"},
+        files={"archive": ("bomb.zip", data, "application/zip")},
+    )
+    assert resp.status_code == 422, resp.text
+    assert "сжатия" in resp.json()["detail"] or "бомб" in resp.json()["detail"]
+
+
+def test_cryless_force_requires_repo_token(platform):
+    """--force без токена не даёт захватить чужой репозиторий (C-6)."""
+    client, _main, _db, _tmp = platform
+    first = client.post(
+        "/api/cryless/repositories",
+        json={"name": "privrepo"},
+        headers={"X-Cryless-User": "victim"},
+    )
+    assert first.status_code == 201, first.text
+    token = first.json()["token"]
+
+    # попытка захвата: force с тем же ником, но без токена — отказ
+    taken = client.post(
+        "/api/cryless/repositories",
+        json={"name": "privrepo", "force": True},
+        headers={"X-Cryless-User": "victim"},
+    )
+    assert taken.status_code == 403, taken.text
+
+    # с неверным токеном — тоже отказ
+    bad = client.post(
+        "/api/cryless/repositories",
+        json={"name": "privrepo", "force": True},
+        headers={"X-Cryless-User": "victim", "Authorization": "Bearer wrong"},
+    )
+    assert bad.status_code == 403, bad.text
+
+    # владелец со своим токеном — пересоздаёт и получает новый токен
+    ok = client.post(
+        "/api/cryless/repositories",
+        json={"name": "privrepo", "force": True},
+        headers={"X-Cryless-User": "victim", "Authorization": f"Bearer {token}"},
+    )
+    assert ok.status_code == 201, ok.text
+    assert ok.json()["token"] != token
+
+    # повторное создание без force — 409, и id больше не раскрывается
+    dup = client.post(
+        "/api/cryless/repositories",
+        json={"name": "privrepo"},
+        headers={"X-Cryless-User": "victim"},
+    )
+    assert dup.status_code == 409
+    assert "id" not in dup.json()
+
+
+def test_content_disposition_sanitized(platform):
+    """Имя проекта не попадает в Content-Disposition сырым (M-2)."""
+    client, main_mod, db, tmp = platform
+    _login(client, "vanya_pi", "pi")
+    user = db.get_user_by_name("vanya_pi")
+    proj_dir = tmp / "p_disp"
+    proj_dir.mkdir()
+    proj = db.add_project(user["id"], 'x"; filename=pwn.exe', str(proj_dir))
+    digest = main_mod.EXPORT_DIR / f"project_{proj['id']}_digest.txt"
+    digest.parent.mkdir(parents=True, exist_ok=True)
+    digest.write_text("digest", encoding="utf-8")
+    resp = client.get(f"/api/projects/{proj['id']}/digest")
+    assert resp.status_code == 200
+    disp = resp.headers.get("content-disposition", "")
+    # внутри кавычек не может быть кавычек и «;» — «выход» из заголовка
+    # невозможен, имя безопасно
+    assert re.fullmatch(r'inline; filename="[^";]*"', disp), disp
+
+
+def test_tcp_host_sub_allowlist(tmp_path):
+    """Разделы TCP-хоста: `sub` из сети не сдвигает корень safe_join (C-5b)."""
+    from getting_started import core
+
+    ws = core.HostWorkspace(tmp_path)
+    assert ws.path_for("files", "a.txt") == (tmp_path / "files" / "a.txt").resolve()
+    with pytest.raises(ValueError):
+        ws.path_for("../../../etc", "passwd")
+    with pytest.raises(ValueError):
+        ws.path_for("/etc", "passwd")
+
+
+def test_tcp_session_user_identity():
+    """Идентичность Pi — из handshake; грязные значения вычищаются (C-5c)."""
+    from getting_started import core
+
+    assert core._session_user(None) == "pi"
+    assert core._session_user({}) == "pi"
+    assert core._session_user({"user": "vanya_pi"}) == "vanya_pi"
+    assert core._session_user({"user": "../../evil; drop"}) == "evildrop"
 
 
 def test_run_tool_writes_and_stays_inside_root(tmp_path):

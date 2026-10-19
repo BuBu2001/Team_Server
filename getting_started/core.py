@@ -24,6 +24,7 @@ from __future__ import annotations
 import io
 import json
 import os
+import re
 import select
 import socket
 import sys
@@ -202,7 +203,14 @@ class HostWorkspace:
                             "mtime": int(p.stat().st_mtime)})
         return out
 
+    #: Разделы хранилища, между которыми работает Pi. ``sub`` приходит из
+    #: сети, поэтому подставлять его в корень safe_join нельзя — иначе
+    #: sub="../../../etc" сдвигает сам корень и обходит проверку (аудит C-5b).
+    ALLOWED_SUBS = ("files", "projects")
+
     def path_for(self, sub: str, name: str) -> Path:
+        if sub not in self.ALLOWED_SUBS:
+            raise ValueError(f"Недопустимый раздел: {sub!r}")
         return proto.safe_join(self.root / sub, name)
 
     def resolve_project(self, name: str) -> Optional[Path]:
@@ -222,10 +230,16 @@ class HostWorkspace:
 
 def host_handle_request(conn: socket.socket, req: dict, ws: HostWorkspace,
                         mods: dict, peer: str,
-                        notify: Callable[[str], None]) -> bool:
-    """Обрабатывает один запрос Pi. Возвращает False, если соединение закрыто."""
+                        notify: Callable[[str], None],
+                        *, session_user: str = "pi") -> bool:
+    """Обрабатывает один запрос Pi. Возвращает False, если соединение закрыто.
+
+    ``session_user`` — имя Pi, полученное один раз из handshake. Поле ``user``
+    внутри отдельных запросов игнорируется: раньше его мог подставить любой
+    клиент и писать в журнал/регистрировать проекты от чужого имени (C-5c).
+    """
     cmd = req.get("type", "")
-    user = str(req.get("user", "pi"))
+    user = session_user
     db = mods.get("db")
 
     def ok(payload: Optional[dict] = None) -> None:
@@ -283,6 +297,9 @@ def host_handle_request(conn: socket.socket, req: dict, ws: HostWorkspace,
         if cmd == "download":
             sub = req.get("sub", "files")
             name = str(req.get("name", ""))
+            if sub not in HostWorkspace.ALLOWED_SUBS:
+                err(f"Недопустимый раздел: {sub!r} (можно: files, projects)")
+                return True
             p = ws.path_for(sub, name)
             if sub == "projects" and not p.exists():
                 rp = ws.resolve_project(name)
@@ -405,7 +422,12 @@ def host_handle_request(conn: socket.socket, req: dict, ws: HostWorkspace,
             return True
 
         if cmd == "history":
-            rows = history(mods, user=None, limit=int(req.get("limit", 50)))
+            try:
+                limit = int(req.get("limit", 50))
+            except (TypeError, ValueError):
+                limit = 50
+            limit = max(1, min(limit, 500))  # верхняя граница — аудит L-4
+            rows = history(mods, user=None, limit=limit)
             ok({"rows": rows, "me": history(mods, user, limit=100)})
             return True
 
@@ -415,10 +437,31 @@ def host_handle_request(conn: socket.socket, req: dict, ws: HostWorkspace,
         notify(f"Ошибка обработки '{cmd}': {exc}")
         traceback.print_exc()
         try:
-            err(f"Ошибка хоста: {exc}")
+            # клиенту — без путей и деталей (аудит M-3); полный текст в консоли Host
+            err("Внутренняя ошибка хоста — подробности в консоли Host")
         except OSError:
             return False
     return True
+
+
+def _session_user(hello: Optional[dict]) -> str:
+    """Имя Pi из handshake — единственный доверенный источник идентичности.
+
+    Очищает «грязные» значения: имя уходит в журнал и в имена проектовых
+    каталогов, поэтому допускаются только буквы/цифры/«_ . -», до 32 символов.
+    """
+    raw = str((hello or {}).get("user", "pi"))[:32]
+    cleaned = re.sub(r"[^A-Za-z0-9_.-]", "", raw).strip(".")
+    return cleaned or "pi"
+
+
+def _bind_addr() -> str:
+    """Адрес слушания TCP-хоста.
+
+    По умолчанию — весь интерфейс: Pi подключается с другой машины по LAN.
+    Локально/в тестах можно закрыть на себя: GETTINGSTARTED_BIND=127.0.0.1.
+    """
+    return os.environ.get("GETTINGSTARTED_BIND", "0.0.0.0")
 
 
 def make_host_handler(mods: dict, notify: Callable[[str], None],
@@ -446,11 +489,14 @@ def make_host_handler(mods: dict, notify: Callable[[str], None],
                 notify("Подключился не Pi — соединение закрыто.")
                 return
             send_hello_ack(conn)
+            hello = first
         else:
             if hello.get("type") != "hello" or hello.get("role") != "pi":
                 notify("Подключился не Pi — соединение закрыто.")
                 return
             send_hello_ack(conn)
+        # Идентичность Pi — один раз из handshake; в запросах её не слушаем (C-5c).
+        session_user = _session_user(hello)
         notify("Пользователь Pi подключён. Сессия установлена.")
         peer = f"{conn.getpeername()[0]}:{conn.getpeername()[1]}"
         first_req = None
@@ -461,7 +507,8 @@ def make_host_handler(mods: dict, notify: Callable[[str], None],
                 if req is None:
                     notify("Пользователь Pi отключился. Сессия завершена.")
                     return
-                if not host_handle_request(conn, req, ws, mods, peer, notify):
+                if not host_handle_request(conn, req, ws, mods, peer, notify,
+                                           session_user=session_user):
                     # Pi корректно завершил сессию командой quit
                     notify("Пользователь Pi отключился. Сессия завершена.")
                     return
@@ -480,7 +527,7 @@ def run_host_direct(
     notify(f"Порт: {port}. IP для пользователя Pi: {local_ip()}")
     srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    srv.bind(("0.0.0.0", port))
+    srv.bind((_bind_addr(), port))
     srv.listen(1)
     srv.settimeout(timeout if timeout > 0 else None)
     try:
@@ -512,7 +559,7 @@ def wait_for_peer(
         notify("Ждите пользователя Pi...")
         srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        srv.bind(("0.0.0.0", port))
+        srv.bind((_bind_addr(), port))
         srv.listen(1)
         srv.settimeout(timeout if timeout > 0 else None)
         try:
@@ -554,7 +601,9 @@ def wait_for_peer(
             if attempt % 3 == 1:
                 notify(f"Хост {host_ip}:{port} ещё не запущен. Продолжаем ждать...")
             time.sleep(2)
-    proto.send_msg(conn, {"type": "hello", "role": "pi"})
+    # «user» в hello — каким именем Pi представляется на хосте; хост берёт
+    # его один раз и дальше не слушает поля user из запросов (C-5c).
+    proto.send_msg(conn, {"type": "hello", "role": "pi", "user": _PI_USER})
     ack = proto.recv_msg(conn)
     if not ack or ack.get("role") != "host":
         notify("Ответ хоста не получен — соединение закрыто.")

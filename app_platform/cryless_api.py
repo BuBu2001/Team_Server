@@ -88,8 +88,17 @@ class RepositoryCreate(BaseModel):
 
 
 @router.post("/repositories", status_code=201)
-def create_repository(payload: RepositoryCreate, x_cryless_user: str | None = Header(None)):
-    """«cryless create repository <имя>»: регистрирует репозиторий на сервере."""
+def create_repository(
+    payload: RepositoryCreate,
+    x_cryless_user: str | None = Header(None),
+    authorization: str | None = Header(None),
+):
+    """«cryless create repository <имя>»: регистрирует репозиторий на сервере.
+
+    Пересоздание (``--force``) требует токен самого репозитория: без него
+    заголовок ``X-Cryless-User`` подделывается и любой мог бы захватить
+    чужой репозиторий, отозвав токен владельца (аудит C-6).
+    """
     username = (x_cryless_user or "").strip()
     if not username:
         return JSONResponse(
@@ -123,10 +132,27 @@ def create_repository(payload: RepositoryCreate, x_cryless_user: str | None = He
                     f"Репозиторий «{name}» уже существует. "
                     "Используйте --force, чтобы пересоздать и получить новый токен"
                 ),
-                "id": existing["id"],
             },
             status_code=409,
         )
+    if existing and payload.force:
+        # --force стирает данные и отзывает прежний токен — подтверждаем,
+        # что запрос делает владелец (аудит C-6: захват чужого репозитория).
+        current = ""
+        if authorization and authorization.lower().startswith("bearer "):
+            current = authorization[7:].strip()
+        resolved = db.resolve_repo_token(current) if current else None
+        if not resolved or resolved["repo_id"] != existing["id"]:
+            return JSONResponse(
+                {
+                    "detail": (
+                        "Пересоздание требует текущего токена репозитория "
+                        "(Authorization: Bearer <токен>). Если токен утерян — "
+                        "удалите проект в веб-панели и создайте заново"
+                    )
+                },
+                status_code=403,
+            )
 
     platform = _platform()
     dest = platform.UPLOAD_DIR / f"{username}__{re.sub(r'[^A-Za-z0-9_.-]', '_', name)}"
@@ -194,7 +220,9 @@ async def load_data(
             status_code=403,
         )
 
-    data = await archive.read()
+    # читаем не больше лимита + 1 байт: проверка размера не требует
+    # держать в памяти многогигабайтный архив (аудит H-6)
+    data = await archive.read(MAX_UPLOAD_BYTES + 1)
     if not data:
         return JSONResponse({"detail": "Пустой архив"}, status_code=422)
     if len(data) > MAX_UPLOAD_BYTES:

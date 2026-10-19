@@ -185,7 +185,10 @@ def cmd_create_repository(args) -> int:
     say("Создаю…")
 
     client = TeamServerClient(server, timeout=args.timeout)
-    data = client.create_repository(name, user, force=args.force)
+    # при --force сервер требует токен репозитория (защита от захвата, аудит C-6)
+    data = client.create_repository(
+        name, user, force=args.force, token=(existing.token if existing else "")
+    )
 
     config = RepoConfig(
         name=data.get("name", name),
